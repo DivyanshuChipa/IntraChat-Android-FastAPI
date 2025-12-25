@@ -1,6 +1,6 @@
-# 📱 IntraConnect: Secure LAN Messenger
+# 📱 Intra: Secure LAN Messenger
 
-**IntraConnect** is a robust, real-time messaging application designed for local area networks (LAN). It allows users to communicate, share files, and view typing status without requiring an active internet connection. Perfect for offices, campuses, or secure home networks where privacy and data sovereignty are paramount.
+**Intra** is a robust, real-time messaging application designed for local area networks (LAN). It allows users to communicate, share files, and view typing status without requiring an active internet connection. Perfect for offices, campuses, or secure home networks where privacy and data sovereignty are paramount.
 
 ## ✨ Key Features
 
