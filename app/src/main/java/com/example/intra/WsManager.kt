@@ -6,11 +6,22 @@ import okhttp3.*
 import java.util.concurrent.TimeUnit
 
 class WsManager(
-    private val serverIp: String = "192.168.31.104",
-    private val port: Int = 8000,
+    private var serverIp: String = "192.168.31.104",
+    private var port: Int = 8000,
     private val onMessageReceived: (String) -> Unit,
     private val onConnectionStatusChange: (String) -> Unit
 ) {
+
+    fun updateServerDetails(settingsManager: SettingsManager) {
+        serverIp = settingsManager.getServerIp()
+        port = settingsManager.getServerPort()
+        reconnect()
+    }
+
+    private fun reconnect() {
+        disconnect()
+        currentUsername?.let { connect(it) }
+    }
     private val TAG = "WsManager"
     private var webSocket: WebSocket? = null
     private val client: OkHttpClient

@@ -12,6 +12,8 @@ class SettingsManager(context: Context) {
     companion object {
         const val KEY_USERNAME = "current_username"
         const val KEY_AUTH_TOKEN = "jwt_auth_token"
+        const val KEY_SERVER_IP = "server_ip"
+        const val KEY_SERVER_PORT = "server_port"
     }
 
     // JWT टोकन प्राप्त करें
@@ -43,5 +45,22 @@ class SettingsManager(context: Context) {
     // चेक करें कि यूज़र लॉग इन है या नहीं
     fun isLoggedIn(): Boolean {
         return !getUsername().isNullOrEmpty() && !getToken().isNullOrEmpty()
+    }
+
+    // Functions to get and set the server IP and port
+    fun getServerIp(): String {
+        return prefs.getString(KEY_SERVER_IP, "192.168.31.104") ?: "192.168.31.104"
+    }
+
+    fun setServerIp(ip: String) {
+        prefs.edit().putString(KEY_SERVER_IP, ip).apply()
+    }
+
+    fun getServerPort(): Int {
+        return prefs.getInt(KEY_SERVER_PORT, 8000)
+    }
+
+    fun setServerPort(port: Int) {
+        prefs.edit().putInt(KEY_SERVER_PORT, port).apply()
     }
 }
