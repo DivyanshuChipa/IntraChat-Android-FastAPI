@@ -1,3 +1,6 @@
+
+<div align="center">
+    
 # Intra - LAN-Based Messenger
 
 <div align="center">
@@ -34,6 +37,8 @@
 
 ---
 
+
+<div align="center">
 ## 🏗️ Architecture
 
 ```
@@ -73,91 +78,6 @@
 - Kotlin plugin
 
 ---
-
-## 🖥️ Server Setup
-
-### 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI.git
-```
-### IMPORTANT THING: BACKEND NOT UPLOADED ON GIT HUB RIGHT NOW
-
-### 2️⃣ Create Virtual Environment
-
-```bash
-python3 -m venv intra_env
-source intra_env/bin/activate  # On Windows: intra_env\Scripts\activate
-```
-
-### 3️⃣ Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-**requirements.txt:**
-```txt
-fastapi==0.101.0
-uvicorn[standard]==0.22.0
-python-multipart==0.0.6
-aiofiles==23.2.1
-passlib==1.7.4
-python-jose[cryptography]==3.3.0
-```
-
-### 4️⃣ Configure Server
-
-Edit `server.py` and change the secret key:
-
-```python
-SECRET_KEY = "YOUR_SUPER_SECRET_KEY_HERE_MAKE_IT_LONG_AND_RANDOM"
-```
-
-### 5️⃣ Run the Server
-
-**Development Mode:**
-```bash
-uvicorn server:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Production Mode (with systemd):**
-
-Create service file:
-```bash
-sudo nano /etc/systemd/system/lanserver.service
-```
-
-Paste this configuration:
-```ini
-[Unit]
-Description=LAN FastAPI Server
-
-[Service]
-User=YOUR_USERNAME
-WorkingDirectory=/path/to/lan_server
-ExecStart=/path/to/intra_env/bin/uvicorn server:app --host 0.0.0.0 --port 8000
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable lanserver
-sudo systemctl start lanserver
-sudo systemctl status lanserver
-```
-
-### 6️⃣ Find Your Server IP
-
-```bash
-ip addr show | grep "inet "
-# Or
-hostname -I
-```
 
 Note down your local IP (e.g., `192.168.1.100`)
 
@@ -389,9 +309,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
+**Divyanshu Chipa**
+- GitHub: DivyanshuChipa](https://github.com/DivyanshuChipa)
+- Email: Divyanshu6062015@gmail.com
 
 ---
 
@@ -408,7 +328,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you encounter any issues or have questions:
 
 1. Check the [Troubleshooting](#-troubleshooting) section
-2. Open an [Issue](https://github.com/yourusername/intra/issues)
+2. Open an [Issue](https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI/issues)
 3. Reach out via email
 
 ---
