@@ -40,7 +40,7 @@ fun ContactListScreen(
 
     // 🎨 CONTROLLED COLORS
     val bgColor = if (isDark) Color(0xFF0E0F14) else Color(0xFFF7F7FB)
-    val topBarColor = if (isDark) Color(0xFF1A1B22) else Color(0xFF2962FF)
+    val topBarColor = if (isDark) Color(0xFF1A1B22) else Color(0xFF6741A8)
     val titleColor = Color.White
     val dividerColor = if (isDark) Color(0xFF2A2B33) else Color(0xFFE0E0E0)
 
@@ -126,7 +126,7 @@ fun ContactItem(
     val subColor = if (isDark) Color.LightGray else Color.DarkGray
 
     // WhatsApp Green for typing
-    val typingColor = Color(0xFFB239C5)
+    val typingColor = Color(0xFF8741E7)
 
     val avatarBg = if (isDark) Color(0xFF2A2B33) else Color(0xFFEDE7F6)
 
