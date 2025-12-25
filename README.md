@@ -1,7 +1,7 @@
 
 <div align="center">
-    
-# Intra - LAN-Based Messenger
+    # Intra - LAN-Based Messenger
+</div>
 
 <div align="center">
 
@@ -36,9 +36,6 @@
 - 📱 **Android App** - Native mobile experience
 
 ---
-
-
-<div align="center">
 ## 🏗️ Architecture
 
 ```
