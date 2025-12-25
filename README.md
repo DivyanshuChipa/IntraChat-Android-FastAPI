@@ -81,7 +81,7 @@
 ```bash
 git clone https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI.git
 ```
-### IMPORTANT THING BACKEND NOT UPLOADED ON GIT HUB NOW
+### IMPORTANT THING: BACKEND NOT UPLOADED ON GIT HUB RIGHT NOW
 
 ### 2️⃣ Create Virtual Environment
 
