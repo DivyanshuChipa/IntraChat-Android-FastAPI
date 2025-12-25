@@ -79,9 +79,9 @@
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/intra.git
-cd intra/lan_server
+git clone https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI.git
 ```
+### IMPORTANT THING BACKEND NOT UPLOADED ON GIT HUB NOW
 
 ### 2️⃣ Create Virtual Environment
 
