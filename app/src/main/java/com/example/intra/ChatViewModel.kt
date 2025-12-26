@@ -202,6 +202,10 @@ class ChatViewModel(
         }
     }
 
+    fun updateWsManagerDetails(settingsManager: SettingsManager) {
+        wsManager.updateServerDetails(settingsManager)
+    }
+
     // ---------------- RECEIVE ----------------
     private fun handleIncomingMessage(raw: String) {
         viewModelScope.launch(Dispatchers.IO) {

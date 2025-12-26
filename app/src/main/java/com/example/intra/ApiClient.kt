@@ -6,8 +6,14 @@ import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    // #यहाँ वही IP डालें जिस पर तुम्हारा सर्वर चल रहा है
-    private const val BASE_URL = "http://192.168.31.104:8000/"
+    private var BASE_URL = "http://192.168.31.104:8000/"
+
+    fun updateBaseUrl(settingsManager: SettingsManager) {
+        val ip = settingsManager.getServerIp()
+        val port = settingsManager.getServerPort()
+        BASE_URL = "http://$ip:$port/"
+        rebuildRetrofit()
+    }
 
     // #OkHttpClient को कॉन्फ़िगर करें
     private val client = OkHttpClient.Builder()
@@ -17,19 +23,23 @@ object ApiClient {
         .build()
 
     // Retrofit Instance
-    private val retrofit: Retrofit by lazy {
-        Retrofit.Builder()
+    private lateinit var retrofit: Retrofit
+
+    init {
+        rebuildRetrofit()
+    }
+
+    fun rebuildRetrofit() {
+        retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
-            // #GsonConverterFactory की ज़रूरत है अगर तुम server JSON response को parse करना चाहते हो
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
 
     // #ApiService को एक्सेस करने के लिए पब्लिक मेथड
-    val apiService: ApiService by lazy {
-        retrofit.create(ApiService::class.java)
-    }
+    val apiService: ApiService
+        get() = retrofit.create(ApiService::class.java)
 
     // 💡 New function to get dynamic WS URL
     fun getWsUrl(username: String): String {

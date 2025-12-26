@@ -7,10 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,7 +31,7 @@ fun ContactListScreen(
     // 🔥 NEW: Pass the live typing map
     typingStatuses: Map<String, Boolean>,
     onChatClick: (String) -> Unit,
-    onLogout: () -> Unit
+    onSettingsClick: () -> Unit
 ) {
     val contactViewModel: ContactViewModel = viewModel()
     val contacts = contactViewModel.contacts
@@ -62,8 +62,8 @@ fun ContactListScreen(
                     IconButton(onClick = { contactViewModel.fetchContacts() }) {
                         Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White)
                     }
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Filled.ExitToApp, contentDescription = null, tint = Color.White)
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = Color.White)
                     }
                 }
             )

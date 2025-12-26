@@ -19,6 +19,13 @@ import android.content.Context
 import android.provider.OpenableColumns
 import android.util.Log
 
+sealed class NavigationState {
+    object ContactList : NavigationState()
+    data class Chat(val receiver: String) : NavigationState()
+    object Settings : NavigationState()
+    object ChangeIpAddress : NavigationState()
+}
+
 class MainActivity : ComponentActivity() {
 
     // File Upload Variables
@@ -43,55 +50,77 @@ class MainActivity : ComponentActivity() {
         val settingsManager = SettingsManager(this)
         val chatViewModelFactory = ChatViewModelFactory(chatDao, settingsManager)
 
+        ApiClient.updateBaseUrl(settingsManager)
+
         setContent {
             IntraTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-
                     val authViewModel: AuthViewModel = viewModel()
-                    // ChatViewModel is scoped to MainActivity, so it stays alive
                     val chatViewModel: ChatViewModel = viewModel(factory = chatViewModelFactory)
-
                     val isAuthenticated by authViewModel.isAuthenticated
-                    var currentChatReceiver by remember { mutableStateOf<String?>(null) }
+                    var navigationState by remember { mutableStateOf<NavigationState>(NavigationState.ContactList) }
 
                     if (!isAuthenticated) {
-                        // 1. LOGIN SCREEN
                         AuthScreen(
                             viewModel = authViewModel,
-                            onAuthenticated = { /* AuthVM state will update isAuthenticated */ }
+                            onAuthenticated = {
+                                ApiClient.updateBaseUrl(settingsManager)
+                                chatViewModel.updateWsManagerDetails(settingsManager)
+                            }
                         )
                     } else {
-                        // User is logged in
-                        if (currentChatReceiver == null) {
-
-                            // 2. CONTACT LIST SCREEN (Home)
-                            ContactListScreen(
-                                username = chatViewModel.currentUsername,
-                                // 🔥 FIX: Pass live typing statuses map here
-                                typingStatuses = chatViewModel.typingStatuses,
-                                onChatClick = { selectedUser ->
-                                    currentChatReceiver = selectedUser
-                                },
-                                onLogout = {
-                                    authViewModel.logout()
-                                    currentChatReceiver = null
-                                }
-                            )
-                        } else {
-                            // 3. CHAT SCREEN (Conversation)
-                            ChatScreen(
-                                viewModel = chatViewModel,
-                                receiverName = currentChatReceiver!!,
-                                onAttachClick = {
-                                    currentUploadViewModel = chatViewModel
-                                    currentUploadReceiver = currentChatReceiver
-                                    filePickerLauncher.launch("*/*")
-                                },
-                                onBackClick = {
-                                    chatViewModel.closeChat()
-                                    currentChatReceiver = null
-                                }
-                            )
+                        when (val state = navigationState) {
+                            is NavigationState.ContactList -> {
+                                ContactListScreen(
+                                    username = chatViewModel.currentUsername,
+                                    typingStatuses = chatViewModel.typingStatuses,
+                                    onChatClick = { selectedUser ->
+                                        navigationState = NavigationState.Chat(selectedUser)
+                                    },
+                                    onSettingsClick = {
+                                        navigationState = NavigationState.Settings
+                                    }
+                                )
+                            }
+                            is NavigationState.Chat -> {
+                                ChatScreen(
+                                    viewModel = chatViewModel,
+                                    receiverName = state.receiver,
+                                    onAttachClick = {
+                                        currentUploadViewModel = chatViewModel
+                                        currentUploadReceiver = state.receiver
+                                        filePickerLauncher.launch("*/*")
+                                    },
+                                    onBackClick = {
+                                        chatViewModel.closeChat()
+                                        navigationState = NavigationState.ContactList
+                                    }
+                                )
+                            }
+                            is NavigationState.Settings -> {
+                                SettingsScreen(
+                                    onLogout = {
+                                        authViewModel.logout()
+                                        navigationState = NavigationState.ContactList
+                                    },
+                                    onChangeServerIp = {
+                                        navigationState = NavigationState.ChangeIpAddress
+                                    },
+                                    onBack = {
+                                        navigationState = NavigationState.ContactList
+                                    }
+                                )
+                            }
+                            is NavigationState.ChangeIpAddress -> {
+                                ChangeIpAddressScreen(
+                                    settingsManager = settingsManager,
+                                    onIpAddressChanged = {
+                                        ApiClient.updateBaseUrl(settingsManager)
+                                        chatViewModel.updateWsManagerDetails(settingsManager)
+                                        navigationState = NavigationState.Settings
+                                    }
+                                )
+                            }
                         }
                     }
                 }
