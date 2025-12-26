@@ -7,10 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings   // ⚙️ NEW
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,21 +28,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun ContactListScreen(
     username: String,
-    // 🔥 NEW: Pass the live typing map
     typingStatuses: Map<String, Boolean>,
     onChatClick: (String) -> Unit,
-    onLogout: () -> Unit
+    onSettingsClick: () -> Unit   // ✅ NEW
 ) {
     val contactViewModel: ContactViewModel = viewModel()
     val contacts = contactViewModel.contacts
 
     val isDark = isSystemInDarkTheme()
 
-    // 🎨 CONTROLLED COLORS
     val bgColor = if (isDark) Color(0xFF0E0F14) else Color(0xFFFCFCFC)
     val topBarColor = if (isDark) Color(0xFF1A1B22) else Color(0xFF6741A8)
-    val titleColor = Color.White
-    val dividerColor = if (isDark) Color(0xFF2A2B33) else Color(0xFFE0E0E0)
 
     Scaffold(
         containerColor = bgColor,
@@ -51,7 +47,7 @@ fun ContactListScreen(
                 title = {
                     Text(
                         "Intra Chats",
-                        color = titleColor,
+                        color = Color.White,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -60,10 +56,12 @@ fun ContactListScreen(
                 ),
                 actions = {
                     IconButton(onClick = { contactViewModel.fetchContacts() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Filled.Refresh, null, tint = Color.White)
                     }
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Filled.ExitToApp, contentDescription = null, tint = Color.White)
+
+                    // ⚙️ SETTINGS ICON (Logout yahan se hata diya)
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Filled.Settings, null, tint = Color.White)
                     }
                 }
             )
@@ -75,11 +73,10 @@ fun ContactListScreen(
                 .padding(padding)
         ) {
 
-            // 🔥 FAMILY GROUP
+            // FAMILY GROUP
             item {
                 ContactItem(
                     name = "Family Group",
-                    // Group typing logic is complex, keeping static for now
                     subtitle = "Broadcast to everyone",
                     isTyping = false,
                     icon = Icons.Filled.Group,
@@ -87,22 +84,18 @@ fun ContactListScreen(
                     isDark = isDark,
                     onClick = { onChatClick("Family Group") }
                 )
-                Divider(color = dividerColor, thickness = 0.6.dp)
             }
 
-            // 👤 USERS
             items(contacts) { user ->
                 if (user.username != username) {
-
-                    // 🔥 Check if this specific user is typing
                     val isUserTyping = typingStatuses[user.username] == true
 
                     ContactItem(
                         name = user.username,
-                        subtitle = "Tap to chat", // Future: Replace with Last Message
-                        isTyping = isUserTyping,  // Pass status
+                        subtitle = "Tap to chat",
+                        isTyping = isUserTyping,
                         icon = Icons.Filled.Person,
-                        iconTint = if (isDark) Color(0xFFB39DDB) else Color(0xFF5C6BC0),
+                        iconTint = Color(0xFFB39DDB),
                         isDark = isDark,
                         onClick = { onChatClick(user.username) }
                     )

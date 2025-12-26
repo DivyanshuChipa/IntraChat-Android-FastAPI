@@ -18,6 +18,8 @@ import android.net.Uri
 import android.content.Context
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 class MainActivity : ComponentActivity() {
 
@@ -45,60 +47,82 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             IntraTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
 
                     val authViewModel: AuthViewModel = viewModel()
-                    // ChatViewModel is scoped to MainActivity, so it stays alive
                     val chatViewModel: ChatViewModel = viewModel(factory = chatViewModelFactory)
 
                     val isAuthenticated by authViewModel.isAuthenticated
+
+                    // State variables
+                    var showSettings by remember { mutableStateOf(false) }
                     var currentChatReceiver by remember { mutableStateOf<String?>(null) }
 
                     if (!isAuthenticated) {
                         // 1. LOGIN SCREEN
                         AuthScreen(
                             viewModel = authViewModel,
-                            onAuthenticated = { /* AuthVM state will update isAuthenticated */ }
+                            onAuthenticated = { /* AuthVM handles state */ }
                         )
                     } else {
                         // User is logged in
-                        if (currentChatReceiver == null) {
 
-                            // 2. CONTACT LIST SCREEN (Home)
-                            ContactListScreen(
-                                username = chatViewModel.currentUsername,
-                                // 🔥 FIX: Pass live typing statuses map here
-                                typingStatuses = chatViewModel.typingStatuses,
-                                onChatClick = { selectedUser ->
-                                    currentChatReceiver = selectedUser
-                                },
-                                onLogout = {
-                                    authViewModel.logout()
-                                    currentChatReceiver = null
-                                }
-                            )
-                        } else {
-                            // 3. CHAT SCREEN (Conversation)
-                            ChatScreen(
-                                viewModel = chatViewModel,
-                                receiverName = currentChatReceiver!!,
-                                onAttachClick = {
-                                    currentUploadViewModel = chatViewModel
-                                    currentUploadReceiver = currentChatReceiver
-                                    filePickerLauncher.launch("*/*")
-                                },
-                                onBackClick = {
-                                    chatViewModel.closeChat()
-                                    currentChatReceiver = null
-                                }
-                            )
+                        when {
+                            // 2. SETTINGS SCREEN
+                            showSettings -> {
+                                SettingsScreen(
+                                    onLogoutConfirmed = {
+                                        authViewModel.logout()
+                                        showSettings = false
+                                        currentChatReceiver = null
+                                    },
+                                    onBack = {
+                                        showSettings = false
+                                        // Sirf settings band karni hai, chat band karne ki zarurat nahi agar hum contact list se aaye the
+                                    }
+                                )
+                            }
+
+                            // 3. CHAT SCREEN (🔴 YE MISSING THA TERE CODE MEIN)
+                            currentChatReceiver != null -> {
+                                ChatScreen(
+                                    viewModel = chatViewModel,
+                                    receiverName = currentChatReceiver!!,
+                                    onAttachClick = {
+                                        // File upload logic connect kar diya
+                                        currentUploadViewModel = chatViewModel
+                                        currentUploadReceiver = currentChatReceiver
+                                        filePickerLauncher.launch("*/*")
+                                    },
+                                    onBackClick = {
+                                        chatViewModel.closeChat()
+                                        currentChatReceiver = null
+                                    }
+                                )
+                            }
+
+                            // 4. CONTACT LIST (Home)
+                            else -> {
+                                ContactListScreen(
+                                    username = chatViewModel.currentUsername,
+                                    typingStatuses = chatViewModel.typingStatuses,
+                                    onChatClick = { selectedUser ->
+                                        currentChatReceiver = selectedUser
+                                    },
+                                    onSettingsClick = {
+                                        showSettings = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-
     // uriToTempFile remains unchanged...
     fun uriToTempFile(context: Context, uri: Uri): File? {
         val contentResolver = context.contentResolver
