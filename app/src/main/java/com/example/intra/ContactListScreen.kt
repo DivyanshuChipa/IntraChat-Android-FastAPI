@@ -39,7 +39,7 @@ fun ContactListScreen(
     val isDark = isSystemInDarkTheme()
 
     // 🎨 CONTROLLED COLORS
-    val bgColor = if (isDark) Color(0xFF0E0F14) else Color(0xFFF7F7FB)
+    val bgColor = if (isDark) Color(0xFF0E0F14) else Color(0xFFFCFCFC)
     val topBarColor = if (isDark) Color(0xFF1A1B22) else Color(0xFF6741A8)
     val titleColor = Color.White
     val dividerColor = if (isDark) Color(0xFF2A2B33) else Color(0xFFE0E0E0)
