@@ -1,7 +1,8 @@
 
 <div align="center">
-    ## Intra - LAN-Based Messenger
-
+    
+ ## Intra - LAN-Based Messenger
+</div>
 
 <div align="center">
 
