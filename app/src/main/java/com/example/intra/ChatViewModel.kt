@@ -65,7 +65,7 @@ class ChatViewModel(
         }
 
     private val wsManager = WsManager(
-        serverIp = "192.168.31.104",
+        //serverIp = "192.168.31.104",
         onMessageReceived = { handleIncomingMessage(it) },
         onConnectionStatusChange = { connectionStatus.value = it }
     )
