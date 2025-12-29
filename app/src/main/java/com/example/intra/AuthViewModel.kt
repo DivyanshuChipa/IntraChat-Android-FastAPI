@@ -139,7 +139,7 @@ class AuthViewModel : ViewModel() {
     }
 
     // ========================================
-    // 📸 NEW FUNCTION: Upload Profile Photo
+    // 📸 UPLOAD PROFILE PHOTO (Updated)
     // ========================================
     fun uploadProfilePhoto(file: java.io.File, onResult: (Boolean) -> Unit) {
         if (isLoading.value) return
@@ -165,7 +165,11 @@ class AuthViewModel : ViewModel() {
                 val response = apiService.uploadProfilePhoto(usernamePart, filePart)
 
                 if (response.isSuccessful && response.body()?.success == true) {
-                    Log.d(TAG, "✅ Profile Photo Uploaded!")
+                    // ✅ NEW: Save the returned photo URL to SettingsManager
+                    val newPhotoUrl = response.body()?.profilePhoto
+                    settingsManager.saveMyPhoto(newPhotoUrl)
+
+                    Log.d(TAG, "✅ Profile Photo Uploaded & Saved: $newPhotoUrl")
                     onResult(true)
                 } else {
                     errorMessage.value = "Failed to upload photo"

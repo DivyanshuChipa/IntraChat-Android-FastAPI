@@ -14,6 +14,7 @@ class SettingsManager(context: Context) {
         // 🆕 NEW: Server Config Keys
         const val KEY_SERVER_IP = "server_ip"
         const val KEY_SERVER_PORT = "server_port"
+        const val KEY_MY_PHOTO = "my_profile_photo" // 🆕 NEW KEY
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -62,5 +63,13 @@ class SettingsManager(context: Context) {
         val ip = getServerIp()
         val port = getServerPort()
         return "http://$ip:$port/"
+    }
+    fun saveMyPhoto(url: String?) {
+        prefs.edit().putString(KEY_MY_PHOTO, url).apply()
+    }
+
+    // 🆕 Get My Photo URL
+    fun getMyPhoto(): String? {
+        return prefs.getString(KEY_MY_PHOTO, null)
     }
 }
