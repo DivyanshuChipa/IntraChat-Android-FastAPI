@@ -10,9 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings   // ⚙️ NEW
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +24,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
+// 📸 NEW IMPORTS: Profile Photo Display ke liye
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,7 +37,7 @@ fun ContactListScreen(
     username: String,
     typingStatuses: Map<String, Boolean>,
     onChatClick: (String) -> Unit,
-    onSettingsClick: () -> Unit   // ✅ NEW
+    onSettingsClick: () -> Unit
 ) {
     val contactViewModel: ContactViewModel = viewModel()
     val contacts = contactViewModel.contacts
@@ -59,7 +66,7 @@ fun ContactListScreen(
                         Icon(Icons.Filled.Refresh, null, tint = Color.White)
                     }
 
-                    // ⚙️ SETTINGS ICON (Logout yahan se hata diya)
+                    // ⚙️ SETTINGS ICON
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Filled.Settings, null, tint = Color.White)
                     }
@@ -82,10 +89,12 @@ fun ContactListScreen(
                     icon = Icons.Filled.Group,
                     iconTint = Color(0xFF25BB4B),
                     isDark = isDark,
+                    profilePhotoUrl = null, // ✅ No photo for group
                     onClick = { onChatClick("Family Group") }
                 )
             }
 
+            // ✅ UPDATED: User list mein profilePhoto pass kar rahe hain
             items(contacts) { user ->
                 if (user.username != username) {
                     val isUserTyping = typingStatuses[user.username] == true
@@ -97,6 +106,7 @@ fun ContactListScreen(
                         icon = Icons.Filled.Person,
                         iconTint = Color(0xFFB39DDB),
                         isDark = isDark,
+                        profilePhotoUrl = user.profilePhoto, // ✅ PASS THIS
                         onClick = { onChatClick(user.username) }
                     )
                 }
@@ -105,23 +115,33 @@ fun ContactListScreen(
     }
 }
 
+// ========================================
+// ✅ UPDATED: ContactItem with Profile Photo Support
+// ========================================
 @Composable
 fun ContactItem(
     name: String,
     subtitle: String,
-    isTyping: Boolean, // 🔥 New param
+    isTyping: Boolean,
     icon: ImageVector,
     iconTint: Color,
     isDark: Boolean,
+    profilePhotoUrl: String? = null, // ✅ NEW PARAMETER
     onClick: () -> Unit
 ) {
     val nameColor = if (isDark) Color.White else Color.Black
     val subColor = if (isDark) Color.LightGray else Color.DarkGray
-
-    // WhatsApp Green for typing
     val typingColor = Color(0xFF8741E7)
-
     val avatarBg = if (isDark) Color(0xFF2A2B33) else Color(0xFFEDE7F6)
+
+    // ✅ Base URL construct karna padega (kyunki server relative path /uploads/... bhejta hai)
+    val context = LocalContext.current
+    val settingsManager = remember { SettingsManager(context) }
+
+    // Full URL: http://192.168.x.x:8000/uploads/profiles/user.png
+    val fullPhotoUrl = if (profilePhotoUrl != null) {
+        settingsManager.getBaseUrl().removeSuffix("/") + profilePhotoUrl
+    } else null
 
     Row(
         modifier = Modifier
@@ -131,19 +151,34 @@ fun ContactItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        // Avatar
+        // ✅ AVATAR: Agar Photo hai to wo dikhao, nahi to Icon
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .background(avatarBg, CircleShape),
+                .background(avatarBg, CircleShape)
+                .clip(CircleShape), // ✅ Clip image to circle
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(26.dp)
-            )
+            if (fullPhotoUrl != null) {
+                // ✅ Photo hai toh AsyncImage se load karo
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(fullPhotoUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // ✅ Photo nahi hai toh Icon dikhao
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
         }
 
         Spacer(Modifier.width(16.dp))
@@ -161,8 +196,8 @@ fun ContactItem(
                 Text(
                     text = "typing...",
                     fontSize = 13.sp,
-                    color = typingColor, // Green
-                    fontStyle = FontStyle.Italic // Italic style
+                    color = typingColor,
+                    fontStyle = FontStyle.Italic
                 )
             } else {
                 Text(

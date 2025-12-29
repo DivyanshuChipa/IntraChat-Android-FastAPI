@@ -1,5 +1,6 @@
 package com.example.intra
 
+import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -37,6 +38,18 @@ data class ServerMessage(
     val sender: String? = "Unknown"
 )
 
+// 4. 📸 NEW: Profile Photo Upload Response
+data class ProfileUploadResponse(
+    val success: Boolean,
+    @SerializedName("profile_photo") val profilePhoto: String?
+)
+
+// 5. Users List Response (agar ye existing hai toh use karo, nahi toh ye define kar lo)
+//data class UsersResponse(
+    //val success: Boolean,
+    //val users: List<String>?
+//)
+
 // ===================== API INTERFACE =====================
 
 interface ApiService {
@@ -61,6 +74,15 @@ interface ApiService {
     @GET("messages")
     suspend fun getRecentMessages(): Response<List<ServerMessage>>
 
+    // 👥 Existing: Get Users List
     @GET("users")
     suspend fun getUsers(): Response<UsersResponse>
+
+    // 📸 NEW: Profile Photo Upload Endpoint
+    @Multipart
+    @POST("profile/upload_profile")
+    suspend fun uploadProfilePhoto(
+        @Part("username") username: RequestBody, // Username text mein jayega
+        @Part file: MultipartBody.Part           // Photo file mein jayegi
+    ): Response<ProfileUploadResponse>
 }

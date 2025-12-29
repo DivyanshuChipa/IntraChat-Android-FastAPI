@@ -8,6 +8,10 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 import org.json.JSONObject
+// 📸 NEW IMPORTS: Profile Photo Upload ke liye
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 
 class AuthViewModel : ViewModel() {
 
@@ -132,5 +136,47 @@ class AuthViewModel : ViewModel() {
         isAuthenticated.value = false
         usernameInput.value = ""
         passwordInput.value = ""
+    }
+
+    // ========================================
+    // 📸 NEW FUNCTION: Upload Profile Photo
+    // ========================================
+    fun uploadProfilePhoto(file: java.io.File, onResult: (Boolean) -> Unit) {
+        if (isLoading.value) return
+
+        val currentUser = settingsManager.getUsername() ?: return
+        isLoading.value = true
+
+        viewModelScope.launch {
+            try {
+                // 1. Prepare Data
+                val usernamePart = okhttp3.RequestBody.create(
+                    okhttp3.MultipartBody.FORM,
+                    currentUser
+                )
+
+                val filePart = okhttp3.MultipartBody.Part.createFormData(
+                    "file",
+                    file.name,
+                    file.asRequestBody("image/*".toMediaTypeOrNull())
+                )
+
+                // 2. Call Server
+                val response = apiService.uploadProfilePhoto(usernamePart, filePart)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    Log.d(TAG, "✅ Profile Photo Uploaded!")
+                    onResult(true)
+                } else {
+                    errorMessage.value = "Failed to upload photo"
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                errorMessage.value = "Error: ${e.message}"
+                onResult(false)
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 }

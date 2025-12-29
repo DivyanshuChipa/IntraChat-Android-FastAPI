@@ -63,6 +63,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
 
         // ... (पहले से मौजूद dependencies)
+    //Sabse pehle image load karne ke liye Coil library add karni hogi. Ye wahi library hai jo automatic caching karegi
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
+
 
         // Networking (Retrofit for POST /upload, OkHttp for WebSocket)
         implementation("com.squareup.okhttp3:okhttp:4.11.0") // तुमने यह जोड़ दिया है, इसे रहने दें।
