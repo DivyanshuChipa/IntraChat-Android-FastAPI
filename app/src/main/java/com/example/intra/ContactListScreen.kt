@@ -26,6 +26,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 // 📸 NEW IMPORTS: Profile Photo Display ke liye
 import androidx.compose.ui.draw.clip
+import coil.request.CachePolicy // 👈 Ye zaroori hai
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
@@ -160,11 +161,14 @@ fun ContactItem(
             contentAlignment = Alignment.Center
         ) {
             if (fullPhotoUrl != null) {
-                // ✅ Photo hai toh AsyncImage se load karo
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(fullPhotoUrl)
                         .crossfade(true)
+                        // 🔥 FIX: Disk Cache band, taaki purani photo na chipki rahe
+                        .diskCachePolicy(CachePolicy.DISABLED)
+                        // Memory Cache chalu rakho taaki scroll smooth rahe
+                        .memoryCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,

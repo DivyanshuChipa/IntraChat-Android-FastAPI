@@ -167,9 +167,13 @@ class AuthViewModel : ViewModel() {
                 if (response.isSuccessful && response.body()?.success == true) {
                     // ✅ NEW: Save the returned photo URL to SettingsManager
                     val newPhotoUrl = response.body()?.profilePhoto
-                    settingsManager.saveMyPhoto(newPhotoUrl)
+                    // 🔥 FIX: Timestamp jod diya taaki cache update ho jaye
+                    // Example: /uploads/user.png?t=170123456789
+                    val timestamp = System.currentTimeMillis()
+                    val urlWithTime = "$newPhotoUrl?t=$timestamp"
 
-                    Log.d(TAG, "✅ Profile Photo Uploaded & Saved: $newPhotoUrl")
+                    settingsManager.saveMyPhoto(urlWithTime) // ✅ Updated URL save karo
+                    Log.d(TAG, "✅ Profile Photo Uploaded & Saved: $urlWithTime")
                     onResult(true)
                 } else {
                     errorMessage.value = "Failed to upload photo"
