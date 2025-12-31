@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -33,7 +34,9 @@ fun ChatScreen(
     viewModel: ChatViewModel,
     receiverName: String,
     onAttachClick: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onStartCall: () -> Unit,
+
 ) {
     val listState = rememberLazyListState()
 
@@ -73,6 +76,14 @@ fun ChatScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {   // ✅ Call icon yahan add kiya
+                    IconButton(onClick = onStartCall) {
+                        Icon(
+                            imageVector = Icons.Default.Call,
+                            contentDescription = "Call"
                         )
                     }
                 }

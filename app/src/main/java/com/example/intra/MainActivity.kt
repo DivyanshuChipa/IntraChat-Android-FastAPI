@@ -61,6 +61,9 @@ class MainActivity : ComponentActivity() {
                     var showSettings by remember { mutableStateOf(false) }
                     var currentChatReceiver by remember { mutableStateOf<String?>(null) }
 
+                    // ✅ CALL STATE (STEP 4)
+                    var callState by remember { mutableStateOf(CallState()) }
+
                     if (!isAuthenticated) {
                         // 1. LOGIN SCREEN
                         AuthScreen(
@@ -81,18 +84,35 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onBack = {
                                         showSettings = false
-                                        // Sirf settings band karni hai, chat band karne ki zarurat nahi agar hum contact list se aaye the
                                     }
                                 )
                             }
 
-                            // 3. CHAT SCREEN (🔴 YE MISSING THA TERE CODE MEIN)
+                            // 3. CALL SCREEN (🔥 STEP 4 LOGIC)
+                            callState.status != CallStatus.IDLE -> {
+                                CallScreen(
+                                    state = callState,
+                                    onEndCall = {
+                                        callState = CallState() // reset
+                                    },
+                                    onAcceptCall = {
+                                        callState = callState.copy(status = CallStatus.CONNECTED)
+                                    },
+                                    onToggleMute = {
+                                        callState = callState.copy(isMuted = !callState.isMuted)
+                                    },
+                                    onToggleSpeaker = {
+                                        callState = callState.copy(isSpeakerOn = !callState.isSpeakerOn)
+                                    }
+                                )
+                            }
+
+                            // 4. CHAT SCREEN
                             currentChatReceiver != null -> {
                                 ChatScreen(
                                     viewModel = chatViewModel,
                                     receiverName = currentChatReceiver!!,
                                     onAttachClick = {
-                                        // File upload logic connect kar diya
                                         currentUploadViewModel = chatViewModel
                                         currentUploadReceiver = currentChatReceiver
                                         filePickerLauncher.launch("*/*")
@@ -100,11 +120,17 @@ class MainActivity : ComponentActivity() {
                                     onBackClick = {
                                         chatViewModel.closeChat()
                                         currentChatReceiver = null
+                                    },
+                                    onStartCall = {
+                                        callState = CallState(
+                                            status = CallStatus.OUTGOING,
+                                            targetUser = currentChatReceiver!!
+                                        )
                                     }
                                 )
                             }
 
-                            // 4. CONTACT LIST (Home)
+                            // 5. CONTACT LIST (Home)
                             else -> {
                                 ContactListScreen(
                                     username = chatViewModel.currentUsername,
@@ -123,7 +149,8 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    // uriToTempFile remains unchanged...
+
+    // ✅ File helper remains unchanged
     fun uriToTempFile(context: Context, uri: Uri): File? {
         val contentResolver = context.contentResolver
         var fileName: String? = null
@@ -142,6 +169,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
             tempFile
-        } catch (e: Exception) { Log.e("MainActivity", "File error", e); null }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "File error", e); null
+        }
     }
 }

@@ -82,6 +82,10 @@ dependencies {
 
         // Compose: Material Icons
         implementation("androidx.compose.material:material-icons-extended")
+       // 📞 WebRTC Library
+        //implementation("com.mesibo.api:webrtc:1.0.5")
+       //Ya fir ye wala (jo standard hai):
+        implementation("io.getstream:stream-webrtc-android:1.0.3")
 
         // ... (बाकी libs.androidx.core.ktx, etc.)
     val room_version = "2.6.1"
