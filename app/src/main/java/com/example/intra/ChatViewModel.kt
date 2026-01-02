@@ -25,6 +25,7 @@ data class ChatMessage(
     val fileUrl: String? = null,
     val fileName: String? = null,
     val timestamp: Long = System.currentTimeMillis()
+
 )
 
 class ChatViewModel(
@@ -34,17 +35,13 @@ class ChatViewModel(
 
     private val TAG = "ChatVM"
 
-    // ✅ OLD: Single user typing state (Removed/Deprecated)
-    // val isTyping = mutableStateOf(false)
+    // ✅ STEP-3 FIX: ChatViewModel ko signal forwarder banana hoga
+    // 1️⃣ ye property add karo (top me)
+    var onCallSignal: ((String) -> Unit)? = null
 
-    // 🔥 NEW: Map to track typing status of ALL users
-    // Key = Username, Value = Boolean (Is Typing?)
     val typingStatuses = mutableStateMapOf<String, Boolean>()
-
-    // 🔥 NEW: Job Map to handle timers correctly for each user
     private val typingJobs = mutableMapOf<String, Job>()
 
-    // ✅ Typing throttle (Sender side)
     private var lastTypingSent = 0L
     private val TYPING_THROTTLE = 2000L // 2 seconds
 
@@ -53,6 +50,7 @@ class ChatViewModel(
     val connectionStatus = mutableStateOf("Connecting…")
 
     var activeChatUser by mutableStateOf<String?>(null)
+
         private set
 
     val currentUsername: String
@@ -65,7 +63,6 @@ class ChatViewModel(
         }
 
     private val wsManager = WsManager(
-        //serverIp = "192.168.31.104",
         onMessageReceived = { handleIncomingMessage(it) },
         onConnectionStatusChange = { connectionStatus.value = it }
     )
@@ -89,6 +86,17 @@ class ChatViewModel(
             put("receiver", receiver)
         }
         wsManager.sendMessage(json.toString())
+    }
+
+    // 📞 NEW: Send Call Request
+    fun sendCallRequest(receiver: String) {
+        val json = JSONObject().apply {
+            put("type", "call_request")
+            put("sender", currentUsername)
+            put("receiver", receiver)
+        }
+        wsManager.sendMessage(json.toString())
+        Log.d(TAG, "📞 Call request sent to $receiver")
     }
 
     // ---------------- CHAT OPEN / CLOSE ----------------
@@ -131,7 +139,9 @@ class ChatViewModel(
             }
         }
     }
-
+    fun sendRawSignal(json: String) {
+        wsManager.sendMessage(json)
+    }
     // ---------------- SEND TEXT ----------------
     fun sendMessage(receiver: String) {
         val text = inputMessage.value.trim()
@@ -209,18 +219,14 @@ class ChatViewModel(
                 val json = JSONObject(raw)
                 val type = json.optString("type")
 
-                // 🔥 NEW LOGIC: Handle Typing Globally
+                // 🔥 Handle Typing
                 if (type == "typing") {
                     val sender = json.optString("sender")
 
                     withContext(Dispatchers.Main) {
-                        // 1. Set sender as typing
                         typingStatuses[sender] = true
-
-                        // 2. Cancel old timer if exists (to avoid flickering)
                         typingJobs[sender]?.cancel()
 
-                        // 3. Start new timer to clear status after 3 seconds
                         typingJobs[sender] = viewModelScope.launch {
                             delay(3000)
                             typingStatuses[sender] = false
@@ -228,6 +234,21 @@ class ChatViewModel(
                     }
                     return@launch
                 }
+
+                // 📞 2️⃣ handleIncomingMessage() me change 👇
+                // 💡 Ab ViewModel bolega: “Mujhe call ka matlab nahi pata, MainActivity tu dekh le”
+                if (
+                    type == "call_request" ||
+                    type == "webrtc_offer" ||
+                    type == "webrtc_answer" ||
+                    type == "ice_candidate"
+                ) {
+                    withContext(Dispatchers.Main) {
+                        onCallSignal?.invoke(raw)
+                    }
+                    return@launch
+                }
+
 
                 // --- Existing Message Logic ---
                 val sender = json.optString("sender")
@@ -254,7 +275,6 @@ class ChatViewModel(
 
                 saveToDb(msg, sender, receiver)
 
-                // Only show in chat list if chat is OPEN with that user
                 val show = activeChatUser?.let {
                     receiver == "Family Group" || sender == it || receiver == it
                 } ?: false
@@ -264,8 +284,6 @@ class ChatViewModel(
                         messages.add(msg)
                     }
                 }
-
-                // 💡 FUTURE: Yahan "typing" status ko false kar sakte ho instantly agar message aa gaya
 
             } catch (e: Exception) {
                 Log.e(TAG, "Parse error", e)

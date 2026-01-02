@@ -18,8 +18,7 @@ import android.net.Uri
 import android.content.Context
 import android.provider.OpenableColumns
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
 
@@ -55,26 +54,67 @@ class MainActivity : ComponentActivity() {
                     val authViewModel: AuthViewModel = viewModel()
                     val chatViewModel: ChatViewModel = viewModel(factory = chatViewModelFactory)
 
+                    val webRTCClient = remember {
+                        WebRTCClient(
+                            context = applicationContext,
+                            sendSignal = { json ->
+                                chatViewModel.sendRawSignal(json)
+                            }
+                        )
+                    }
                     val isAuthenticated by authViewModel.isAuthenticated
 
                     // State variables
                     var showSettings by remember { mutableStateOf(false) }
                     var currentChatReceiver by remember { mutableStateOf<String?>(null) }
 
-                    // ✅ CALL STATE (STEP 4)
+                    // ✅ CALL STATE (Single Source)
                     var callState by remember { mutableStateOf(CallState()) }
 
-                    if (!isAuthenticated) {
-                        // 1. LOGIN SCREEN
-                        AuthScreen(
-                            viewModel = authViewModel,
-                            onAuthenticated = { /* AuthVM handles state */ }
-                        )
-                    } else {
-                        // User is logged in
+                    // ✅ NEW: Pending Offer ko store karne ke liye state
+                    var pendingOfferSdp by remember { mutableStateOf<String?>(null) }
 
+                    // ✅ STEP-2: THE MASTER SIGNAL HANDLER
+                    LaunchedEffect(Unit) {
+                        chatViewModel.onCallSignal = { raw ->
+                            val json = JSONObject(raw)
+                            val type = json.optString("type")
+                            val sender = json.optString("sender")
+
+                            when (type) {
+                                "call_request" -> {
+                                    callState = CallState(
+                                        status = CallStatus.INCOMING,
+                                        targetUser = sender
+                                    )
+                                    Log.d("CALL_FLOW", "📲 Incoming call from $sender")
+                                }
+
+                                "webrtc_offer" -> {
+                                    pendingOfferSdp = json.optString("sdp")
+                                    Log.d("CALL_FLOW", "📥 Offer SDP STORED")
+                                }
+
+                                "webrtc_answer" -> {
+                                    webRTCClient.onRemoteAnswer(json.optString("sdp"))
+                                    Log.d("CALL_FLOW", "📥 Answer SDP received")
+                                }
+
+                                "ice_candidate" -> {
+                                    webRTCClient.onRemoteIceCandidate(
+                                        json.getString("candidate"),
+                                        json.getString("sdpMid"),
+                                        json.getInt("sdpMLineIndex")
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isAuthenticated) {
+                        AuthScreen(viewModel = authViewModel, onAuthenticated = { })
+                    } else {
                         when {
-                            // 2. SETTINGS SCREEN
                             showSettings -> {
                                 SettingsScreen(
                                     onLogoutConfirmed = {
@@ -82,32 +122,38 @@ class MainActivity : ComponentActivity() {
                                         showSettings = false
                                         currentChatReceiver = null
                                     },
-                                    onBack = {
-                                        showSettings = false
-                                    }
+                                    onBack = { showSettings = false }
                                 )
                             }
 
-                            // 3. CALL SCREEN (🔥 STEP 4 LOGIC)
+                            // 📞 3. CALL SCREEN FINAL FIX
                             callState.status != CallStatus.IDLE -> {
                                 CallScreen(
                                     state = callState,
+
                                     onEndCall = {
-                                        callState = CallState() // reset
+                                        webRTCClient.endCall()
+                                        callState = CallState()
+                                        pendingOfferSdp = null
+                                        Log.d("CALL_FLOW", "📵 Call ended")
                                     },
+
                                     onAcceptCall = {
-                                        callState = callState.copy(status = CallStatus.CONNECTED)
+                                        val offer = pendingOfferSdp
+                                        if (offer != null) {
+                                            webRTCClient.answerCall(callState.targetUser, offer)
+                                            callState = callState.copy(status = CallStatus.CONNECTED)
+                                            Log.d("CALL_FLOW", "✅ Call answered with Offer SDP")
+                                        } else {
+                                            Log.e("CALL_FLOW", "❌ Cannot accept: No Offer SDP!")
+                                        }
                                     },
-                                    onToggleMute = {
-                                        callState = callState.copy(isMuted = !callState.isMuted)
-                                    },
-                                    onToggleSpeaker = {
-                                        callState = callState.copy(isSpeakerOn = !callState.isSpeakerOn)
-                                    }
+
+                                    onToggleMute = { /* later */ },
+                                    onToggleSpeaker = { /* later */ }
                                 )
                             }
 
-                            // 4. CHAT SCREEN
                             currentChatReceiver != null -> {
                                 ChatScreen(
                                     viewModel = chatViewModel,
@@ -122,15 +168,24 @@ class MainActivity : ComponentActivity() {
                                         currentChatReceiver = null
                                     },
                                     onStartCall = {
+                                        val user = currentChatReceiver!!
+
+                                        // 1. WebSocket signal bhejo caller banke
+                                        chatViewModel.sendCallRequest(user)
+
+                                        // 2. UI update karo
                                         callState = CallState(
                                             status = CallStatus.OUTGOING,
-                                            targetUser = currentChatReceiver!!
+                                            targetUser = user
                                         )
+
+                                        // 3. WebRTC Offer create karo
+                                        webRTCClient.startCall(user)
+                                        Log.d("MainActivity", "📞 Outgoing call started to $user")
                                     }
                                 )
                             }
 
-                            // 5. CONTACT LIST (Home)
                             else -> {
                                 ContactListScreen(
                                     username = chatViewModel.currentUsername,
@@ -138,9 +193,7 @@ class MainActivity : ComponentActivity() {
                                     onChatClick = { selectedUser ->
                                         currentChatReceiver = selectedUser
                                     },
-                                    onSettingsClick = {
-                                        showSettings = true
-                                    }
+                                    onSettingsClick = { showSettings = true }
                                 )
                             }
                         }
@@ -150,7 +203,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ✅ File helper remains unchanged
+    // --- File Helpers ---
     fun uriToTempFile(context: Context, uri: Uri): File? {
         val contentResolver = context.contentResolver
         var fileName: String? = null
