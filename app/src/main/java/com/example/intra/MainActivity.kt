@@ -149,8 +149,27 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
 
-                                    onToggleMute = { /* later */ },
-                                    onToggleSpeaker = { /* later */ }
+                                    // ✅ AB BUTTONS KAAM KARENGE
+                                    onToggleMute = {
+                                        val newMuteState = !callState.isMuted
+
+                                        // 1. Hardware Mute karo
+                                        webRTCClient.toggleMute(newMuteState)
+
+                                        // 2. UI Icon update karo
+                                        callState = callState.copy(isMuted = newMuteState)
+                                    },
+
+                                    // ✅ AB SPEAKER TOGGLE KAAM KAREGA
+                                    onToggleSpeaker = {
+                                        val newSpeakerState = !callState.isSpeakerOn
+
+                                        // 1. Hardware Audio Route Badlo
+                                        webRTCClient.toggleSpeaker(newSpeakerState)
+
+                                        // 2. UI Icon update karo
+                                        callState = callState.copy(isSpeakerOn = newSpeakerState)
+                                    }
                                 )
                             }
 
