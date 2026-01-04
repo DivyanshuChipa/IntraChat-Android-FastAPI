@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
                                     callState = CallState(
                                         status = CallStatus.INCOMING,
                                         targetUser = sender
+                                        //isSpeakerOn = true
                                     )
                                     Log.d("CALL_FLOW", "📲 Incoming call from $sender")
                                 }
@@ -196,6 +197,7 @@ class MainActivity : ComponentActivity() {
                                         callState = CallState(
                                             status = CallStatus.OUTGOING,
                                             targetUser = user
+                                            //isSpeakerOn = true
                                         )
 
                                         // 3. WebRTC Offer create karo

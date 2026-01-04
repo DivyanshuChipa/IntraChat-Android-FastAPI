@@ -12,5 +12,5 @@ data class CallState(
     val status: CallStatus = CallStatus.IDLE,
     val targetUser: String = "", // Kisse baat ho rahi hai
     val isMuted: Boolean = false,
-    val isSpeakerOn: Boolean = false
+    val isSpeakerOn: Boolean = true
 )
