@@ -1,7 +1,6 @@
 package com.example.intra
 
 import android.content.Context
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -14,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.intra.database.ChatDatabase
 import com.example.intra.ui.theme.IntraTheme
@@ -27,8 +25,9 @@ class MainActivity : ComponentActivity() {
     private var currentUploadViewModel: ChatViewModel? = null
     private var currentUploadReceiver: String? = null
 
-    // 📱 Proximity Sensor Instance
+    // 🔥 Managers ko class level pe rakho (Compose ke andar nahi)
     private lateinit var proximitySensor: ProximitySensor
+    private lateinit var ringtoneManager: CallRingtoneManager
 
     private val filePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -44,8 +43,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize Proximity Sensor
+        // ✅ Initialize Managers
         proximitySensor = ProximitySensor(this)
+        ringtoneManager = CallRingtoneManager(this)
 
         val chatDao = ChatDatabase.getDatabase(MyApplication.instance).chatDao()
         val settingsManager = SettingsManager(this)
@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
                     val chatViewModel: ChatViewModel = viewModel(factory = chatViewModelFactory)
                     val callViewModel: CallViewModel = viewModel()
 
+                    // WebRTC Client
                     val webRTCClient = remember {
                         WebRTCClient(
                             context = applicationContext,
@@ -72,25 +73,14 @@ class MainActivity : ComponentActivity() {
                     var showSettings by remember { mutableStateOf(false) }
                     var currentChatReceiver by remember { mutableStateOf<String?>(null) }
 
-                    // 🔔 RINGTONE LOGIC
-                    val context = LocalContext.current
+                    // 🔔 RINGTONE LOGIC (Clean & Rotation Safe)
+                    // LaunchedEffect jab bhi isRinging change hoga tab chalega.
+                    // Rotation ke baad ye dobara chalega, lekin hamara Manager check kar lega ki sound baj rahi hai ya nahi.
                     LaunchedEffect(callViewModel.isRinging.value) {
                         if (callViewModel.isRinging.value) {
-                            try {
-                                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-                                val r = RingtoneManager.getRingtone(context, notification)
-                                r.play()
-
-                                // Jab tak ringing true hai, wait karo
-                                // (Note: Simple implementation. Advanced me service lagti hai)
-                                while (callViewModel.isRinging.value) {
-                                    kotlinx.coroutines.delay(1000)
-                                    if (!r.isPlaying) r.play() // Loop logic
-                                }
-                                r.stop()
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
+                            ringtoneManager.start()
+                        } else {
+                            ringtoneManager.stop()
                         }
                     }
 
@@ -100,13 +90,14 @@ class MainActivity : ComponentActivity() {
                             try {
                                 val json = JSONObject(raw)
                                 when (json.optString("type")) {
-                                    "call_request" -> callViewModel.onIncomingCall(json.optString("sender"))
+                                    "call_request" -> {
+                                        callViewModel.onIncomingCall(json.optString("sender"))
+                                        // Ringtone logic ab LaunchedEffect(isRinging) sambhal lega
+                                    }
                                     "webrtc_offer" -> callViewModel.setIncomingOffer(json.optString("sdp"))
                                     "webrtc_answer" -> {
                                         webRTCClient.onRemoteAnswer(json.optString("sdp"))
                                         callViewModel.onCallConnected()
-                                        // Answer milte hi proximity activate karo (kyunki default speaker ON hai, so check logic)
-                                        // Default humne speaker ON rakha hai, isliye proximity OFF rahegi shuru me.
                                     }
                                     "ice_candidate" -> webRTCClient.onRemoteIceCandidate(
                                         json.getString("candidate"), json.getString("sdpMid"), json.getInt("sdpMLineIndex")
@@ -133,7 +124,9 @@ class MainActivity : ComponentActivity() {
                                     onEndCall = {
                                         webRTCClient.endCall()
                                         callViewModel.onCallEnded()
-                                        proximitySensor.deactivate() // 🛑 Sensor Band
+                                        // Cleanup
+                                        proximitySensor.deactivate()
+                                        ringtoneManager.stop()
                                     },
 
                                     onAcceptCall = {
@@ -141,7 +134,10 @@ class MainActivity : ComponentActivity() {
                                         if (offer != null) {
                                             webRTCClient.answerCall(callViewModel.callState.value.targetUser, offer)
                                             callViewModel.onCallConnected()
-                                            // 🛑 Default Speaker ON hai, isliye Proximity abhi band rakhenge
+                                            // Connected -> Ringtone Stop
+                                            ringtoneManager.stop()
+
+                                            // Speaker Default ON hai, isliye Proximity DEACTIVATE (Screen ON rahegi)
                                             proximitySensor.deactivate()
                                         }
                                     },
@@ -152,18 +148,18 @@ class MainActivity : ComponentActivity() {
                                         callViewModel.updateMuteState(newMute)
                                     },
 
-                                    // 👂 SPEAKER & PROXIMITY TOGGLE
+                                    // 👂 SPEAKER TOGGLE
                                     onToggleSpeaker = {
-                                        val newSpeaker = !callViewModel.callState.value.isSpeakerOn
-                                        webRTCClient.toggleSpeaker(newSpeaker)
-                                        callViewModel.updateSpeakerState(newSpeaker)
+                                        val newState = !callViewModel.callState.value.isSpeakerOn
 
-                                        // 🔥 LOGIC:
-                                        // Agar Speaker ON hai -> Screen ON rakho (Sensor DEACTIVATE)
-                                        // Agar Speaker OFF hai (Kaan pe hai) -> Screen OFF karo (Sensor ACTIVATE)
-                                        if (newSpeaker) {
+                                        webRTCClient.toggleSpeaker(newState)
+                                        callViewModel.updateSpeakerState(newState)
+
+                                        if (newState) {
+                                            // 🔊 Speaker ON: Screen ON rakho
                                             proximitySensor.deactivate()
                                         } else {
+                                            // 👂 Earpiece: Sensor ON karo (Kaan pe lagate hi screen OFF)
                                             proximitySensor.activate()
                                         }
                                     }
@@ -180,7 +176,7 @@ class MainActivity : ComponentActivity() {
                                     callViewModel.onStartOutgoingCall(user)
                                     webRTCClient.startCall(user)
 
-                                    // Outgoing me bhi default Speaker ON hai, to sensor OFF
+                                    // Outgoing me bhi Speaker ON hai default -> Screen ON rakho
                                     proximitySensor.deactivate()
                                 }
                             )
@@ -196,14 +192,34 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // App band hone par sensor release karo
+    // ✅ IMPORTANT: Agar app puri tarah band ho jaye to cleanup karo
     override fun onDestroy() {
         super.onDestroy()
         proximitySensor.deactivate()
+        ringtoneManager.stop()
     }
 
     fun uriToTempFile(context: Context, uri: Uri): File? {
-        // ... (File helper same rahega) ...
-        return null // (Apka purana code yahan copy karlena)
+        val contentResolver = context.contentResolver
+        var fileName: String? = null
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) fileName = cursor.getString(index)
+            }
+        }
+        if (fileName == null) fileName = "upload_${System.currentTimeMillis()}"
+        val tempFile = File(context.cacheDir, fileName!!)
+        return try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            tempFile
+        } catch (e: Exception) {
+            Log.e("MainActivity", "File error", e)
+            null
+        }
     }
 }

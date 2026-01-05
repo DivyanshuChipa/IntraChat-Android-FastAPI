@@ -1,42 +1,44 @@
 package com.example.intra
 
+import android.app.Activity
 import android.content.Context
 import android.os.PowerManager
+import android.view.WindowManager
 
-class ProximitySensor(context: Context) {
+class ProximitySensor(private val activity: Activity) {
 
-    private val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    private val powerManager = activity.getSystemService(Context.POWER_SERVICE) as PowerManager
 
-    // 💡 Ye magic lock hai: Jab sensor dhak jayega, screen OFF ho jayegi.
-    // Jab hat jayega, screen wapas ON ho jayegi. Sab automatic.
     private val wakeLock: PowerManager.WakeLock? = try {
         powerManager.newWakeLock(
             PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
-            "Intra:ProximitySensor"
+            "Intra:ProximityLock"
         )
     } catch (e: Exception) {
-        null // Kuch phones me sensor nahi hota
+        null
     }
 
-    // Call shuru hone par ya Speaker OFF hone par activate karo
+    // 👂 Call Active (Earpiece Mode) -> Screen should turn OFF
     fun activate() {
-        if (wakeLock?.isHeld == false) {
-            try {
-                wakeLock.acquire(30 * 60 * 1000L /* 30 minutes max */)
-            } catch (e: Exception) {
-                e.printStackTrace()
+        try {
+            if (wakeLock?.isHeld == false) {
+                wakeLock.acquire(30 * 60 * 1000L) // 30 min max timeout
             }
-        }
+        } catch (_: Exception) {}
+
+        // 🔥 FIX: Screen ON rakhne wala flag HATAO, taaki screen band ho sake
+        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
-    // Speaker ON hone par ya Call katne par deactivate karo
+    // 🔊 Speaker Mode / Call End -> Screen should stay ON
     fun deactivate() {
-        if (wakeLock?.isHeld == true) {
-            try {
+        try {
+            if (wakeLock?.isHeld == true) {
                 wakeLock.release()
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
-        }
+        } catch (_: Exception) {}
+
+        // Agar user speaker pe hai, to screen ON rakho (Video call style)
+        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 }
