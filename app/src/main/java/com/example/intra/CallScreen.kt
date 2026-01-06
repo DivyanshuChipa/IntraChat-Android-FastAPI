@@ -1,5 +1,6 @@
 package com.example.intra
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,11 +17,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+
 
 @Composable
 fun CallScreen(
@@ -30,10 +43,32 @@ fun CallScreen(
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit
 ) {
+    // 🔥 TIMER STATE - Call duration track karne ke liye
+    var callSeconds by remember(state.status) { mutableStateOf(0) }
+
+    // 🔥 TIMER LOGIC - Connected hone pe start, status change pe auto stop
+    LaunchedEffect(state.status) {
+        if (state.status == CallStatus.CONNECTED) {
+            callSeconds = 0 // Reset timer
+            while (true) {
+                delay(1000) // 1 second wait
+                callSeconds++ // Increment seconds
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F172A)), // Dark Navy Blue Background
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF321954), // dark purple
+                        Color(0xFF9B28D9), // purple
+                        Color(0xFFE5B80E)  // soft yellow
+                    )
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -45,20 +80,44 @@ fun CallScreen(
         ) {
             // --- TOP SECTION: User Info ---
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Avatar Placeholder (Baad mein real photo layenge)
+                // Avatar with Animated Ripple Effect (Incoming Call pe dikhega)
                 Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(160.dp) // Box ka size fix karo
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(60.dp)
-                    )
+                    // 🔥 Background Pulse/Ripple Effect (User ke piche)
+                    if (state.status == CallStatus.INCOMING || state.status == CallStatus.OUTGOING) {
+                        AnimatedRippleRings()
+                    }
+
+                    // 🔥 Main Profile Image Container
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp) // Avatar Size
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f)), // Placeholder bg
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (state.profilePhotoUrl != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(state.profilePhotoUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "User Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            // Agar photo null hai to Icon dikhao
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(60.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -67,33 +126,42 @@ fun CallScreen(
                 Text(
                     text = state.targetUser,
                     color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Status Text
-                Text(
-                    text = when (state.status) {
-                        CallStatus.OUTGOING -> "Calling..."
-                        CallStatus.INCOMING -> "Incoming Call..."
-                        CallStatus.CONNECTED -> "00:00" // Baad mein timer lagayenge
-                        CallStatus.ENDED -> "Call Ended"
-                        else -> ""
+                // 🔥 ANIMATED STATUS TEXT with TIMER
+                AnimatedContent(
+                    targetState = state.status,
+                    transitionSpec = {
+                        fadeIn() togetherWith fadeOut()
                     },
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 18.sp
-                )
+                    label = "callStatus"
+                ) { status ->
+                    Text(
+                        text = when (status) {
+                            CallStatus.OUTGOING -> "Calling..."
+                            CallStatus.INCOMING -> "Incoming Call..."
+                            CallStatus.CONNECTED -> formatTime(callSeconds) // 🔥 Live timer
+                            else -> ""
+                        },
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 18.sp
+                    )
+                }
             }
 
             // --- BOTTOM SECTION: Buttons ---
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
             ) {
-
                 if (state.status == CallStatus.INCOMING) {
                     // --- INCOMING CALL UI (Green & Red Buttons) ---
 
@@ -110,7 +178,6 @@ fun CallScreen(
                         color = Color(0xFF22C55E), // Green
                         onClick = onAcceptCall
                     )
-
                 } else {
                     // --- ACTIVE / OUTGOING CALL UI ---
 
@@ -143,6 +210,60 @@ fun CallScreen(
     }
 }
 
+// 🔥 ANIMATED RIPPLE RINGS COMPOSABLE
+// Yeh 3 ripple rings banata hai jo continuously animate hoti rehti hain
+@Composable
+fun AnimatedRippleRings() {
+    // Infinite animation for continuous ripple effect
+    val infiniteTransition = rememberInfiniteTransition(label = "ripple")
+
+    // 3 alag-alag ripple rings ke liye animations
+    val scales = List(3) { index ->
+        infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(
+                    durationMillis = 2000,
+                    easing = LinearEasing
+                ),
+                repeatMode = RepeatMode.Restart,
+                initialStartOffset = StartOffset(index * 666) // Har ring thoda delay se start hogi
+            ),
+            label = "scale$index"
+        )
+    }
+
+    val alphas = List(3) { index ->
+        infiniteTransition.animateFloat(
+            initialValue = 0.6f,
+            targetValue = 0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(
+                    durationMillis = 2000,
+                    easing = LinearEasing
+                ),
+                repeatMode = RepeatMode.Restart,
+                initialStartOffset = StartOffset(index * 666)
+            ),
+            label = "alpha$index"
+        )
+    }
+
+    // 3 ripple rings render karte hain
+    Box(contentAlignment = Alignment.Center) {
+        scales.forEachIndexed { index, scale ->
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .scale(scale.value)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = alphas[index].value * 0.3f))
+            )
+        }
+    }
+}
+
 @Composable
 fun CallActionButton(
     icon: ImageVector,
@@ -162,7 +283,14 @@ fun CallActionButton(
             imageVector = icon,
             contentDescription = null,
             tint = iconTint,
-            modifier = Modifier.size(size / 2)
+            modifier = Modifier.size(size * 0.5f)
         )
     }
+}
+
+// 🔥 TIME FORMATTER - Seconds ko mm:ss format me convert karta hai
+fun formatTime(seconds: Int): String {
+    val m = seconds / 60
+    val s = seconds % 60
+    return "%02d:%02d".format(m, s)
 }

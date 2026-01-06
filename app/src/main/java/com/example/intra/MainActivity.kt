@@ -60,7 +60,8 @@ class MainActivity : ComponentActivity() {
                     val authViewModel: AuthViewModel = viewModel()
                     val chatViewModel: ChatViewModel = viewModel(factory = chatViewModelFactory)
                     val callViewModel: CallViewModel = viewModel()
-
+                     // 🔥 CHANGE 1: ContactViewModel yahan chahiye taaki user ki detail mil sake
+                    val contactViewModel: ContactViewModel = viewModel()
                     // WebRTC Client
                     val webRTCClient = remember {
                         WebRTCClient(
@@ -91,8 +92,23 @@ class MainActivity : ComponentActivity() {
                                 val json = JSONObject(raw)
                                 when (json.optString("type")) {
                                     "call_request" -> {
-                                        callViewModel.onIncomingCall(json.optString("sender"))
-                                        // Ringtone logic ab LaunchedEffect(isRinging) sambhal lega
+                                        val sender = json.optString("sender")
+
+                                        // 1. JSON se raw path nikalo (e.g., "/uploads/photo.png")
+                                        val rawPhoto = json.optString("profile_photo")
+
+                                        // 2. Full URL banao
+                                        val fullPhotoUrl = if (rawPhoto.isNotEmpty() && rawPhoto != "null") {
+                                            val settingsManager = SettingsManager(applicationContext)
+                                            settingsManager.getBaseUrl().removeSuffix("/") + rawPhoto
+                                        } else {
+                                            null
+                                        }
+
+                                        // 3. CallViewModel ko pass karo (Naam + Photo)
+                                        callViewModel.onIncomingCall(sender, fullPhotoUrl)
+
+                                        Log.d("CALL_FLOW", "📲 Incoming call from $sender, Photo: $fullPhotoUrl")
                                     }
                                     "webrtc_offer" -> callViewModel.setIncomingOffer(json.optString("sdp"))
                                     "webrtc_answer" -> {
@@ -171,12 +187,25 @@ class MainActivity : ComponentActivity() {
                                 onAttachClick = { currentUploadViewModel = chatViewModel; currentUploadReceiver = currentChatReceiver; filePickerLauncher.launch("*/*") },
                                 onBackClick = { chatViewModel.closeChat(); currentChatReceiver = null },
                                 onStartCall = {
-                                    val user = currentChatReceiver!!
-                                    chatViewModel.sendCallRequest(user)
-                                    callViewModel.onStartOutgoingCall(user)
-                                    webRTCClient.startCall(user)
+                                    val targetUser = currentChatReceiver!!
 
-                                    // Outgoing me bhi Speaker ON hai default -> Screen ON rakho
+                                    // 1. Contact list me se user dhundo
+                                    val contact = contactViewModel.contacts.find { it.username == targetUser }
+
+                                    // 2. Agar photo hai, to full URL banao
+                                    val fullPhotoUrl = if (contact?.profilePhoto != null) {
+                                        settingsManager.getBaseUrl().removeSuffix("/") + contact.profilePhoto
+                                    } else {
+                                        null
+                                    }
+
+                                    // 3. Call request me photo bhejo (optional logic inside VM)
+                                    chatViewModel.sendCallRequest(targetUser)
+
+                                    // 4. View Model ko photo URL pass karo
+                                    callViewModel.onStartOutgoingCall(targetUser, fullPhotoUrl)
+
+                                    webRTCClient.startCall(targetUser)
                                     proximitySensor.deactivate()
                                 }
                             )

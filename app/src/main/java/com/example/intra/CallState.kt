@@ -11,6 +11,7 @@ enum class CallStatus {
 data class CallState(
     val status: CallStatus = CallStatus.IDLE,
     val targetUser: String = "", // Kisse baat ho rahi hai
+    val profilePhotoUrl: String? = null, // ✅ ADD THIS
     val isMuted: Boolean = false,
     val isSpeakerOn: Boolean = true
 )

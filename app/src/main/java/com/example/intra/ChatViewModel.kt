@@ -89,14 +89,21 @@ class ChatViewModel(
     }
 
     // 📞 NEW: Send Call Request
+    // ChatViewModel.kt ke andar
+
     fun sendCallRequest(receiver: String) {
+        // 1. Khud ki photo nikalo settings se
+        val myPhoto = settingsManager.getMyPhoto() // ye relative path dega (/uploads/...)
+
         val json = JSONObject().apply {
             put("type", "call_request")
             put("sender", currentUsername)
             put("receiver", receiver)
+            // 🔥 NEW: Apni photo bhi bhejo
+            put("profile_photo", myPhoto)
         }
         wsManager.sendMessage(json.toString())
-        Log.d(TAG, "📞 Call request sent to $receiver")
+        Log.d(TAG, "📞 Call request sent to $receiver with photo: $myPhoto")
     }
 
     // ---------------- CHAT OPEN / CLOSE ----------------

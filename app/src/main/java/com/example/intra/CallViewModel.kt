@@ -17,18 +17,20 @@ class CallViewModel : ViewModel() {
 
     // --- Actions ---
 
-    fun onIncomingCall(sender: String) {
+    fun onIncomingCall(sender: String, profilePhotoUrl: String? = null) {
         callState.value = CallState(
             status = CallStatus.INCOMING,
-            targetUser = sender
+            targetUser = sender,
+            profilePhotoUrl = profilePhotoUrl
         )
         isRinging.value = true // 🔔 Start Ringing
     }
 
-    fun onStartOutgoingCall(target: String) {
+    fun onStartOutgoingCall(target: String, profilePhotoUrl: String? = null) {
         callState.value = CallState(
             status = CallStatus.OUTGOING,
             targetUser = target,
+            profilePhotoUrl = profilePhotoUrl,
             isSpeakerOn = true
         )
         // Outgoing me ringtone nahi bajti, tone bajti hai (wo baad me dekhenge)
