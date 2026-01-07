@@ -46,6 +46,7 @@ fun CallScreen(
     // 🔥 TIMER STATE - Call duration track karne ke liye
     var callSeconds by remember(state.status) { mutableStateOf(0) }
 
+
     // 🔥 TIMER LOGIC - Connected hone pe start, status change pe auto stop
     LaunchedEffect(state.status) {
         if (state.status == CallStatus.CONNECTED) {
@@ -81,35 +82,37 @@ fun CallScreen(
             // --- TOP SECTION: User Info ---
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Avatar with Animated Ripple Effect (Incoming Call pe dikhega)
+                // Avatar + Glow wrapper
+                val isGlowActive =
+                    state.status == CallStatus.INCOMING ||
+                            state.status == CallStatus.OUTGOING
                 Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(160.dp) // Box ka size fix karo
+                    modifier = Modifier.size(170.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // 🔥 Background Pulse/Ripple Effect (User ke piche)
-                    if (state.status == CallStatus.INCOMING || state.status == CallStatus.OUTGOING) {
-                        AnimatedRippleRings()
-                    }
 
-                    // 🔥 Main Profile Image Container
+                    // 🔥 GLOW (neeche)
+
+                    AvatarGlowRing(
+
+                        isActive = state.status != CallStatus.CONNECTED
+                    )
+
+                    // 👤 Avatar (upar)
                     Box(
                         modifier = Modifier
-                            .size(120.dp) // Avatar Size
+                            .size(120.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)), // Placeholder bg
+                            .background(Color.White.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (state.profilePhotoUrl != null) {
                             AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(state.profilePhotoUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "User Avatar",
-                                contentScale = ContentScale.Crop,
+                                model = state.profilePhotoUrl,
+                                contentDescription = null,
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
-                            // Agar photo null hai to Icon dikhao
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
@@ -119,6 +122,7 @@ fun CallScreen(
                         }
                     }
                 }
+
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -212,57 +216,57 @@ fun CallScreen(
 
 // 🔥 ANIMATED RIPPLE RINGS COMPOSABLE
 // Yeh 3 ripple rings banata hai jo continuously animate hoti rehti hain
-@Composable
-fun AnimatedRippleRings() {
+//@Composable
+//fun AnimatedRippleRings() {
     // Infinite animation for continuous ripple effect
-    val infiniteTransition = rememberInfiniteTransition(label = "ripple")
+   // val infiniteTransition = rememberInfiniteTransition(label = "ripple")
 
     // 3 alag-alag ripple rings ke liye animations
-    val scales = List(3) { index ->
-        infiniteTransition.animateFloat(
-            initialValue = 1f,
-            targetValue = 2f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 2000,
-                    easing = LinearEasing
-                ),
-                repeatMode = RepeatMode.Restart,
-                initialStartOffset = StartOffset(index * 666) // Har ring thoda delay se start hogi
-            ),
-            label = "scale$index"
-        )
-    }
+    //val scales = List(3) { index ->
+        //infiniteTransition.animateFloat(
+            //initialValue = 1f,
+            //targetValue = 2f,
+            //animationSpec = infiniteRepeatable(
+                //animation = tween(
+                   // durationMillis = 2000,
+                   // easing = LinearEasing
+               // ),
+               // repeatMode = RepeatMode.Restart,
+              //  initialStartOffset = StartOffset(index * 666) // Har ring thoda delay se start hogi
+           // ),
+           // label = "scale$index"
+        //)
+    //}
 
-    val alphas = List(3) { index ->
-        infiniteTransition.animateFloat(
-            initialValue = 0.6f,
-            targetValue = 0f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 2000,
-                    easing = LinearEasing
-                ),
-                repeatMode = RepeatMode.Restart,
-                initialStartOffset = StartOffset(index * 666)
-            ),
-            label = "alpha$index"
-        )
-    }
+    //val alphas = List(3) { index ->
+       // infiniteTransition.animateFloat(
+          //  initialValue = 0.6f,
+           // targetValue = 0f,
+           // animationSpec = infiniteRepeatable(
+               // animation = tween(
+                   // durationMillis = 2000,
+                   // easing = LinearEasing
+                //),
+               // repeatMode = RepeatMode.Restart,
+              //  initialStartOffset = StartOffset(index * 666)
+           // ),
+           // label = "alpha$index"
+       // )
+   // }
 
     // 3 ripple rings render karte hain
-    Box(contentAlignment = Alignment.Center) {
-        scales.forEachIndexed { index, scale ->
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .scale(scale.value)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = alphas[index].value * 0.3f))
-            )
-        }
-    }
-}
+   // Box(contentAlignment = Alignment.Center) {
+   //     scales.forEachIndexed { index, scale ->
+            //Box(
+              //  modifier = Modifier
+              //      .size(120.dp)
+                   // .scale(scale.value)
+                   // .clip(CircleShape)
+                   // .background(Color.White.copy(alpha = alphas[index].value * 0.3f))
+           // )
+       // }
+  //  }
+//}
 
 @Composable
 fun CallActionButton(

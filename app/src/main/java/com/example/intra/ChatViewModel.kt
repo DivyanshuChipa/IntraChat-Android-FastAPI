@@ -246,6 +246,7 @@ class ChatViewModel(
                 // 💡 Ab ViewModel bolega: “Mujhe call ka matlab nahi pata, MainActivity tu dekh le”
                 if (
                     type == "call_request" ||
+                    type == "call_ended" ||  // yeah end call signal forward hoga
                     type == "webrtc_offer" ||
                     type == "webrtc_answer" ||
                     type == "ice_candidate"

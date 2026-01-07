@@ -110,6 +110,20 @@ class MainActivity : ComponentActivity() {
 
                                         Log.d("CALL_FLOW", "📲 Incoming call from $sender, Photo: $fullPhotoUrl")
                                     }
+                                    // 🔥 FIX 3: Handle call_ended signal
+                                    "call_ended" -> {
+                                        Log.d("CALL_FLOW", "📵 Call ended by remote user")
+
+                                        // WebRTC cleanup
+                                        webRTCClient.endCall()
+
+                                        // UI cleanup
+                                        callViewModel.onCallEnded()
+
+                                        // Audio cleanup
+                                        proximitySensor.deactivate()
+                                        ringtoneManager.stop()
+                                    }
                                     "webrtc_offer" -> callViewModel.setIncomingOffer(json.optString("sdp"))
                                     "webrtc_answer" -> {
                                         webRTCClient.onRemoteAnswer(json.optString("sdp"))
