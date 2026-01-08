@@ -8,7 +8,6 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 import org.json.JSONObject
-// 📸 NEW IMPORTS: Profile Photo Upload ke liye
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -17,7 +16,6 @@ class AuthViewModel : ViewModel() {
 
     private val TAG = "AuthViewModel"
 
-    // सुनिश्चित करें कि यह MyApplication.instance का उपयोग कर रहा है
     private val settingsManager = SettingsManager(MyApplication.instance)
     private val apiService = ApiClient.apiService
 
@@ -27,10 +25,8 @@ class AuthViewModel : ViewModel() {
     val isLoading = mutableStateOf(false)
     val errorMessage = mutableStateOf<String?>(null)
 
-    // App Navigation के लिए मुख्य State
+    // App Navigation state
     val isAuthenticated = mutableStateOf(settingsManager.isLoggedIn())
-
-    // --- Public Functions ---
 
     fun clearError() {
         errorMessage.value = null
@@ -60,25 +56,16 @@ class AuthViewModel : ViewModel() {
                     body.token?.let { token ->
                         body.username?.let { user ->
                             settingsManager.saveAuthDetails(user, token)
-
-                            // ✅ Debug log
-                            Log.d(TAG, "✅ Login success: username=$user, token=${token.take(10)}...")
-
+                            Log.d(TAG, "✅ Login success: username=$user")
                             isAuthenticated.value = true
                         }
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    val msg = errorBody ?: "Login failed. Check server status."
-                    errorMessage.value = extractErrorMessage(msg)
+                    errorMessage.value = extractErrorMessage(errorBody ?: "Login failed.")
                 }
             } catch (e: Exception) {
-                val msg = when(e) {
-                    is HttpException -> "Login Failed. Server error: ${e.code()}"
-                    is IOException -> "Connection failed. Check server IP/Port."
-                    else -> "An unknown error occurred."
-                }
-                errorMessage.value = msg
+                errorMessage.value = handleNetworkError(e)
             } finally {
                 isLoading.value = false
             }
@@ -106,11 +93,10 @@ class AuthViewModel : ViewModel() {
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     errorMessage.value = "Registration Successful! Logging in..."
-                    login() // Auto login after successful registration
+                    login()
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    val msg = errorBody ?: "Registration failed."
-                    errorMessage.value = extractErrorMessage(msg)
+                    errorMessage.value = extractErrorMessage(errorBody ?: "Registration failed.")
                 }
             } catch (e: Exception) {
                 errorMessage.value = "Registration error: ${e.message}"
@@ -120,17 +106,43 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // Server से JSON Error message निकालने के लिए
-    private fun extractErrorMessage(jsonString: String): String {
-        return try {
-            val json = JSONObject(jsonString)
-            json.optString("message", "Request failed.")
-        } catch (e: Exception) {
-            jsonString
+    // 💀 NEW: Delete Account Logic Integrated
+    fun deleteAccount(onSuccess: () -> Unit) {
+        clearError()
+        if (isLoading.value) return
+
+        val username = settingsManager.getUsername()
+        val password = passwordInput.value.trim() // Confirm karne ke liye UI se password lega
+
+        if (username == null || password.isEmpty()) {
+            errorMessage.value = "Please enter your password to confirm deletion."
+            return
+        }
+
+        isLoading.value = true
+        viewModelScope.launch {
+            try {
+                // Same AuthRequest use kar rahe hain (username + password)
+                val request = AuthRequest(username, password)
+                val response = apiService.deleteAccount(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    Log.d(TAG, "💀 Account Deleted: $username")
+                    logout() // Local data saaf karo
+                    onSuccess() // Screen navigate karo
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    errorMessage.value = extractErrorMessage(errorBody ?: "Failed to delete account.")
+                }
+            } catch (e: Exception) {
+                errorMessage.value = "Error: ${e.message}"
+            } finally {
+                isLoading.value = false
+            }
         }
     }
 
-    // 🚪 Log Out (बाद में Chat Screen से उपयोग होगा)
+    // 🚪 Log Out
     fun logout() {
         settingsManager.clearAuthDetails()
         isAuthenticated.value = false
@@ -138,9 +150,7 @@ class AuthViewModel : ViewModel() {
         passwordInput.value = ""
     }
 
-    // ========================================
-    // 📸 UPLOAD PROFILE PHOTO (Updated)
-    // ========================================
+    // 📸 UPLOAD PROFILE PHOTO
     fun uploadProfilePhoto(file: java.io.File, onResult: (Boolean) -> Unit) {
         if (isLoading.value) return
 
@@ -149,7 +159,6 @@ class AuthViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // 1. Prepare Data
                 val usernamePart = okhttp3.RequestBody.create(
                     okhttp3.MultipartBody.FORM,
                     currentUser
@@ -161,19 +170,15 @@ class AuthViewModel : ViewModel() {
                     file.asRequestBody("image/*".toMediaTypeOrNull())
                 )
 
-                // 2. Call Server
                 val response = apiService.uploadProfilePhoto(usernamePart, filePart)
 
                 if (response.isSuccessful && response.body()?.success == true) {
-                    // ✅ NEW: Save the returned photo URL to SettingsManager
                     val newPhotoUrl = response.body()?.profilePhoto
-                    // 🔥 FIX: Timestamp jod diya taaki cache update ho jaye
-                    // Example: /uploads/user.png?t=170123456789
                     val timestamp = System.currentTimeMillis()
                     val urlWithTime = "$newPhotoUrl?t=$timestamp"
 
-                    settingsManager.saveMyPhoto(urlWithTime) // ✅ Updated URL save karo
-                    Log.d(TAG, "✅ Profile Photo Uploaded & Saved: $urlWithTime")
+                    settingsManager.saveMyPhoto(urlWithTime)
+                    Log.d(TAG, "✅ Profile Photo Uploaded: $urlWithTime")
                     onResult(true)
                 } else {
                     errorMessage.value = "Failed to upload photo"
@@ -185,6 +190,23 @@ class AuthViewModel : ViewModel() {
             } finally {
                 isLoading.value = false
             }
+        }
+    }
+
+    private fun extractErrorMessage(jsonString: String): String {
+        return try {
+            val json = JSONObject(jsonString)
+            json.optString("message", "Request failed.")
+        } catch (e: Exception) {
+            jsonString
+        }
+    }
+
+    private fun handleNetworkError(e: Exception): String {
+        return when(e) {
+            is HttpException -> "Server error: ${e.code()}"
+            is IOException -> "Connection failed. Check server IP/Port."
+            else -> "An unknown error occurred."
         }
     }
 }

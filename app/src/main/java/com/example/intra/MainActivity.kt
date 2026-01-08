@@ -152,12 +152,20 @@ class MainActivity : ComponentActivity() {
                                     state = callViewModel.callState.value,
 
                                     onEndCall = {
-                                        webRTCClient.endCall()
+                                        // 🔥 STEP 1: Sabse pehle UI hatao (Screen turant band honi chahiye)
                                         callViewModel.onCallEnded()
-                                        // Cleanup
                                         proximitySensor.deactivate()
                                         ringtoneManager.stop()
+
+                                        // 🔥 STEP 2: Ab WebRTC ko shanti se band karo
+                                        // Isse background me chalao taaki UI na atke
+                                        try {
+                                            webRTCClient.endCall()
+                                        } catch (e: Exception) {
+                                            Log.e("EndCall", "WebRTC Cleanup Error: ${e.message}")
+                                        }
                                     },
+
 
                                     onAcceptCall = {
                                         val offer = callViewModel.pendingOfferSdp

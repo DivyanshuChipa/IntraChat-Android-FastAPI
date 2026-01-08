@@ -17,7 +17,6 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import java.io.File
 
-// ---------------- UI MODEL ----------------
 data class ChatMessage(
     val text: String,
     val isSelf: Boolean,
@@ -25,7 +24,6 @@ data class ChatMessage(
     val fileUrl: String? = null,
     val fileName: String? = null,
     val timestamp: Long = System.currentTimeMillis()
-
 )
 
 class ChatViewModel(
@@ -35,22 +33,19 @@ class ChatViewModel(
 
     private val TAG = "ChatVM"
 
-    // ✅ STEP-3 FIX: ChatViewModel ko signal forwarder banana hoga
-    // 1️⃣ ye property add karo (top me)
     var onCallSignal: ((String) -> Unit)? = null
 
     val typingStatuses = mutableStateMapOf<String, Boolean>()
     private val typingJobs = mutableMapOf<String, Job>()
 
     private var lastTypingSent = 0L
-    private val TYPING_THROTTLE = 2000L // 2 seconds
+    private val TYPING_THROTTLE = 2000L
 
     val messages = mutableStateListOf<ChatMessage>()
     val inputMessage = mutableStateOf("")
     val connectionStatus = mutableStateOf("Connecting…")
 
     var activeChatUser by mutableStateOf<String?>(null)
-
         private set
 
     val currentUsername: String
@@ -62,20 +57,53 @@ class ChatViewModel(
             return username ?: "Guest"
         }
 
-    private val wsManager = WsManager(
-        onMessageReceived = { handleIncomingMessage(it) },
-        onConnectionStatusChange = { connectionStatus.value = it }
-    )
+    // 🔥 FIX 1: WebSocket ko nullable banaya aur reconnect logic add kiya
+    private var wsManager: WsManager? = null
 
     init {
-        wsManager.connect(currentUsername)
+        connectWebSocket()
     }
 
-    // ✅ Send typing event with throttle
+    // 🔥 NEW: WebSocket connection function with retry
+    private fun connectWebSocket() {
+        try {
+            wsManager = WsManager(
+                onMessageReceived = { handleIncomingMessage(it) },
+                onConnectionStatusChange = { status ->
+                    connectionStatus.value = status
+
+                    // 🔥 Agar disconnected ho gaya, 3 seconds baad retry
+                    if (status.contains("Error") || status == "Disconnected") {
+                        Log.w(TAG, "🔄 WebSocket disconnected, retrying in 3s...")
+                        viewModelScope.launch {
+                            delay(3000)
+                            if (wsManager == null || connectionStatus.value != "Connected") {
+                                reconnectWebSocket()
+                            }
+                        }
+                    }
+                }
+            )
+            wsManager?.connect(currentUsername)
+            Log.d(TAG, "✅ WebSocket connection initiated")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ WebSocket init failed: ${e.message}")
+            connectionStatus.value = "Connection Failed"
+        }
+    }
+
+    // 🔥 NEW: Reconnect function
+    private fun reconnectWebSocket() {
+        Log.d(TAG, "🔄 Attempting to reconnect WebSocket...")
+        wsManager?.disconnect()
+        wsManager = null
+        connectWebSocket()
+    }
+
     fun sendTyping(receiver: String) {
         val now = System.currentTimeMillis()
         if (now - lastTypingSent < TYPING_THROTTLE) {
-            return // Skip if sent recently
+            return
         }
 
         lastTypingSent = now
@@ -85,42 +113,48 @@ class ChatViewModel(
             put("sender", currentUsername)
             put("receiver", receiver)
         }
-        wsManager.sendMessage(json.toString())
+
+        // 🔥 Safe send with null check
+        try {
+            wsManager?.sendMessage(json.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send typing: ${e.message}")
+        }
     }
 
-    // 📞 NEW: Send Call Request
-    // ChatViewModel.kt ke andar
-
     fun sendCallRequest(receiver: String) {
-        // 1. Khud ki photo nikalo settings se
-        val myPhoto = settingsManager.getMyPhoto() // ye relative path dega (/uploads/...)
+        val myPhoto = settingsManager.getMyPhoto()
 
         val json = JSONObject().apply {
             put("type", "call_request")
             put("sender", currentUsername)
             put("receiver", receiver)
-            // 🔥 NEW: Apni photo bhi bhejo
             put("profile_photo", myPhoto)
         }
-        wsManager.sendMessage(json.toString())
-        Log.d(TAG, "📞 Call request sent to $receiver with photo: $myPhoto")
+
+        try {
+            wsManager?.sendMessage(json.toString())
+            Log.d(TAG, "📞 Call request sent to $receiver with photo: $myPhoto")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send call request: ${e.message}")
+        }
     }
 
-    // ---------------- CHAT OPEN / CLOSE ----------------
     fun openChat(user: String) {
         if (activeChatUser != user) {
             activeChatUser = user
             messages.clear()
             loadMessagesForUser(user)
+            Log.d(TAG, "📂 Opened chat with: $user")
         }
     }
 
     fun closeChat() {
         activeChatUser = null
         messages.clear()
+        Log.d(TAG, "📪 Closed chat")
     }
 
-    // ---------------- LOAD FROM DB ----------------
     private fun loadMessagesForUser(user: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val stored = if (user == "Family Group") {
@@ -146,10 +180,15 @@ class ChatViewModel(
             }
         }
     }
+
     fun sendRawSignal(json: String) {
-        wsManager.sendMessage(json)
+        try {
+            wsManager?.sendMessage(json)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send signal: ${e.message}")
+        }
     }
-    // ---------------- SEND TEXT ----------------
+
     fun sendMessage(receiver: String) {
         val text = inputMessage.value.trim()
         if (text.isEmpty()) return
@@ -175,10 +214,13 @@ class ChatViewModel(
         messages.add(msg)
         saveToDb(msg, currentUsername, receiver)
 
-        wsManager.sendMessage(json.toString())
+        try {
+            wsManager?.sendMessage(json.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send message: ${e.message}")
+        }
     }
 
-    // ---------------- SEND FILE ----------------
     fun uploadFile(file: File, receiver: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val ts = System.currentTimeMillis()
@@ -215,18 +257,22 @@ class ChatViewModel(
             }
 
             saveToDb(msg, currentUsername, receiver)
-            wsManager.sendMessage(json.toString())
+
+            try {
+                wsManager?.sendMessage(json.toString())
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send file message: ${e.message}")
+            }
         }
     }
 
-    // ---------------- RECEIVE ----------------
     private fun handleIncomingMessage(raw: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val json = JSONObject(raw)
                 val type = json.optString("type")
 
-                // 🔥 Handle Typing
+                // Handle Typing
                 if (type == "typing") {
                     val sender = json.optString("sender")
 
@@ -242,11 +288,11 @@ class ChatViewModel(
                     return@launch
                 }
 
-                // 📞 2️⃣ handleIncomingMessage() me change 👇
-                // 💡 Ab ViewModel bolega: “Mujhe call ka matlab nahi pata, MainActivity tu dekh le”
+                // Handle Call Signals
                 if (
                     type == "call_request" ||
-                    type == "call_ended" ||  // yeah end call signal forward hoga
+                    type == "call_ended" ||
+                    type == "call_rejected" ||
                     type == "webrtc_offer" ||
                     type == "webrtc_answer" ||
                     type == "ice_candidate"
@@ -257,8 +303,7 @@ class ChatViewModel(
                     return@launch
                 }
 
-
-                // --- Existing Message Logic ---
+                // --- Message Logic ---
                 val sender = json.optString("sender")
                 val receiver = json.optString("receiver")
                 val ts = json.optLong("timestamp", System.currentTimeMillis())
@@ -283,43 +328,78 @@ class ChatViewModel(
 
                 saveToDb(msg, sender, receiver)
 
-                val show = activeChatUser?.let {
-                    receiver == "Family Group" || sender == it || receiver == it
-                } ?: false
+                // 🔥 FIX 2: Family Group message filtering logic improved
+                val currentChat = activeChatUser
 
-                if (show) {
+                val shouldShowMessage = when {
+                    currentChat == null -> false // No chat open
+
+                    // Case 1: Family Group message should only show in Family Group chat
+                    receiver == "Family Group" -> currentChat == "Family Group"
+
+                    // Case 2: Private message from sender
+                    sender != currentUsername -> currentChat == sender
+
+                    // Case 3: Private message sent by me
+                    sender == currentUsername -> currentChat == receiver
+
+                    else -> false
+                }
+
+                Log.d(TAG, """
+                    📨 Message received:
+                    - Type: $type
+                    - Sender: $sender
+                    - Receiver: $receiver
+                    - Current Chat: $currentChat
+                    - Should Show: $shouldShowMessage
+                """.trimIndent())
+
+                if (shouldShowMessage) {
                     withContext(Dispatchers.Main) {
                         messages.add(msg)
                     }
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Parse error", e)
+                Log.e(TAG, "Parse error: ${e.message}", e)
             }
         }
     }
 
-    // ---------------- SAVE TO DB ----------------
     private fun saveToDb(msg: ChatMessage, sender: String, receiver: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            chatDao.insertMessage(
-                ChatMessageEntity(
-                    text = msg.text,
-                    isSelf = msg.isSelf,
-                    type = msg.type,
-                    fileUrl = msg.fileUrl,
-                    fileName = msg.fileName,
-                    senderName = sender,
-                    sender = sender,
-                    receiver = receiver,
-                    timestamp = msg.timestamp
+            try {
+                chatDao.insertMessage(
+                    ChatMessageEntity(
+                        text = msg.text,
+                        isSelf = msg.isSelf,
+                        type = msg.type,
+                        fileUrl = msg.fileUrl,
+                        fileName = msg.fileName,
+                        senderName = sender,
+                        sender = sender,
+                        receiver = receiver,
+                        timestamp = msg.timestamp
+                    )
                 )
-            )
+            } catch (e: Exception) {
+                Log.e(TAG, "DB save error: ${e.message}", e)
+            }
         }
     }
 
     override fun onCleared() {
-        wsManager.disconnect()
+        wsManager?.disconnect()
+        wsManager = null
+        reconnectJob?.cancel()
         super.onCleared()
     }
+
+    // 🔥 NEW: Manual reconnect function (optional, for UI button)
+    fun forceReconnect() {
+        reconnectWebSocket()
+    }
+
+    private var reconnectJob: Job? = null
 }

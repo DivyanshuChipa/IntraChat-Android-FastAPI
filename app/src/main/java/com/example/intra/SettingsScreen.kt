@@ -3,6 +3,7 @@ package com.example.intra
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -49,6 +51,10 @@ fun SettingsScreen(
     // ✅ NEW STATE: Saved Photo URL from SettingsManager
     // App restart karne par ye value persist karegi
     var savedPhotoUrl by remember { mutableStateOf(settingsManager.getMyPhoto()) }
+
+    // ✅ NEW STATES
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    // ViewModel ka passwordInput use karenge taki user naya type kare
 
     // Temp URI for immediate preview after upload
     var uploadedPhotoUri by remember { mutableStateOf<Uri?>(null) }
@@ -207,6 +213,22 @@ fun SettingsScreen(
             ) {
                 Text("Logout", color = Color.White)
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 💀 DELETE ACCOUNT BUTTON (NEW)
+            OutlinedButton(
+                onClick = {
+                    authViewModel.passwordInput.value = "" // Reset password field
+                    authViewModel.clearError()
+                    showDeleteDialog = true
+                },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                border = BorderStroke(1.dp, Color.Red),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Delete Account Permanently")
+            }
         }
 
         if (showLogoutDialog) {
@@ -215,13 +237,76 @@ fun SettingsScreen(
                 title = { Text("Logout") },
                 text = { Text("Are you sure you want to logout?") },
                 confirmButton = {
-                    TextButton(onClick = { showLogoutDialog = false; onLogoutConfirmed() }) { Text("Yes", color = Color.Red) }
+                    TextButton(onClick = {
+                        showLogoutDialog = false; onLogoutConfirmed()
+                    }) { Text("Yes", color = Color.Red) }
                 },
                 dismissButton = {
                     TextButton(onClick = { showLogoutDialog = false }) { Text("No") }
                 }
             )
+        } // 👈 YE BRACKET YAHAN BAND HONA CHAHIYE (Pehle ye niche tha)
+
+        // 💀 DELETE ACCOUNT CONFIRMATION DIALOG (Ab ye bahar aa gaya)
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = {
+                    Text(
+                        "Delete Account?",
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column {
+                        Text("This action cannot be undone. All your data will be lost.")
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Password confirmation field
+                        OutlinedTextField(
+                            value = authViewModel.passwordInput.value,
+                            onValueChange = { authViewModel.passwordInput.value = it },
+                            label = { Text("Enter Password to Confirm") },
+                            singleLine = true,
+                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                            isError = authViewModel.errorMessage.value != null
+                        )
+
+                        if (authViewModel.errorMessage.value != null) {
+                            Text(
+                                text = authViewModel.errorMessage.value!!,
+                                color = Color.Red,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            authViewModel.deleteAccount {
+                                showDeleteDialog = false
+                                onLogoutConfirmed() // Screen band karke login pe bhejo
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    ) {
+                        if (authViewModel.isLoading.value) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Text("DELETE", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+                }
+            )
         }
     }
-
 }

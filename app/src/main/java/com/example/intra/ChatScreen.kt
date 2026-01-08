@@ -14,6 +14,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,9 +28,13 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,11 +44,10 @@ fun ChatScreen(
     onAttachClick: () -> Unit,
     onBackClick: () -> Unit,
     onStartCall: () -> Unit,
-
 ) {
     val listState = rememberLazyListState()
 
-    // ✅ Open / Close chat safely
+    // Open / Close chat safely
     LaunchedEffect(receiverName) {
         viewModel.openChat(receiverName)
     }
@@ -51,10 +58,20 @@ fun ChatScreen(
         }
     }
 
-    // ✅ Auto-scroll to bottom on new message
+    // 🔥 FIX 1: Auto-scroll on new message
     LaunchedEffect(viewModel.messages.size) {
         if (viewModel.messages.isNotEmpty()) {
+            delay(100) // Small delay for smooth animation
             listState.animateScrollToItem(viewModel.messages.size - 1)
+        }
+    }
+
+    // 🔥 FIX 2: Auto-scroll when typing indicator appears
+    val isTyping = viewModel.typingStatuses[receiverName] == true
+    LaunchedEffect(isTyping) {
+        if (isTyping && viewModel.messages.isNotEmpty()) {
+            delay(100)
+            listState.animateScrollToItem(viewModel.messages.size) // Scroll to typing indicator
         }
     }
 
@@ -79,7 +96,7 @@ fun ChatScreen(
                         )
                     }
                 },
-                actions = {   // ✅ Call icon yahan add kiya
+                actions = {
                     IconButton(onClick = onStartCall) {
                         Icon(
                             imageVector = Icons.Default.Call,
@@ -103,6 +120,7 @@ fun ChatScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
+            // 🔥 FIX 3: Messages bottom se start honge (reverseLayout hataya)
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -117,8 +135,8 @@ fun ChatScreen(
                     MessageBubble(msg)
                 }
 
-                // ✅ Typing Indicator inside the list
-                if (viewModel.typingStatuses[receiverName] == true) {
+                // Typing Indicator inside the list
+                if (isTyping) {
                     item {
                         TypingIndicatorUI(receiverName)
                     }
@@ -148,7 +166,7 @@ fun MessageInputBar(
         OutlinedTextField(
             value = viewModel.inputMessage.value,
             onValueChange = {
-                if (it != viewModel.inputMessage.value) { // 💡 सिर्फ तभी भेजें जब वैल्यू बदले
+                if (it != viewModel.inputMessage.value) {
                     viewModel.inputMessage.value = it
                     if (it.isNotEmpty()) viewModel.sendTyping(receiverName)
                 }
@@ -171,7 +189,6 @@ fun MessageInputBar(
 fun TypingIndicatorUI(name: String) {
     var dotCount by remember { mutableStateOf(1) }
 
-    // 🔥 Animate dots every 500ms
     LaunchedEffect(Unit) {
         while (true) {
             delay(500)
@@ -189,7 +206,6 @@ fun TypingIndicatorUI(name: String) {
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Neon Purple Dot
         Box(
             modifier = Modifier
                 .size(8.dp)
@@ -205,17 +221,14 @@ fun TypingIndicatorUI(name: String) {
             fontStyle = FontStyle.Italic
         )
 
-        // ✅ Animated dots
         Text(
             text = ".".repeat(dotCount),
             fontSize = 16.sp,
             color = Color.Gray,
-            modifier = Modifier.width(24.dp) // Fixed width to avoid shifting
+            modifier = Modifier.width(24.dp)
         )
     }
 }
-
-
 
 @Composable
 fun MessageBubble(message: ChatMessage) {
@@ -240,41 +253,108 @@ fun MessageBubble(message: ChatMessage) {
         ) {
             Column(modifier = Modifier.padding(10.dp)) {
 
-                // 📁 FILE MESSAGE
+                // 🔥 IMPROVED: File Message with Preview & Modern UI
                 if (message.type == "file" && message.fileUrl != null) {
+                    val fileName = message.fileName ?: "File"
+                    val fileExtension = fileName.substringAfterLast(".", "").lowercase()
 
-                    Text(
-                        text = message.fileName ?: "File",
-                        color = if (message.isSelf)
-                            MaterialTheme.colorScheme.onPrimary
+                    // Determine file type
+                    val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
+                    val isVideo = fileExtension in listOf("mp4", "mkv", "avi", "mov", "webm")
+
+                    // 🖼️ Image Preview
+                    if (isImage) {
+                        val baseUrl = "http://192.168.31.104:8000"
+                        val fullUrl = if (message.fileUrl.startsWith("http"))
+                            message.fileUrl
                         else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                            baseUrl + message.fileUrl
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(fullUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = fileName,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
 
+                        Spacer(Modifier.height(6.dp))
+                    }
+
+                    // 📁 File Info Row
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // File Icon based on type
+                        Icon(
+                            imageVector = when {
+                                isImage -> Icons.Default.Image
+                                isVideo -> Icons.Default.VideoLibrary
+                                else -> Icons.Default.InsertDriveFile
+                            },
+                            contentDescription = null,
+                            tint = if (message.isSelf)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(
+                            text = fileName,
+                            color = if (message.isSelf)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // 🔥 Modern Action Button
                     Button(
                         onClick = {
                             try {
                                 val baseUrl = "http://192.168.31.104:8000"
-                                val finalUrl =
-                                    if (message.fileUrl.startsWith("http"))
-                                        message.fileUrl
-                                    else
-                                        baseUrl + message.fileUrl
+                                val finalUrl = if (message.fileUrl.startsWith("http"))
+                                    message.fileUrl
+                                else
+                                    baseUrl + message.fileUrl
 
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse(finalUrl)
-                                    )
-                                )
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                context.startActivity(intent)
                             } catch (e: Exception) {
                                 Log.e("Chat", "File open error", e)
                             }
-                        }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (message.isSelf)
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)
+                            else
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Open")
+                        Icon(
+                            Icons.Default.Download,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            if (isImage || isVideo) "View" else "Open",
+                            fontSize = 13.sp
+                        )
                     }
 
                 } else {
@@ -288,9 +368,9 @@ fun MessageBubble(message: ChatMessage) {
                     )
                 }
 
-                // 🕒 TIMESTAMP (optional)
+                // 🕒 TIMESTAMP
                 message.timestamp?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = formatTime(it),
                         fontSize = 10.sp,

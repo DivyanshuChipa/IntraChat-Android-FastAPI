@@ -85,4 +85,10 @@ interface ApiService {
         @Part("username") username: RequestBody, // Username text mein jayega
         @Part file: MultipartBody.Part           // Photo file mein jayegi
     ): Response<ProfileUploadResponse>
+
+
+    // 💀 NEW: Delete Account
+    @POST("delete_account")
+    suspend fun deleteAccount(@Body request: AuthRequest): Response<AuthResponse>
+
 }
