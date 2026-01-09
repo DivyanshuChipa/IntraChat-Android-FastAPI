@@ -3,15 +3,19 @@ package com.example.intra
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,13 +26,69 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import java.io.File
 
+/* =========================================================
+   🔽 REUSABLE COLLAPSIBLE SECTION
+   ========================================================= */
+@Composable
+fun CollapsibleSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(16.dp)
+    ) {
+
+        /* ---- HEADER ROW ---- */
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+
+            Icon(
+                imageVector = if (expanded)
+                    Icons.Default.KeyboardArrowUp
+                else
+                    Icons.Default.KeyboardArrowDown,
+                contentDescription = null
+            )
+        }
+
+        /* ---- EXPAND / COLLAPSE CONTENT ---- */
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                content()
+            }
+        }
+    }
+}
+
+/* =========================================================
+   ⚙️ SETTINGS SCREEN
+   ========================================================= */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -39,43 +99,33 @@ fun SettingsScreen(
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
 
-    // States
+    /* ---- UI STATES ---- */
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    var showConnection by remember { mutableStateOf(false) }
+    var showAccount by remember { mutableStateOf(false) }
+
     var ipInput by remember { mutableStateOf(settingsManager.getServerIp()) }
     var portInput by remember { mutableStateOf(settingsManager.getServerPort()) }
-    var showSaveConfirm by remember { mutableStateOf(false) }
 
-    // Current User Info
     val username = settingsManager.getUsername() ?: "User"
 
-    // ✅ NEW STATE: Saved Photo URL from SettingsManager
-    // App restart karne par ye value persist karegi
-    var savedPhotoUrl by remember { mutableStateOf(settingsManager.getMyPhoto()) }
-
-    // ✅ NEW STATES
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    // ViewModel ka passwordInput use karenge taki user naya type kare
-
-    // Temp URI for immediate preview after upload
+    /* ---- PROFILE PHOTO STATE ---- */
     var uploadedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var savedPhotoPath by remember { mutableStateOf(settingsManager.getMyPhoto()) }
 
-    // 📸 IMAGE PICKER LAUNCHER
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            val mainActivity = context as? MainActivity
-            val file = mainActivity?.uriToTempFile(context, it)
+    /* ---- IMAGE PICKER ---- */
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val activity = context as? MainActivity ?: return@rememberLauncherForActivityResult
+        val file = activity.uriToTempFile(context, uri) ?: return@rememberLauncherForActivityResult
 
-            if (file != null) {
-                authViewModel.uploadProfilePhoto(file) { success ->
-                    if (success) {
-                        uploadedPhotoUri = it // Immediate local preview
-                        // ✅ Refresh saved URL from SettingsManager after upload
-                        savedPhotoUrl = settingsManager.getMyPhoto()
-                    }
-                }
-            }
+        authViewModel.uploadProfilePhoto(file) {
+            uploadedPhotoUri = uri
+            savedPhotoPath = settingsManager.getMyPhoto()
         }
     }
 
@@ -85,71 +135,77 @@ fun SettingsScreen(
                 title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
                     }
                 }
             )
         }
     ) { padding ->
 
+        /* =================================================
+           🔽 SCROLLABLE CONTENT (SMALL PHONE SAFE)
+           ================================================= */
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // 📸 PROFILE PICTURE SECTION
+            /* =================================================
+               📸 PROFILE PHOTO
+               ================================================= */
             Box(
-                contentAlignment = Alignment.BottomEnd,
                 modifier = Modifier
-                    .size(120.dp) // Thoda size badha diya better look ke liye
-                    .clickable { photoPickerLauncher.launch("image/*") }
+                    .size(120.dp)
+                    .clickable { photoPicker.launch("image/*") },
+                contentAlignment = Alignment.BottomEnd
             ) {
-                // LOGIC: Priority 1: Just Uploaded (Local) -> Priority 2: Saved (Server) -> Priority 3: Default
+                when {
+                    uploadedPhotoUri != null -> {
+                        AsyncImage(
+                            model = uploadedPhotoUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
 
-                if (uploadedPhotoUri != null) {
-                    // 1. Agar abhi taaza upload kiya hai to local file dikhao
-                    AsyncImage(
-                        model = uploadedPhotoUri,
-                        contentDescription = "Profile",
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (savedPhotoUrl != null) {
-                    // 2. Agar pehle se saved hai to Server wali photo dikhao
-                    // Full URL construct karna padega: http://ip:port/uploads/...
-                    val fullUrl = settingsManager.getBaseUrl().removeSuffix("/") + savedPhotoUrl
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(fullUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Profile",
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // 3. Kuch nahi hai to Gray Default Icon
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.LightGray, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Person, null, modifier = Modifier.size(60.dp), tint = Color.White)
+                    savedPhotoPath != null -> {
+                        val fullUrl =
+                            settingsManager.getBaseUrl().removeSuffix("/") + savedPhotoPath
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(fullUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.LightGray, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(60.dp))
+                        }
                     }
                 }
 
-                // Camera Icon Overlay
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        .padding(8.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.CameraAlt, null, tint = Color.White)
+                    Icon(Icons.Default.CameraAlt, null, tint = Color.White)
                 }
             }
 
@@ -159,53 +215,80 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .padding(top = 12.dp)
-                    .clickable { photoPickerLauncher.launch("image/*") }
+                    .clickable { photoPicker.launch("image/*") }
             )
 
             Text(
                 text = "@$username",
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
+                modifier = Modifier.padding(vertical = 24.dp)
             )
 
-            Divider()
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // --- OLD SETTINGS (IP/Port) ---
-
-            Text("Connection Settings", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = ipInput,
-                onValueChange = { ipInput = it },
-                label = { Text("Server IP") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = portInput,
-                onValueChange = { portInput = it },
-                label = { Text("Port") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    settingsManager.saveServerConfig(ipInput, portInput)
-                    showSaveConfirm = true
-                },
-                modifier = Modifier.fillMaxWidth()
+            /* =================================================
+               🔌 CONNECTION SETTINGS
+               ================================================= */
+            CollapsibleSection(
+                title = "Connection Settings",
+                expanded = showConnection,
+                onToggle = { showConnection = !showConnection }
             ) {
-                Text("Update Connection")
-            }
-            if (showSaveConfirm) {
-                Text("✅ Connection settings saved!", color = Color(0xFF25BB4B), modifier = Modifier.padding(top = 8.dp))
+                OutlinedTextField(
+                    value = ipInput,
+                    onValueChange = { ipInput = it },
+                    label = { Text("Server IP") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = portInput,
+                    onValueChange = { portInput = it },
+                    label = { Text("Port") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        settingsManager.saveServerConfig(ipInput, portInput)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Update Connection")
+                }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(Modifier.height(16.dp))
 
-            // 🔴 LOGOUT
+            /* =================================================
+               👤 ACCOUNT SETTINGS
+               ================================================= */
+            CollapsibleSection(
+                title = "Account Settings",
+                expanded = showAccount,
+                onToggle = { showAccount = !showAccount }
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        authViewModel.passwordInput.value = ""
+                        authViewModel.clearError()
+                        showDeleteDialog = true
+                    },
+                    border = BorderStroke(1.dp, Color.Red),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Delete Account Permanently")
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            /* =================================================
+               🚪 LOGOUT
+               ================================================= */
             Button(
                 onClick = { showLogoutDialog = true },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
@@ -213,24 +296,11 @@ fun SettingsScreen(
             ) {
                 Text("Logout", color = Color.White)
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 💀 DELETE ACCOUNT BUTTON (NEW)
-            OutlinedButton(
-                onClick = {
-                    authViewModel.passwordInput.value = "" // Reset password field
-                    authViewModel.clearError()
-                    showDeleteDialog = true
-                },
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                border = BorderStroke(1.dp, Color.Red),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Delete Account Permanently")
-            }
         }
 
+        /* =================================================
+           🔴 LOGOUT DIALOG
+           ================================================= */
         if (showLogoutDialog) {
             AlertDialog(
                 onDismissRequest = { showLogoutDialog = false },
@@ -238,16 +308,23 @@ fun SettingsScreen(
                 text = { Text("Are you sure you want to logout?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        showLogoutDialog = false; onLogoutConfirmed()
-                    }) { Text("Yes", color = Color.Red) }
+                        showLogoutDialog = false
+                        onLogoutConfirmed()
+                    }) {
+                        Text("Yes", color = Color.Red)
+                    }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showLogoutDialog = false }) { Text("No") }
+                    TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("Cancel")
+                    }
                 }
             )
-        } // 👈 YE BRACKET YAHAN BAND HONA CHAHIYE (Pehle ye niche tha)
+        }
 
-        // 💀 DELETE ACCOUNT CONFIRMATION DIALOG (Ab ye bahar aa gaya)
+        /* =================================================
+           💀 DELETE ACCOUNT DIALOG
+           ================================================= */
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
@@ -260,51 +337,33 @@ fun SettingsScreen(
                 },
                 text = {
                     Column {
-                        Text("This action cannot be undone. All your data will be lost.")
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Password confirmation field
+                        Text("This action cannot be undone.")
+                        Spacer(Modifier.height(12.dp))
                         OutlinedTextField(
                             value = authViewModel.passwordInput.value,
                             onValueChange = { authViewModel.passwordInput.value = it },
                             label = { Text("Enter Password to Confirm") },
-                            singleLine = true,
-                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                            isError = authViewModel.errorMessage.value != null
+                            visualTransformation = PasswordVisualTransformation()
                         )
-
-                        if (authViewModel.errorMessage.value != null) {
-                            Text(
-                                text = authViewModel.errorMessage.value!!,
-                                color = Color.Red,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
                     }
                 },
                 confirmButton = {
                     Button(
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                         onClick = {
                             authViewModel.deleteAccount {
                                 showDeleteDialog = false
-                                onLogoutConfirmed() // Screen band karke login pe bhejo
+                                onLogoutConfirmed()
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                    ) {
-                        if (authViewModel.isLoading.value) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        } else {
-                            Text("DELETE", fontWeight = FontWeight.Bold)
                         }
+                    ) {
+                        Text("DELETE")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
                 }
             )
         }
