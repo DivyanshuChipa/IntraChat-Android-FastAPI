@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.saveable.rememberSaveable // 🔥 NEW IMPORT
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -71,8 +72,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val isAuthenticated by authViewModel.isAuthenticated
-                    var showSettings by remember { mutableStateOf(false) }
-                    var currentChatReceiver by remember { mutableStateOf<String?>(null) }
+                    var showSettings by rememberSaveable { mutableStateOf(false) }
+                    var showAbout by rememberSaveable { mutableStateOf(false) } // ✅ NEW STATE FOR ABOUT SCREEN
+                    var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
 
                     // 🔔 RINGTONE LOGIC (Clean & Rotation Safe)
                     // LaunchedEffect jab bhi isRinging change hoga tab chalega.
@@ -140,10 +142,23 @@ class MainActivity : ComponentActivity() {
                     if (!isAuthenticated) {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = { })
                     } else {
+                        // 👇 MAIN NAVIGATION LOGIC
                         when {
+                            // ✅ 1. Show About Screen (Top Priority if true)
+                            showAbout -> AboutScreen(
+                                onBack = { showAbout = false }
+                            )
+
+                            // ✅ 2. Show Settings Screen
                             showSettings -> SettingsScreen(
-                                onLogoutConfirmed = { authViewModel.logout(); showSettings = false; currentChatReceiver = null },
-                                onBack = { showSettings = false }
+                                onLogoutConfirmed = {
+                                    authViewModel.logout()
+                                    showSettings = false
+                                    currentChatReceiver = null
+                                },
+                                onBack = { showSettings = false },
+                                // 👇 YEH LINE ADD KARNI THI (Red line fix)
+                                onNavigateToAbout = { showAbout = true }
                             )
 
                             // 📞 CALL SCREEN
@@ -204,37 +219,44 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+                            // 💬 CHAT SCREEN (🔥 Fixed - Ab rotation safe hai)
                             currentChatReceiver != null -> ChatScreen(
-                                viewModel = chatViewModel, receiverName = currentChatReceiver!!,
-                                onAttachClick = { currentUploadViewModel = chatViewModel; currentUploadReceiver = currentChatReceiver; filePickerLauncher.launch("*/*") },
-                                onBackClick = { chatViewModel.closeChat(); currentChatReceiver = null },
+                                viewModel = chatViewModel,
+                                receiverName = currentChatReceiver!!,
+
+                                onAttachClick = {
+                                    currentUploadViewModel = chatViewModel
+                                    currentUploadReceiver = currentChatReceiver
+                                    filePickerLauncher.launch("*/*")
+                                },
+
+                                onBackClick = {
+                                    chatViewModel.closeChat()
+                                    currentChatReceiver = null
+                                },
+
                                 onStartCall = {
                                     val targetUser = currentChatReceiver!!
-
-                                    // 1. Contact list me se user dhundo
                                     val contact = contactViewModel.contacts.find { it.username == targetUser }
-
-                                    // 2. Agar photo hai, to full URL banao
                                     val fullPhotoUrl = if (contact?.profilePhoto != null) {
                                         settingsManager.getBaseUrl().removeSuffix("/") + contact.profilePhoto
                                     } else {
                                         null
                                     }
 
-                                    // 3. Call request me photo bhejo (optional logic inside VM)
                                     chatViewModel.sendCallRequest(targetUser)
-
-                                    // 4. View Model ko photo URL pass karo
                                     callViewModel.onStartOutgoingCall(targetUser, fullPhotoUrl)
-
                                     webRTCClient.startCall(targetUser)
                                     proximitySensor.deactivate()
                                 }
                             )
 
+                            // 👥 CONTACT LIST SCREEN
                             else -> ContactListScreen(
-                                username = chatViewModel.currentUsername, typingStatuses = chatViewModel.typingStatuses,
-                                onChatClick = { currentChatReceiver = it }, onSettingsClick = { showSettings = true }
+                                username = chatViewModel.currentUsername,
+                                typingStatuses = chatViewModel.typingStatuses,
+                                onChatClick = { currentChatReceiver = it },
+                                onSettingsClick = { showSettings = true }
                             )
                         }
                     }
@@ -243,7 +265,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ✅ IMPORTANT: Agar app puri tarah band ho jaye to cleanup karo
     override fun onDestroy() {
         super.onDestroy()
         proximitySensor.deactivate()
