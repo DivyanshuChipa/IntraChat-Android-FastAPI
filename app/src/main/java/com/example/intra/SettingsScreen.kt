@@ -38,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import coil.request.CachePolicy
 
 // ==========================================
 // 🔹 ENUM FOR SECTION MANAGEMENT

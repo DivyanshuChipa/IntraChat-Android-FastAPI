@@ -38,12 +38,14 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 fun CallScreen(
     state: CallState,
-    onEndCall: () -> Unit,
+    onEndCall: () -> Unit,      // ✅ Yeh dono screen ke liye same hai
+    onRejectCall: () -> Unit,   // ✅ NEW: Incoming reject ke liye
     onAcceptCall: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit
 ) {
-    // 🔥 TIMER STATE - Call duration track karne ke liye
+
+// 🔥 TIMER STATE - Call duration track karne ke liye
     var callSeconds by remember(state.status) { mutableStateOf(0) }
 
 
@@ -64,9 +66,9 @@ fun CallScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF321954), // dark purple
-                        Color(0xFF9B28D9), // purple
-                        Color(0xFFE5B80E)  // soft yellow
+                        Color(0xFF321954),
+                        Color(0xFF9B28D9),
+                        Color(0xFFE5B80E)
                     )
                 )
             ),
@@ -79,26 +81,16 @@ fun CallScreen(
                 .fillMaxSize()
                 .padding(vertical = 60.dp)
         ) {
-            // --- TOP SECTION: User Info ---
+            // --- TOP SECTION: Avatar & Status (Same) ---
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Avatar with Animated Ripple Effect (Incoming Call pe dikhega)
-                // Avatar + Glow wrapper
-                val isGlowActive =
-                    state.status == CallStatus.INCOMING ||
-                            state.status == CallStatus.OUTGOING
                 Box(
                     modifier = Modifier.size(170.dp),
                     contentAlignment = Alignment.Center
                 ) {
-
-                    // 🔥 GLOW (neeche)
-
                     AvatarGlowRing(
-
                         isActive = state.status != CallStatus.CONNECTED
                     )
 
-                    // 👤 Avatar (upar)
                     Box(
                         modifier = Modifier
                             .size(120.dp)
@@ -123,33 +115,25 @@ fun CallScreen(
                     }
                 }
 
-
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // User Name
                 Text(
                     text = state.targetUser,
                     color = Color.White,
                     fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp
+                    fontWeight = FontWeight.Bold
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 🔥 ANIMATED STATUS TEXT with TIMER
                 AnimatedContent(
                     targetState = state.status,
-                    transitionSpec = {
-                        fadeIn() togetherWith fadeOut()
-                    },
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
                     label = "callStatus"
                 ) { status ->
                     Text(
                         text = when (status) {
                             CallStatus.OUTGOING -> "Calling..."
                             CallStatus.INCOMING -> "Incoming Call..."
-                            CallStatus.CONNECTED -> formatTime(callSeconds) // 🔥 Live timer
+                            CallStatus.CONNECTED -> formatTime(callSeconds)
                             else -> ""
                         },
                         color = Color.White.copy(alpha = 0.7f),
@@ -167,25 +151,25 @@ fun CallScreen(
                     .padding(horizontal = 32.dp)
             ) {
                 if (state.status == CallStatus.INCOMING) {
-                    // --- INCOMING CALL UI (Green & Red Buttons) ---
+                    // 🔥 INCOMING CALL UI - FIXED REJECT BUTTON
 
-                    // Reject Button
+                    // ❌ Reject Button - Ab signal bhejega
                     CallActionButton(
                         icon = Icons.Default.CallEnd,
-                        color = Color(0xFFEF4444), // Red
-                        onClick = onEndCall
+                        color = Color(0xFFEF4444),
+                        onClick = onRejectCall // ✅ New callback
                     )
 
-                    // Accept Button
+                    // ✅ Accept Button
                     CallActionButton(
                         icon = Icons.Default.Call,
-                        color = Color(0xFF22C55E), // Green
+                        color = Color(0xFF22C55E),
                         onClick = onAcceptCall
                     )
+
                 } else {
                     // --- ACTIVE / OUTGOING CALL UI ---
 
-                    // Mute Button
                     CallActionButton(
                         icon = if (state.isMuted) Icons.Default.MicOff else Icons.Default.Mic,
                         color = if (state.isMuted) Color.White else Color.White.copy(alpha = 0.2f),
@@ -193,15 +177,14 @@ fun CallScreen(
                         onClick = onToggleMute
                     )
 
-                    // End Call Button (Center Big)
+                    // End Call Button (Same for Connected/Outgoing)
                     CallActionButton(
                         icon = Icons.Default.CallEnd,
-                        color = Color(0xFFEF4444), // Red
+                        color = Color(0xFFEF4444),
                         size = 72.dp,
                         onClick = onEndCall
                     )
 
-                    // Speaker Button
                     CallActionButton(
                         icon = if (state.isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
                         color = if (state.isSpeakerOn) Color.White else Color.White.copy(alpha = 0.2f),

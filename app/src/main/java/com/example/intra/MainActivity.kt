@@ -93,28 +93,22 @@ class MainActivity : ComponentActivity() {
                             try {
                                 val json = JSONObject(raw)
                                 when (json.optString("type")) {
+
                                     "call_request" -> {
                                         val sender = json.optString("sender")
-
-                                        // 1. JSON se raw path nikalo (e.g., "/uploads/photo.png")
                                         val rawPhoto = json.optString("profile_photo")
-
-                                        // 2. Full URL banao
                                         val fullPhotoUrl = if (rawPhoto.isNotEmpty() && rawPhoto != "null") {
                                             val settingsManager = SettingsManager(applicationContext)
                                             settingsManager.getBaseUrl().removeSuffix("/") + rawPhoto
-                                        } else {
-                                            null
-                                        }
+                                        } else null
 
-                                        // 3. CallViewModel ko pass karo (Naam + Photo)
                                         callViewModel.onIncomingCall(sender, fullPhotoUrl)
-
-                                        Log.d("CALL_FLOW", "📲 Incoming call from $sender, Photo: $fullPhotoUrl")
+                                        Log.d("CALL_FLOW", "📲 Incoming call from $sender")
                                     }
-                                    // 🔥 FIX 3: Handle call_ended signal
-                                    "call_ended" -> {
-                                        Log.d("CALL_FLOW", "📵 Call ended by remote user")
+
+                                    // 🔥 NEW: Handle call_rejected signal
+                                    "call_rejected" -> {
+                                        Log.d("CALL_FLOW", "📵 Call was rejected by remote user")
 
                                         // WebRTC cleanup
                                         webRTCClient.endCall()
@@ -126,16 +120,35 @@ class MainActivity : ComponentActivity() {
                                         proximitySensor.deactivate()
                                         ringtoneManager.stop()
                                     }
-                                    "webrtc_offer" -> callViewModel.setIncomingOffer(json.optString("sdp"))
+
+                                    "call_ended" -> {
+                                        Log.d("CALL_FLOW", "📵 Call ended by remote user")
+                                        webRTCClient.endCall()
+                                        callViewModel.onCallEnded()
+                                        proximitySensor.deactivate()
+                                        ringtoneManager.stop()
+                                    }
+
+                                    "webrtc_offer" -> {
+                                        callViewModel.setIncomingOffer(json.optString("sdp"))
+                                    }
+
                                     "webrtc_answer" -> {
                                         webRTCClient.onRemoteAnswer(json.optString("sdp"))
                                         callViewModel.onCallConnected()
                                     }
-                                    "ice_candidate" -> webRTCClient.onRemoteIceCandidate(
-                                        json.getString("candidate"), json.getString("sdpMid"), json.getInt("sdpMLineIndex")
-                                    )
+
+                                    "ice_candidate" -> {
+                                        webRTCClient.onRemoteIceCandidate(
+                                            json.getString("candidate"),
+                                            json.getString("sdpMid"),
+                                            json.getInt("sdpMLineIndex")
+                                        )
+                                    }
                                 }
-                            } catch (e: Exception) { Log.e("Signal", "Error: $e") }
+                            } catch (e: Exception) {
+                                Log.e("Signal", "Error: $e")
+                            }
                         }
                     }
 
@@ -166,14 +179,39 @@ class MainActivity : ComponentActivity() {
                                 CallScreen(
                                     state = callViewModel.callState.value,
 
-                                    onEndCall = {
-                                        // 🔥 STEP 1: Sabse pehle UI hatao (Screen turant band honi chahiye)
+                                    // 🔥 NEW: Reject Call Logic (Incoming red button)
+                                    onRejectCall = {
+                                        val targetUser = callViewModel.callState.value.targetUser
+
+                                        // 1️⃣ Signal bhejo dusre phone ko
+                                        if (targetUser.isNotEmpty()) {
+                                            val json = JSONObject().apply {
+                                                put("type", "call_rejected")
+                                                put("receiver", targetUser)
+                                            }
+                                            chatViewModel.sendRawSignal(json.toString())
+                                            Log.d("CALL_REJECT", "📵 Call rejected signal sent to $targetUser")
+                                        }
+
+                                        // 2️⃣ UI & Audio cleanup (Same as End Call)
                                         callViewModel.onCallEnded()
                                         proximitySensor.deactivate()
                                         ringtoneManager.stop()
 
-                                        // 🔥 STEP 2: Ab WebRTC ko shanti se band karo
-                                        // Isse background me chalao taaki UI na atke
+                                        // 3️⃣ WebRTC cleanup (Safe)
+                                        try {
+                                            webRTCClient.endCall()
+                                        } catch (e: Exception) {
+                                            Log.e("RejectCall", "Cleanup Error: ${e.message}")
+                                        }
+                                    },
+
+                                    // ✅ End Call Logic (Connected/Outgoing wala - Same as before)
+                                    onEndCall = {
+                                        callViewModel.onCallEnded()
+                                        proximitySensor.deactivate()
+                                        ringtoneManager.stop()
+
                                         try {
                                             webRTCClient.endCall()
                                         } catch (e: Exception) {
@@ -181,38 +219,33 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
 
-
+                                    // ✅ Accept Call Logic (Same)
                                     onAcceptCall = {
                                         val offer = callViewModel.pendingOfferSdp
                                         if (offer != null) {
                                             webRTCClient.answerCall(callViewModel.callState.value.targetUser, offer)
                                             callViewModel.onCallConnected()
-                                            // Connected -> Ringtone Stop
                                             ringtoneManager.stop()
-
-                                            // Speaker Default ON hai, isliye Proximity DEACTIVATE (Screen ON rahegi)
                                             proximitySensor.deactivate()
                                         }
                                     },
 
+                                    // ✅ Toggle Mute (Same)
                                     onToggleMute = {
                                         val newMute = !callViewModel.callState.value.isMuted
                                         webRTCClient.toggleMute(newMute)
                                         callViewModel.updateMuteState(newMute)
                                     },
 
-                                    // 👂 SPEAKER TOGGLE
+                                    // ✅ Toggle Speaker (Same)
                                     onToggleSpeaker = {
                                         val newState = !callViewModel.callState.value.isSpeakerOn
-
                                         webRTCClient.toggleSpeaker(newState)
                                         callViewModel.updateSpeakerState(newState)
 
                                         if (newState) {
-                                            // 🔊 Speaker ON: Screen ON rakho
                                             proximitySensor.deactivate()
                                         } else {
-                                            // 👂 Earpiece: Sensor ON karo (Kaan pe lagate hi screen OFF)
                                             proximitySensor.activate()
                                         }
                                     }
