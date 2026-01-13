@@ -158,28 +158,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-
-                    DisposableEffect(lifecycleOwner) {
-                        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                                // Jab bhi App Resume ho, check karo koi call pending hai kya
-                                CallEventBus.consume()?.let { raw ->
-                                    Log.d("MainActivity", "⚡ Consuming Pending Call from EventBus")
-                                    // Manually trigger the signal logic
-                                    chatViewModel.onCallSignal?.invoke(raw)
-                                }
-                            }
-                        }
-                        lifecycleOwner.lifecycle.addObserver(observer)
-                        onDispose {
-                            lifecycleOwner.lifecycle.removeObserver(observer)
-                        }
-                    }
-
-                    //🔥 NEW: Check for pending calls (Notification tap)
-
-
                     if (!isAuthenticated) {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = { })
                     } else {
@@ -338,17 +316,6 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         proximitySensor.deactivate()
         ringtoneManager.stop()
-    }
-    override fun onStart() {
-        super.onStart()
-        // App samne aa gaya
-        AppStateTracker.isForeground.value = true
-    }
-
-    override fun onStop() {
-        super.onStop()
-        // App hide ho gaya (Home button ya Lock)
-        AppStateTracker.isForeground.value = false
     }
 
     fun uriToTempFile(context: Context, uri: Uri): File? {

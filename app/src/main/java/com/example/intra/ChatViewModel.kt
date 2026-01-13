@@ -297,20 +297,9 @@ class ChatViewModel(
                     type == "webrtc_answer" ||
                     type == "ice_candidate"
                 ) {
-                    // ❌ OLD CODE:
-                    // withContext(Dispatchers.Main) { onCallSignal?.invoke(raw) }
-
-                    // ✅ NEW CODE (EventPipe Logic):
                     withContext(Dispatchers.Main) {
-                        // Context chahiye, Application instance use kar sakte hain
-                        val context = MyApplication.instance
-
-                        EventPipe.onSocketEvent(context, raw) { processedRaw ->
-                            // Ye lambda tab run hoga jab EventPipe UI ko signal dega
-                            onCallSignal?.invoke(processedRaw)
-                        }
+                        onCallSignal?.invoke(raw)
                     }
-
                     return@launch
                 }
 

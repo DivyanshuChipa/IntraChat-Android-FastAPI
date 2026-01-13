@@ -22,6 +22,7 @@ xmlns:tools="http://schemas.android.com/tools">
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
 <application
     android:name=".MyApplication"
@@ -53,7 +54,9 @@ xmlns:tools="http://schemas.android.com/tools">
         android:name=".IntraBackgroundService"
         android:enabled="true"
         android:exported="false"
-        android:foregroundServiceType="phoneCall|connectedDevice" />
+        android:foregroundServiceType="specialUse"> <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+    android:value="LAN connection for local calls and messaging" />
+</service>
 
 </application>
 
