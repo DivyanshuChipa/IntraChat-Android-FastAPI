@@ -431,7 +431,17 @@ fun SettingsScreen(
                 icon = { Icon(Icons.Default.Logout, null) },
                 title = { Text("Logout") },
                 text = { Text("Are you sure you want to sign out?") },
-                confirmButton = { TextButton(onClick = { showLogoutDialog = false; onLogoutConfirmed() }) { Text("Yes, Logout", color = MaterialTheme.colorScheme.error) } },
+                confirmButton = {
+                    TextButton(onClick = {
+                        // Stop Service on Logout
+                        val serviceIntent = Intent(context, IntraBackgroundService::class.java)
+                        context.stopService(serviceIntent)
+                        settingsManager.setBackgroundService(false)
+
+                        showLogoutDialog = false
+                        onLogoutConfirmed()
+                    }) { Text("Yes, Logout", color = MaterialTheme.colorScheme.error) }
+                },
                 dismissButton = { TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") } }
             )
         }

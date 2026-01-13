@@ -20,7 +20,7 @@ class IntraBackgroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             // 🔥 FIX: SettingsManager ko batao ki service band ho gayi
-            SettingsManager(this).setBackgroundService(false) // 👈 YE LINE ADD KARO
+            SettingsManager(this).setBackgroundService(false)
 
             stopSelf()
             return START_NOT_STICKY

@@ -10,6 +10,8 @@ import android.provider.OpenableColumns
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import android.Manifest
+import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.saveable.rememberSaveable // 🔥 NEW IMPORT
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,8 +46,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // 🔥 PERMISSION LAUNCHER
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permission is granted. You can now show notifications.
+        } else {
+            // Explain to the user that the feature is unavailable because the
+            // features requires a permission that the user has denied.
+        }
+    }
+
+    private fun askNotificationPermission() {
+        // This is only necessary for API level 33+ (Android 13)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        askNotificationPermission()
 
         // ✅ Initialize Managers
         proximitySensor = ProximitySensor(this)
@@ -54,6 +77,16 @@ class MainActivity : ComponentActivity() {
         val chatDao = ChatDatabase.getDatabase(MyApplication.instance).chatDao()
         val settingsManager = SettingsManager(this)
         val chatViewModelFactory = ChatViewModelFactory(chatDao, settingsManager)
+
+        // 🔥 START SERVICE ON LAUNCH IF ENABLED
+        if (settingsManager.isBackgroundServiceEnabled()) {
+            val serviceIntent = Intent(this, IntraBackgroundService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+        }
 
         setContent {
             IntraTheme {
