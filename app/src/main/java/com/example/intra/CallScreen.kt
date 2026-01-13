@@ -38,14 +38,13 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 fun CallScreen(
     state: CallState,
-    onEndCall: () -> Unit,      // ✅ Yeh dono screen ke liye same hai
-    onRejectCall: () -> Unit,   // ✅ NEW: Incoming reject ke liye
+    onEndCall: () -> Unit,
+    onRejectCall: () -> Unit,
     onAcceptCall: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit
 ) {
-
-// 🔥 TIMER STATE - Call duration track karne ke liye
+    // 🔥 TIMER STATE - Call duration track karne ke liye
     var callSeconds by remember(state.status) { mutableStateOf(0) }
 
 

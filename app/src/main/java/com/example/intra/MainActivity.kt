@@ -1,6 +1,9 @@
 package com.example.intra
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -22,7 +25,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
-
+    private lateinit var messageReceiver: BroadcastReceiver
     private var currentUploadViewModel: ChatViewModel? = null
     private var currentUploadReceiver: String? = null
 
@@ -61,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     val authViewModel: AuthViewModel = viewModel()
                     val chatViewModel: ChatViewModel = viewModel(factory = chatViewModelFactory)
                     val callViewModel: CallViewModel = viewModel()
-                     // 🔥 CHANGE 1: ContactViewModel yahan chahiye taaki user ki detail mil sake
+                    // 🔥 CHANGE 1: ContactViewModel yahan chahiye taaki user ki detail mil sake
                     val contactViewModel: ContactViewModel = viewModel()
                     // WebRTC Client
                     val webRTCClient = remember {
@@ -97,10 +100,13 @@ class MainActivity : ComponentActivity() {
                                     "call_request" -> {
                                         val sender = json.optString("sender")
                                         val rawPhoto = json.optString("profile_photo")
-                                        val fullPhotoUrl = if (rawPhoto.isNotEmpty() && rawPhoto != "null") {
-                                            val settingsManager = SettingsManager(applicationContext)
-                                            settingsManager.getBaseUrl().removeSuffix("/") + rawPhoto
-                                        } else null
+                                        val fullPhotoUrl =
+                                            if (rawPhoto.isNotEmpty() && rawPhoto != "null") {
+                                                val settingsManager =
+                                                    SettingsManager(applicationContext)
+                                                settingsManager.getBaseUrl()
+                                                    .removeSuffix("/") + rawPhoto
+                                            } else null
 
                                         callViewModel.onIncomingCall(sender, fullPhotoUrl)
                                         Log.d("CALL_FLOW", "📲 Incoming call from $sender")
@@ -190,7 +196,10 @@ class MainActivity : ComponentActivity() {
                                                 put("receiver", targetUser)
                                             }
                                             chatViewModel.sendRawSignal(json.toString())
-                                            Log.d("CALL_REJECT", "📵 Call rejected signal sent to $targetUser")
+                                            Log.d(
+                                                "CALL_REJECT",
+                                                "📵 Call rejected signal sent to $targetUser"
+                                            )
                                         }
 
                                         // 2️⃣ UI & Audio cleanup (Same as End Call)
@@ -223,7 +232,10 @@ class MainActivity : ComponentActivity() {
                                     onAcceptCall = {
                                         val offer = callViewModel.pendingOfferSdp
                                         if (offer != null) {
-                                            webRTCClient.answerCall(callViewModel.callState.value.targetUser, offer)
+                                            webRTCClient.answerCall(
+                                                callViewModel.callState.value.targetUser,
+                                                offer
+                                            )
                                             callViewModel.onCallConnected()
                                             ringtoneManager.stop()
                                             proximitySensor.deactivate()
@@ -270,9 +282,11 @@ class MainActivity : ComponentActivity() {
 
                                 onStartCall = {
                                     val targetUser = currentChatReceiver!!
-                                    val contact = contactViewModel.contacts.find { it.username == targetUser }
+                                    val contact =
+                                        contactViewModel.contacts.find { it.username == targetUser }
                                     val fullPhotoUrl = if (contact?.profilePhoto != null) {
-                                        settingsManager.getBaseUrl().removeSuffix("/") + contact.profilePhoto
+                                        settingsManager.getBaseUrl()
+                                            .removeSuffix("/") + contact.profilePhoto
                                     } else {
                                         null
                                     }
@@ -296,8 +310,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
 
+    }
     override fun onDestroy() {
         super.onDestroy()
         proximitySensor.deactivate()

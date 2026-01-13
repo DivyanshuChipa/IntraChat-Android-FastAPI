@@ -15,6 +15,7 @@ class SettingsManager(context: Context) {
         const val KEY_SERVER_IP = "server_ip"
         const val KEY_SERVER_PORT = "server_port"
         const val KEY_MY_PHOTO = "my_profile_photo" // 🆕 NEW KEY
+        const val KEY_BACKGROUND_SERVICE = "background_service_enabled" // ✅ NEW KEY
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -71,5 +72,14 @@ class SettingsManager(context: Context) {
     // 🆕 Get My Photo URL
     fun getMyPhoto(): String? {
         return prefs.getString(KEY_MY_PHOTO, null)
+    }
+
+    // ✅ NEW METHODS
+    fun isBackgroundServiceEnabled(): Boolean {
+        return prefs.getBoolean(KEY_BACKGROUND_SERVICE, false) // Default OFF rakha hai
+    }
+
+    fun setBackgroundService(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_BACKGROUND_SERVICE, enabled).apply()
     }
 }

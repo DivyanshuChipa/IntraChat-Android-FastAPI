@@ -38,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import android.content.Intent
 import coil.request.CachePolicy
 
 // ==========================================
@@ -45,6 +46,7 @@ import coil.request.CachePolicy
 // ==========================================
 enum class SettingsSection {
     NONE,
+    GENERAL,
     CONNECTION,
     ACCOUNT,
     ABOUT
@@ -147,6 +149,9 @@ fun SettingsScreen(
     var ipInput by remember { mutableStateOf(settingsManager.getServerIp()) }
     var portInput by remember { mutableStateOf(settingsManager.getServerPort()) }
     var showSaveConfirm by remember { mutableStateOf(false) }
+
+    // 🔥 BACKGROUND SERVICE STATE
+    var isBackgroundEnabled by remember { mutableStateOf(settingsManager.isBackgroundServiceEnabled()) }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -275,6 +280,57 @@ fun SettingsScreen(
             Text("Tap photo to change", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Spacer(Modifier.height(30.dp))
+
+            // ==========================================
+            // 🔥 NEW: GENERAL SETTINGS (Background Service)
+            // ==========================================
+            CollapsibleSection(
+                title = "General",
+                icon = Icons.Default.Settings,
+                iconColor = Color(0xFF4CAF50), // 🟢 Green
+                isExpanded = expandedSection == SettingsSection.GENERAL, // Default open rakh sakte ho ya toggle
+                onToggle = { expandedSection = if (expandedSection == SettingsSection.GENERAL) SettingsSection.NONE else SettingsSection.GENERAL
+                    // Logic thoda adjust kar lena enum ke hisab se
+                }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Keep Intra Running", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Receive calls & messages even when app is closed.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isBackgroundEnabled,
+                        onCheckedChange = { enabled ->
+                            isBackgroundEnabled = enabled
+                            settingsManager.setBackgroundService(enabled)
+
+                            val serviceIntent = Intent(context, IntraBackgroundService::class.java)
+                            if (enabled) {
+                                // Start Service
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    context.startForegroundService(serviceIntent)
+                                } else {
+                                    context.startService(serviceIntent)
+                                }
+                            } else {
+                                // Stop Service
+                                context.stopService(serviceIntent)
+                            }
+                        }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(0.dp))
 
             // ==========================================
             // 2. CONNECTION
