@@ -1,9 +1,7 @@
 package com.example.intra
 
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -11,13 +9,15 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.saveable.rememberSaveable // 🔥 NEW IMPORT
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.intra.MyApplication.AppState
 import com.example.intra.database.ChatDatabase
 import com.example.intra.ui.theme.IntraTheme
 import org.json.JSONObject
@@ -25,33 +25,40 @@ import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
-    private lateinit var messageReceiver: BroadcastReceiver
-    private var currentUploadViewModel: ChatViewModel? = null
-    private var currentUploadReceiver: String? = null
 
-    // 🔥 Managers ko class level pe rakho (Compose ke andar nahi)
     private lateinit var proximitySensor: ProximitySensor
     private lateinit var ringtoneManager: CallRingtoneManager
 
-    private val filePickerLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            val file = uriToTempFile(this, it)
-            if (file != null && currentUploadViewModel != null && currentUploadReceiver != null) {
-                currentUploadViewModel?.uploadFile(file, currentUploadReceiver!!)
+    private var currentUploadViewModel: ChatViewModel? = null
+    private var currentUploadReceiver: String? = null
+
+    private val filePickerLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri?.let {
+                val file = uriToTempFile(this, it)
+                if (file != null) {
+                    currentUploadViewModel?.uploadFile(file, currentUploadReceiver!!)
+                }
             }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ✅ Initialize Managers
         proximitySensor = ProximitySensor(this)
         ringtoneManager = CallRingtoneManager(this)
 
-        val chatDao = ChatDatabase.getDatabase(MyApplication.instance).chatDao()
+        // =============================
+        // Handle Incoming Call from Service
+        // =============================
+        if (intent?.action == "INCOMING_CALL") {
+            val sender = intent.getStringExtra("sender")
+            if (!sender.isNullOrEmpty()) {
+                Log.d("MAIN", "Incoming call intent from $sender")
+            }
+        }
+
+        val chatDao = ChatDatabase.getDatabase(applicationContext).chatDao()
         val settingsManager = SettingsManager(this)
         val chatViewModelFactory = ChatViewModelFactory(chatDao, settingsManager)
 
@@ -61,27 +68,30 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+
                     val authViewModel: AuthViewModel = viewModel()
-                    val chatViewModel: ChatViewModel = viewModel(factory = chatViewModelFactory)
+                    val chatViewModel: ChatViewModel =
+                        viewModel(factory = chatViewModelFactory)
                     val callViewModel: CallViewModel = viewModel()
-                    // 🔥 CHANGE 1: ContactViewModel yahan chahiye taaki user ki detail mil sake
                     val contactViewModel: ContactViewModel = viewModel()
-                    // WebRTC Client
+
                     val webRTCClient = remember {
                         WebRTCClient(
                             context = applicationContext,
-                            sendSignal = { json -> chatViewModel.sendRawSignal(json) }
+                            sendSignal = { json ->
+                                chatViewModel.sendRawSignal(json)
+                            }
                         )
                     }
 
                     val isAuthenticated by authViewModel.isAuthenticated
                     var showSettings by rememberSaveable { mutableStateOf(false) }
-                    var showAbout by rememberSaveable { mutableStateOf(false) } // ✅ NEW STATE FOR ABOUT SCREEN
+                    var showAbout by rememberSaveable { mutableStateOf(false) }
                     var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
 
-                    // 🔔 RINGTONE LOGIC (Clean & Rotation Safe)
-                    // LaunchedEffect jab bhi isRinging change hoga tab chalega.
-                    // Rotation ke baad ye dobara chalega, lekin hamara Manager check kar lega ki sound baj rahi hai ya nahi.
+                    // =============================
+                    // Ringtone lifecycle (SAFE)
+                    // =============================
                     LaunchedEffect(callViewModel.isRinging.value) {
                         if (callViewModel.isRinging.value) {
                             ringtoneManager.start()
@@ -90,8 +100,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // 📶 SIGNAL HANDLER
-                    LaunchedEffect(Unit) {
+                    // =============================
+                    // Call / WebRTC Signal Bridge
+                    // =============================
+                    DisposableEffect(chatViewModel) {
                         chatViewModel.onCallSignal = { raw ->
                             try {
                                 val json = JSONObject(raw)
@@ -100,39 +112,18 @@ class MainActivity : ComponentActivity() {
                                     "call_request" -> {
                                         val sender = json.optString("sender")
                                         val rawPhoto = json.optString("profile_photo")
+
                                         val fullPhotoUrl =
-                                            if (rawPhoto.isNotEmpty() && rawPhoto != "null") {
-                                                val settingsManager =
-                                                    SettingsManager(applicationContext)
+                                            if (!rawPhoto.isNullOrEmpty() && rawPhoto != "null") {
                                                 settingsManager.getBaseUrl()
                                                     .removeSuffix("/") + rawPhoto
                                             } else null
 
                                         callViewModel.onIncomingCall(sender, fullPhotoUrl)
-                                        Log.d("CALL_FLOW", "📲 Incoming call from $sender")
                                     }
 
-                                    // 🔥 NEW: Handle call_rejected signal
-                                    "call_rejected" -> {
-                                        Log.d("CALL_FLOW", "📵 Call was rejected by remote user")
-
-                                        // WebRTC cleanup
-                                        webRTCClient.endCall()
-
-                                        // UI cleanup
-                                        callViewModel.onCallEnded()
-
-                                        // Audio cleanup
-                                        proximitySensor.deactivate()
-                                        ringtoneManager.stop()
-                                    }
-
-                                    "call_ended" -> {
-                                        Log.d("CALL_FLOW", "📵 Call ended by remote user")
-                                        webRTCClient.endCall()
-                                        callViewModel.onCallEnded()
-                                        proximitySensor.deactivate()
-                                        ringtoneManager.stop()
+                                    "call_rejected", "call_ended" -> {
+                                        cleanupCall(callViewModel, webRTCClient)
                                     }
 
                                     "webrtc_offer" -> {
@@ -153,22 +144,27 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             } catch (e: Exception) {
-                                Log.e("Signal", "Error: $e")
+                                Log.e("CALL_SIGNAL", "Error: ${e.message}")
                             }
+                        }
+
+                        onDispose {
+                            chatViewModel.onCallSignal = null
                         }
                     }
 
+                    // =============================
+                    // UI Navigation
+                    // =============================
                     if (!isAuthenticated) {
-                        AuthScreen(viewModel = authViewModel, onAuthenticated = { })
+                        AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
-                        // 👇 MAIN NAVIGATION LOGIC
                         when {
-                            // ✅ 1. Show About Screen (Top Priority if true)
+
                             showAbout -> AboutScreen(
                                 onBack = { showAbout = false }
                             )
 
-                            // ✅ 2. Show Settings Screen
                             showSettings -> SettingsScreen(
                                 onLogoutConfirmed = {
                                     authViewModel.logout()
@@ -176,59 +172,30 @@ class MainActivity : ComponentActivity() {
                                     currentChatReceiver = null
                                 },
                                 onBack = { showSettings = false },
-                                // 👇 YEH LINE ADD KARNI THI (Red line fix)
                                 onNavigateToAbout = { showAbout = true }
                             )
 
-                            // 📞 CALL SCREEN
                             callViewModel.callState.value.status != CallStatus.IDLE -> {
                                 CallScreen(
                                     state = callViewModel.callState.value,
 
-                                    // 🔥 NEW: Reject Call Logic (Incoming red button)
                                     onRejectCall = {
-                                        val targetUser = callViewModel.callState.value.targetUser
-
-                                        // 1️⃣ Signal bhejo dusre phone ko
-                                        if (targetUser.isNotEmpty()) {
+                                        val target =
+                                            callViewModel.callState.value.targetUser
+                                        if (target.isNotEmpty()) {
                                             val json = JSONObject().apply {
                                                 put("type", "call_rejected")
-                                                put("receiver", targetUser)
+                                                put("receiver", target)
                                             }
                                             chatViewModel.sendRawSignal(json.toString())
-                                            Log.d(
-                                                "CALL_REJECT",
-                                                "📵 Call rejected signal sent to $targetUser"
-                                            )
                                         }
-
-                                        // 2️⃣ UI & Audio cleanup (Same as End Call)
-                                        callViewModel.onCallEnded()
-                                        proximitySensor.deactivate()
-                                        ringtoneManager.stop()
-
-                                        // 3️⃣ WebRTC cleanup (Safe)
-                                        try {
-                                            webRTCClient.endCall()
-                                        } catch (e: Exception) {
-                                            Log.e("RejectCall", "Cleanup Error: ${e.message}")
-                                        }
+                                        cleanupCall(callViewModel, webRTCClient)
                                     },
 
-                                    // ✅ End Call Logic (Connected/Outgoing wala - Same as before)
                                     onEndCall = {
-                                        callViewModel.onCallEnded()
-                                        proximitySensor.deactivate()
-                                        ringtoneManager.stop()
-
-                                        try {
-                                            webRTCClient.endCall()
-                                        } catch (e: Exception) {
-                                            Log.e("EndCall", "WebRTC Cleanup Error: ${e.message}")
-                                        }
+                                        cleanupCall(callViewModel, webRTCClient)
                                     },
 
-                                    // ✅ Accept Call Logic (Same)
                                     onAcceptCall = {
                                         val offer = callViewModel.pendingOfferSdp
                                         if (offer != null) {
@@ -242,29 +209,24 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
 
-                                    // ✅ Toggle Mute (Same)
                                     onToggleMute = {
-                                        val newMute = !callViewModel.callState.value.isMuted
+                                        val newMute =
+                                            !callViewModel.callState.value.isMuted
                                         webRTCClient.toggleMute(newMute)
                                         callViewModel.updateMuteState(newMute)
                                     },
 
-                                    // ✅ Toggle Speaker (Same)
                                     onToggleSpeaker = {
-                                        val newState = !callViewModel.callState.value.isSpeakerOn
+                                        val newState =
+                                            !callViewModel.callState.value.isSpeakerOn
                                         webRTCClient.toggleSpeaker(newState)
                                         callViewModel.updateSpeakerState(newState)
-
-                                        if (newState) {
-                                            proximitySensor.deactivate()
-                                        } else {
-                                            proximitySensor.activate()
-                                        }
+                                        if (newState) proximitySensor.deactivate()
+                                        else proximitySensor.activate()
                                     }
                                 )
                             }
 
-                            // 💬 CHAT SCREEN (🔥 Fixed - Ab rotation safe hai)
                             currentChatReceiver != null -> ChatScreen(
                                 viewModel = chatViewModel,
                                 receiverName = currentChatReceiver!!,
@@ -281,24 +243,23 @@ class MainActivity : ComponentActivity() {
                                 },
 
                                 onStartCall = {
-                                    val targetUser = currentChatReceiver!!
+                                    val target = currentChatReceiver!!
                                     val contact =
-                                        contactViewModel.contacts.find { it.username == targetUser }
-                                    val fullPhotoUrl = if (contact?.profilePhoto != null) {
-                                        settingsManager.getBaseUrl()
-                                            .removeSuffix("/") + contact.profilePhoto
-                                    } else {
-                                        null
-                                    }
+                                        contactViewModel.contacts.find { it.username == target }
 
-                                    chatViewModel.sendCallRequest(targetUser)
-                                    callViewModel.onStartOutgoingCall(targetUser, fullPhotoUrl)
-                                    webRTCClient.startCall(targetUser)
+                                    val photo =
+                                        contact?.profilePhoto?.let {
+                                            settingsManager.getBaseUrl()
+                                                .removeSuffix("/") + it
+                                        }
+
+                                    chatViewModel.sendCallRequest(target)
+                                    callViewModel.onStartOutgoingCall(target, photo)
+                                    webRTCClient.startCall(target)
                                     proximitySensor.deactivate()
                                 }
                             )
 
-                            // 👥 CONTACT LIST SCREEN
                             else -> ContactListScreen(
                                 username = chatViewModel.currentUsername,
                                 typingStatuses = chatViewModel.typingStatuses,
@@ -310,27 +271,57 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+    override fun onResume() {
+        super.onResume()
+        AppState.isForeground = true
+    }
 
+    override fun onPause() {
+        super.onPause()
+        AppState.isForeground = false
     }
     override fun onDestroy() {
+        proximitySensor.deactivate()
+        ringtoneManager.stop()
         super.onDestroy()
+    }
+
+    // =============================
+    // Helpers
+    // =============================
+
+    private fun cleanupCall(
+        callViewModel: CallViewModel,
+        webRTCClient: WebRTCClient
+    ) {
+        try {
+            webRTCClient.endCall()
+        } catch (_: Exception) {
+        }
+        callViewModel.onCallEnded()
         proximitySensor.deactivate()
         ringtoneManager.stop()
     }
 
-    fun uriToTempFile(context: Context, uri: Uri): File? {
-        val contentResolver = context.contentResolver
+    private fun uriToTempFile(context: Context, uri: Uri): File? {
+        val resolver = context.contentResolver
         var fileName: String? = null
-        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+
+        resolver.query(uri, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
                 val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 if (index >= 0) fileName = cursor.getString(index)
             }
         }
-        if (fileName == null) fileName = "upload_${System.currentTimeMillis()}"
+
+        if (fileName == null) {
+            fileName = "upload_${System.currentTimeMillis()}"
+        }
+
         val tempFile = File(context.cacheDir, fileName!!)
         return try {
-            contentResolver.openInputStream(uri)?.use { input ->
+            resolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(tempFile).use { output ->
                     input.copyTo(output)
                 }

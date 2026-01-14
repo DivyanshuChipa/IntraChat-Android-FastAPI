@@ -1,98 +1,124 @@
 package com.example.intra
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import kotlinx.coroutines.*
 import okhttp3.*
 import java.util.concurrent.TimeUnit
 
-class WsManager(
-    // ❌ Constructor se serverIp hata diya, ab dynamic lenge
-    private val onMessageReceived: (String) -> Unit,
-    private val onConnectionStatusChange: (String) -> Unit
-) {
-    private val TAG = "WsManager"
+object WsManager {
+
+    private const val TAG = "WsManager"
     private var webSocket: WebSocket? = null
-    private val client: OkHttpClient
-
-    private val connectionScope = CoroutineScope(Dispatchers.IO + Job())
-    private var reconnectJob: Job? = null
+    private var isConnected = false
     private var currentUsername: String? = null
+    private var appContext: Context? = null
 
-    init {
-        client = OkHttpClient.Builder()
-            .pingInterval(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .connectTimeout(30, TimeUnit.SECONDS)
+    // 🔔 Multiple listeners (Service + ViewModel)
+    interface Listener {
+        fun onMessage(text: String)
+        fun onStatus(status: String)
+    }
+
+    private val listeners = mutableSetOf<Listener>()
+
+    fun addListener(listener: Listener) {
+        listeners.add(listener)
+        listener.onStatus(if (isConnected) "Connected" else "Disconnected")
+    }
+
+    fun removeListener(listener: Listener) {
+        listeners.remove(listener)
+    }
+
+    // 🔌 SINGLE connection point
+    fun connect(context: Context, username: String) {
+        if (webSocket != null) {
+            Log.d(TAG, "Already connected, skipping")
+            return
+        }
+
+        appContext = context.applicationContext
+        currentUsername = username
+
+        val settings = SettingsManager(appContext!!)
+        val url = "ws://${settings.getServerIp()}:${settings.getServerPort()}/ws/$username"
+
+        Log.d(TAG, "Connecting to $url")
+        notifyStatus("Connecting…")
+
+        val client = OkHttpClient.Builder()
+            .pingInterval(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
-    }
-
-    fun connect(username: String) {
-        this.currentUsername = username
-
-        // ✅ NEW: Dynamic URL from ApiClient/Settings
-        val url = ApiClient.getWsUrl(username)
-
-        Log.d(TAG, "Connecting To: $url")
-        onConnectionStatusChange("Connecting…")
 
         val request = Request.Builder().url(url).build()
-        webSocket = client.newWebSocket(request, SocketListener())
+
+        webSocket = client.newWebSocket(request, socketListener)
     }
 
-    fun sendMessage(message: String) {
-        if (webSocket?.send(message) == true) {
-            Log.d(TAG, "Message sent: $message")
-        } else {
-            Log.e(TAG, "Send failed! Reconnecting…")
-            onConnectionStatusChange("Reconnecting…")
-            startReconnectLoop()
+    fun send(message: String) {
+        if (webSocket?.send(message) != true) {
+            Log.e(TAG, "Send failed")
+            notifyStatus("Send Failed")
         }
     }
 
+    // ❗ Call ONLY on logout
     fun disconnect() {
-        reconnectJob?.cancel()
-        webSocket?.close(1000, "User closed")
+        webSocket?.close(1000, "Logout")
         webSocket = null
-        onConnectionStatusChange("Disconnected")
+        isConnected = false
+        notifyStatus("Disconnected")
     }
 
-    private fun startReconnectLoop() {
-        reconnectJob?.cancel()
-        reconnectJob = connectionScope.launch {
-            while (isActive && webSocket == null) {
-                Log.w(TAG, "Reconnecting in 5 seconds…")
-                onConnectionStatusChange("Reconnecting…")
-                delay(5000)
-                currentUsername?.let { connect(it) }
-            }
-        }
-    }
+    // ============================
+    // 🔁 Internal helpers
+    // ============================
 
-    private inner class SocketListener : WebSocketListener() {
-        override fun onOpen(webSocket: WebSocket, response: Response) {
-            Log.i(TAG, "Connected ✔")
-            onConnectionStatusChange("Connected")
-            reconnectJob?.cancel()
+    private val socketListener = object : WebSocketListener() {
+
+        override fun onOpen(ws: WebSocket, response: Response) {
+            Log.d(TAG, "Connected ✔")
+            isConnected = true
+            notifyStatus("Connected")
         }
 
-        override fun onMessage(webSocket: WebSocket, text: String) {
-            Log.d(TAG, "Message: $text")
-            onMessageReceived(text)
+        override fun onMessage(ws: WebSocket, text: String) {
+            notifyMessage(text)
         }
 
-        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            Log.w(TAG, "Closing: $reason")
-            this@WsManager.webSocket = null
-            onConnectionStatusChange("Disconnected")
-            startReconnectLoop()
-        }
-
-        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+        override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
             Log.e(TAG, "Failure: ${t.message}")
-            this@WsManager.webSocket = null
-            onConnectionStatusChange("Error: ${t.message}")
-            startReconnectLoop()
+            cleanupAndReconnect()
         }
+
+        override fun onClosed(ws: WebSocket, code: Int, reason: String) {
+            Log.w(TAG, "Closed: $reason")
+            cleanupAndReconnect()
+        }
+    }
+
+    private fun cleanupAndReconnect() {
+        webSocket = null
+        isConnected = false
+        notifyStatus("Reconnecting…")
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            val ctx = appContext
+            val user = currentUsername
+            if (ctx != null && user != null) {
+                connect(ctx, user)
+            }
+        }, 3000)
+    }
+
+    private fun notifyMessage(text: String) {
+        listeners.forEach { it.onMessage(text) }
+    }
+
+    private fun notifyStatus(status: String) {
+        listeners.forEach { it.onStatus(status) }
     }
 }

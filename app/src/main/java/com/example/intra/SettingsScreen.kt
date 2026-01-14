@@ -39,6 +39,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import android.content.Intent
+import com.example.intra.util.FileUtils
 import coil.request.CachePolicy
 
 // ==========================================
@@ -170,8 +171,7 @@ fun SettingsScreen(
         ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val activity = context as? MainActivity
-            val file = activity?.uriToTempFile(context, it)
+            val file = FileUtils.uriToTempFile(context, it)
             if (file != null) {
                 authViewModel.uploadProfilePhoto(file) { success ->
                     if (success) {

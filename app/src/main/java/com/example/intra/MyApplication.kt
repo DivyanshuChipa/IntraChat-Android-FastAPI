@@ -13,4 +13,7 @@ class MyApplication : Application() {
         super.onCreate()
         instance = this
     }
+    object AppState {
+        var isForeground = false
+    }
 }

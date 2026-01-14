@@ -54,8 +54,7 @@ xmlns:tools="http://schemas.android.com/tools">
         android:name=".IntraBackgroundService"
         android:enabled="true"
         android:exported="false"
-        android:foregroundServiceType="specialUse"> <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-    android:value="LAN connection for local calls and messaging" />
+        android:foregroundServiceType="dataSync">
 </service>
 
 </application>
