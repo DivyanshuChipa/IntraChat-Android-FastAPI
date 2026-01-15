@@ -28,9 +28,30 @@ interface ChatDao {
     """)
     suspend fun getFamilyGroupMessages(): List<ChatMessageEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMessage(message: ChatMessageEntity)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) // Agar conflict ho to ignore karo
+    suspend fun insertMessageRaw(message: ChatMessageEntity): Long
+
+    // 🔥 NEW FUNCTION: Check karega ki duplicate hai ya nahi
+    @Query("SELECT COUNT(*) FROM messages WHERE sender = :sender AND timestamp = :timestamp AND text = :text")
+    suspend fun countMessage(sender: String, timestamp: Long, text: String): Int
+
+    // 🔥 Transaction wala method (Logic handle karne ke liye)
+    @androidx.room.Transaction
+    suspend fun insertMessage(message: ChatMessageEntity) {
+        // Pehle check karo ki kya ye message exist karta hai?
+        val count = countMessage(message.sender, message.timestamp, message.text)
+
+        if (count == 0) {
+            insertMessageRaw(message)
+        } else {
+            // Duplicate found, do nothing
+            android.util.Log.d("ChatDao", "Duplicate message ignored in DB")
+        }
+    }
+
 
     @Query("DELETE FROM messages")
     suspend fun clearAll()
+
+
 }

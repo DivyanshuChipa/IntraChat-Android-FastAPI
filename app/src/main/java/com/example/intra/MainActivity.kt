@@ -3,6 +3,7 @@ package com.example.intra
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
 
         proximitySensor = ProximitySensor(this)
         ringtoneManager = CallRingtoneManager(this)
+
 
         // =============================
         // Handle Incoming Call from Service
@@ -271,7 +273,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // 🔥 AUTO-START SERVICE IF TOGGLE WAS ON
+        val settings = SettingsManager(this)
+
+        if (settings.isBackgroundServiceEnabled()) {
+            Log.d("AUTO_START", "Keep Intra Running ON → starting service")
+
+            val intent = Intent(this, IntraBackgroundService::class.java)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        }
+
+
+
     }
+
+
     override fun onResume() {
         super.onResume()
         AppState.isForeground = true

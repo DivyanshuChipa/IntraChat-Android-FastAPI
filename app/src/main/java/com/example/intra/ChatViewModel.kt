@@ -260,6 +260,14 @@ class ChatViewModel(
 
             // 💬 Message
             val isSelf = sender == currentUsername
+            // 🔥 FIX 1: Check if message already exists in RAM (UI List)
+            // J2 jaise slow phone par DB se load hone ke baad bhi Socket event fire ho sakta hai
+            val alreadyExists = messages.any { it.timestamp == ts && it.text == json.optString("text") }
+
+            if (alreadyExists) {
+                Log.d(TAG, "🚫 Duplicate message prevented in UI: $ts")
+                return // Yahi ruk jao, aage mat badho
+            }
 
             val msg = if (type == "file") {
                 ChatMessage(
@@ -278,7 +286,8 @@ class ChatViewModel(
                 )
             }
 
-            saveToDb(msg, sender, receiver)
+            // 🔥 FIX 2: Save to DB only if necessary (DB logic niche step 2 me hai)
+            saveToDb(msg, sender, json.optString("receiver"))
 
             val shouldShow = when {
                 activeChatUser == null -> false

@@ -21,6 +21,7 @@ import org.json.JSONObject
 class IntraBackgroundService : Service(), WsManager.Listener {
     private lateinit var chatDao: ChatDao
 
+
     // 🔥 ADD THIS (MISSING PART)
     private val serviceScope =
         CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -114,7 +115,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Apna icon lagana
+            .setSmallIcon(R.drawable.ic_notification) // Apna icon lagana
             .setContentTitle("Incoming Call")
             .setContentText("$sender is calling...")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -123,20 +124,21 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             .setAutoCancel(true)
             .build()
 
-        val nm = getSystemService(NotificationManager::class.java)
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(999, notification)
     }
 
     private fun showMessageNotification(sender: String, message: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(sender)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()
 
-        val nm = getSystemService(NotificationManager::class.java)
+        // 🔥 J2 SAFE WAY
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(System.currentTimeMillis().toInt(), notification)
     }
 
@@ -144,7 +146,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Intra Service")
             .setContentText("Listening for LAN connections...")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .build()
     }
 
@@ -177,12 +179,12 @@ class IntraBackgroundService : Service(), WsManager.Listener {
     ) {
         serviceScope.launch {
             try {
-                val messageText =
-                    if (type == "file") {
-                        "Shared File: ${json.optString("filename", "File")}"
-                    } else {
-                        json.optString("text", "")
-                    }
+                // Message Text Nikalo
+                val messageText = if (type == "file") {
+                    "Shared File: ${json.optString("filename", "File")}"
+                } else {
+                    json.optString("text", "")
+                }
 
                 val entity = ChatMessageEntity(
                     text = messageText,
