@@ -46,14 +46,24 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ✅ PATCH 3 - STEP 1: Intent handling CLEAN (before Compose)
-        // Yeh notification se incoming call detect karega
+        // ✅ 🆕 NEW GEMINI FIX - STEP 1: Intent se sender aur photo extract karo
+        // Yeh tab kaam karega jab app completely band thi aur notification se khuli
+        val intentSender = intent?.getStringExtra("incoming_sender")
+        val intentPhoto = intent?.getStringExtra("incoming_photo")
+
+        // 📝 Log karo debug ke liye
+        if (intentSender != null) {
+            Log.d("MAIN", "🔥 Recovered call from intent: sender=$intentSender, photo=$intentPhoto")
+        }
+
+        // ✅ PREVIOUS PATCH 3 - STEP 1: Intent handling CLEAN (before Compose)
+        // Yeh notification se incoming call detect karega (purana approach)
         val incomingCallSender: String? =
             if (intent?.action == "OPEN_CALL_SCREEN") {
                 intent.getStringExtra("sender")
             } else null
 
-        // ✅ PATCH 3 - STEP 1: Reject action detect karega
+        // ✅ PREVIOUS PATCH 3 - STEP 1: Reject action detect karega
         val rejectFromNotification =
             intent?.action == "REJECT_CALL"
 
@@ -77,8 +87,30 @@ class MainActivity : ComponentActivity() {
                     val callViewModel: CallViewModel = viewModel()
                     val contactViewModel: ContactViewModel = viewModel()
 
-                    // ✅ PATCH 3 - STEP 2: Compose-safe incoming call handler
-                    // Jab notification se call open ho tab yeh trigger hoga
+                    // ✅ 🆕 NEW GEMINI FIX - STEP 2: Intent se aayi call ko handle karo
+                    // Yeh LaunchedEffect tab trigger hoga jab intentSender null nahi hoga
+                    LaunchedEffect(intentSender) {
+                        if (intentSender != null) {
+                            // 🔥 Photo URL banao (agar relative path hai to base URL add karo)
+                            val fullPhotoUrl = if (intentPhoto != null && !intentPhoto.startsWith("http")) {
+                                settingsManager.getBaseUrl().removeSuffix("/") + intentPhoto
+                            } else intentPhoto
+
+                            // 📞 Call Screen dikhao with photo
+                            Log.d("MAIN", "📞 Opening call screen for: $intentSender with photo: $fullPhotoUrl")
+                            callViewModel.onIncomingCall(intentSender, fullPhotoUrl)
+
+                            // 🔥 Pending offer check karo (agar Service ne store kiya hai)
+                            if (MyApplication.AppState.pendingCallOffer != null) {
+                                Log.d("MAIN", "✅ Restoring pending offer from AppState")
+                                callViewModel.setIncomingOffer(MyApplication.AppState.pendingCallOffer!!)
+                                MyApplication.AppState.pendingCallOffer = null
+                            }
+                        }
+                    }
+
+                    // ✅ PREVIOUS PATCH 3 - STEP 2: Compose-safe incoming call handler
+                    // Jab notification se call open ho tab yeh trigger hoga (purana approach)
                     LaunchedEffect(incomingCallSender) {
                         if (incomingCallSender != null) {
                             if (!callViewModel.callActive) {
@@ -98,7 +130,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // ✅ PATCH 3 - STEP 2: Notification se reject handle karega
+                    // ✅ PREVIOUS PATCH 3 - STEP 2: Notification se reject handle karega
                     LaunchedEffect(rejectFromNotification) {
                         if (rejectFromNotification == true) {
                             val sender = intent?.getStringExtra("sender")
@@ -115,6 +147,16 @@ class MainActivity : ComponentActivity() {
                                 val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                                 nm.cancel(CALL_NOTIFICATION_ID)
                             }
+                        }
+                    }
+
+                    // ✅ 🆕 NEW GEMINI FIX - STEP 3: Stuck Notification Fix
+                    // Jab call end/reject ho to notification zarur hatao
+                    LaunchedEffect(callViewModel.callActive) {
+                        if (!callViewModel.callActive) {
+                            Log.d("MAIN", "🗑️ Call ended, removing notification")
+                            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                            nm.cancel(CALL_NOTIFICATION_ID) // Force remove notification
                         }
                     }
 
@@ -305,7 +347,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // ✅ PATCH 4: Service start with connection check
+        // ✅ PREVIOUS PATCH 4: Service start with connection check
         // Service sirf tab start hogi jab enabled ho AUR already connected na ho
         val settings = SettingsManager(this)
         if (settings.isBackgroundServiceEnabled() && !WsManager.isConnected) {
@@ -316,11 +358,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ✅ PATCH 3 - STEP 3: onNewIntent (repeated notification taps handle karega)
-    // Jab app already open ho aur notification dobara tap karo tab yeh call hoga
+    // ✅ 🆕 NEW GEMINI FIX - STEP 4: onNewIntent Override
+    // Yeh tab kaam karega jab app background me thi aur notification se naya intent aaya
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent) // Naya intent set karo taaki upar ke LaunchedEffect trigger ho
+        setIntent(intent) // ⚠️ IMPORTANT: Naya intent set karo taaki LaunchedEffect trigger ho
+
+        // 🔥 Intent se sender aur photo extract karo
+        val intentSender = intent.getStringExtra("incoming_sender")
+        val intentPhoto = intent.getStringExtra("incoming_photo")
+
+        if (intentSender != null) {
+            Log.d("MAIN", "🔄 onNewIntent: New call from $intentSender")
+
+            // 📝 NOTE: Yahan direct callViewModel.onIncomingCall() call mat karo
+            // Kyunki setIntent() ke baad LaunchedEffect automatically trigger hoga
+            // aur woh handle kar lega
+        }
     }
 
     override fun onResume() {

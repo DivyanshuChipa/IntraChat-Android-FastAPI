@@ -1,49 +1,41 @@
 package com.example.intra
 
 import android.content.Context
-import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 
-class CallRingtoneManager(context: Context) {
-
+class CallRingtoneManager(private val context: Context) {
     private var ringtone: Ringtone? = null
-
-    init {
-        try {
-            val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            ringtone = RingtoneManager.getRingtone(context, uri)
-
-            // Audio Attributes set karte hain taaki Call Volume use ho, Media Volume nahi
-            ringtone?.audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     fun start() {
-        // 🔥 MAGIC FIX: Agar pehle se baj raha hai, to kuch mat karo (Rotation Safe)
         if (ringtone?.isPlaying == true) return
 
         try {
-            // J2 Specific: Stream Type Set karo
-            ringtone?.streamType = android.media.AudioManager.STREAM_RING
+            val notification: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            ringtone = RingtoneManager.getRingtone(context, notification)
+
+            // 🔥 FIX 2: Audio Routing for J2 (Force Speaker)
+            // Pehle mode normal karo, taaki earpiece se hate
+            audioManager.mode = AudioManager.MODE_NORMAL
+            audioManager.isSpeakerphoneOn = true // Loudspeaker ON
+
+            // Stream Type Ring set karo
+            ringtone?.streamType = AudioManager.STREAM_RING
+
             ringtone?.play()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-
     fun stop() {
         try {
-            if (ringtone?.isPlaying == true) {
-                ringtone?.stop()
-            }
+            ringtone?.stop()
+            // Ringtone band hone ke baad speaker settings wapas normal kar sakte ho
+            // ya Call connect hone par WebRTC khud handle karega
         } catch (e: Exception) {
             e.printStackTrace()
         }

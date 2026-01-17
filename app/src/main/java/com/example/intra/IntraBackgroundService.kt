@@ -66,11 +66,15 @@ class IntraBackgroundService : Service(), WsManager.Listener {
 
             when (type) {
                 "call_request" -> {
-                    // 🔥 Sender का नाम ग्लोबल स्टेट में डाल दो
-                    MyApplication.AppState.pendingCallSender = sender
-                    showIncomingCallNotification(sender)
-                }
+                    val sender = json.optString("sender")
+                    // 🔥 ये लाइन जोड़ो: फोटो का URL निकालो
+                    val rawPhoto = json.optString("profile_photo")
 
+                    MyApplication.AppState.pendingCallSender = sender
+
+                    // 🔥 यहाँ rawPhoto भी पास कर दो
+                    showIncomingCallNotification(sender, rawPhoto)
+                }
                 // 🔥 NEW: Offer को पकड़ कर सेव करो (Green button fix)
                 "webrtc_offer" -> {
                     val sdp = json.optString("sdp")
@@ -100,12 +104,14 @@ class IntraBackgroundService : Service(), WsManager.Listener {
 
     // --- Notifications ---
 
-    private fun showIncomingCallNotification(sender: String) {
+    private fun showIncomingCallNotification(sender: String, photoUrl: String?) {
 
+        // ये है वो Intent जो ऐप खोलेगा और फोटो का डेटा ले जाएगा
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             action = "OPEN_CALL_SCREEN"
-            putExtra("sender", sender)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("incoming_sender", sender) // MainActivity में हमने यही नाम रखा है
+            putExtra("incoming_photo", photoUrl) // यहाँ फोटो डाल दी
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         val contentPI = PendingIntent.getActivity(
@@ -127,7 +133,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Incoming Call")
             .setContentText("$sender is calling…")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setOngoing(true)
             .setAutoCancel(true)
