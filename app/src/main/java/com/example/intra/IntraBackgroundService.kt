@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.example.intra.MainActivity.Companion.CALL_NOTIFICATION_ID
 import com.example.intra.MyApplication.AppState
 import com.example.intra.database.ChatDao
 import com.example.intra.database.ChatDatabase
@@ -64,28 +65,25 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             val ts = json.optLong("timestamp", System.currentTimeMillis())
 
             when (type) {
-
                 "call_request" -> {
+                    // 🔥 Sender का नाम ग्लोबल स्टेट में डाल दो
+                    MyApplication.AppState.pendingCallSender = sender
                     showIncomingCallNotification(sender)
                 }
 
+                // 🔥 NEW: Offer को पकड़ कर सेव करो (Green button fix)
+                "webrtc_offer" -> {
+                    val sdp = json.optString("sdp")
+                    if (sdp.isNotEmpty()) {
+                        Log.d("SERVICE", "Saved pending offer for UI")
+                        MyApplication.AppState.pendingCallOffer = sdp
+                    }
+                }
+
                 "text", "file" -> {
-
-                    // ✅ 1️⃣ SAVE MESSAGE (CRASH-FREE)
-                    saveMessageSafely(
-                        json = json,
-                        sender = sender,
-                        receiver = receiver,
-                        type = type,
-                        timestamp = ts
-                    )
-
-                    // ✅ 2️⃣ NOTIFICATION ONLY IF APP BACKGROUND
-                    if (!AppState.isForeground) {
-                        showMessageNotification(
-                            sender,
-                            json.optString("text", "Sent a file")
-                        )
+                    saveMessageSafely(json, sender, receiver, type, ts)
+                    if (!MyApplication.AppState.isForeground) {
+                        showMessageNotification(sender, json.optString("text", "Sent a file"))
                     }
                 }
             }
@@ -103,30 +101,45 @@ class IntraBackgroundService : Service(), WsManager.Listener {
     // --- Notifications ---
 
     private fun showIncomingCallNotification(sender: String) {
-        // Call Screen kholne ka Intent
-        val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
-            action = "INCOMING_CALL"
+
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            action = "OPEN_CALL_SCREEN"
             putExtra("sender", sender)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
-        val fullScreenPendingIntent = PendingIntent.getActivity(
-            this, 0, fullScreenIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val contentPI = PendingIntent.getActivity(
+            this, 0, openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val rejectIntent = Intent(this, MainActivity::class.java).apply {
+            action = "REJECT_CALL"
+            putExtra("sender", sender)
+        }
+
+        val rejectPI = PendingIntent.getActivity(
+            this, 1, rejectIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification) // Apna icon lagana
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Incoming Call")
-            .setContentText("$sender is calling...")
+            .setContentText("$sender is calling…")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setFullScreenIntent(fullScreenPendingIntent, true) // Screen Off pe chalega
+            .setOngoing(true)
             .setAutoCancel(true)
+            .setContentIntent(contentPI)
+            .addAction(0, "Reject", rejectPI)
             .build()
 
+        // 🔥 J2 + ALL ANDROID SAFE WAY
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(999, notification)
+        nm.notify(CALL_NOTIFICATION_ID, notification)
     }
+
 
     private fun showMessageNotification(sender: String, message: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)

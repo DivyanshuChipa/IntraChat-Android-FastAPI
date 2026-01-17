@@ -15,5 +15,7 @@ class MyApplication : Application() {
     }
     object AppState {
         var isForeground = false
+        var pendingCallOffer: String? = null
+        var pendingCallSender: String? = null // Sender का नाम भी सेव कर लो
     }
 }

@@ -30,11 +30,14 @@ class CallRingtoneManager(context: Context) {
         if (ringtone?.isPlaying == true) return
 
         try {
+            // J2 Specific: Stream Type Set karo
+            ringtone?.streamType = android.media.AudioManager.STREAM_RING
             ringtone?.play()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
+
 
     fun stop() {
         try {

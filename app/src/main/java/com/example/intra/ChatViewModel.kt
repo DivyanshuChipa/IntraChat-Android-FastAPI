@@ -206,10 +206,13 @@ class ChatViewModel(
 // 📞 CALL REQUEST (Outgoing)
 // ===============================
     fun sendCallRequest(receiver: String) {
+        val myPhoto = settingsManager.getMyPhoto()
         val json = JSONObject().apply {
             put("type", "call_request")
             put("sender", currentUsername)
             put("receiver", receiver)
+            // 🔥 FIX: Photo URL bhi bhejo taaki samne wale ko dikhe
+            put("profile_photo", myPhoto)
         }
         WsManager.send(json.toString())
     }

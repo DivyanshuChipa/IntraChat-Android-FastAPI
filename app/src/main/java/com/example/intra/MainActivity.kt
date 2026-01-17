@@ -1,5 +1,6 @@
 package com.example.intra
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -16,7 +17,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.intra.MyApplication.AppState
 import com.example.intra.database.ChatDatabase
@@ -46,19 +46,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // ✅ PATCH 3 - STEP 1: Intent handling CLEAN (before Compose)
+        // Yeh notification se incoming call detect karega
+        val incomingCallSender: String? =
+            if (intent?.action == "OPEN_CALL_SCREEN") {
+                intent.getStringExtra("sender")
+            } else null
+
+        // ✅ PATCH 3 - STEP 1: Reject action detect karega
+        val rejectFromNotification =
+            intent?.action == "REJECT_CALL"
+
         proximitySensor = ProximitySensor(this)
         ringtoneManager = CallRingtoneManager(this)
-
-
-        // =============================
-        // Handle Incoming Call from Service
-        // =============================
-        if (intent?.action == "INCOMING_CALL") {
-            val sender = intent.getStringExtra("sender")
-            if (!sender.isNullOrEmpty()) {
-                Log.d("MAIN", "Incoming call intent from $sender")
-            }
-        }
 
         val chatDao = ChatDatabase.getDatabase(applicationContext).chatDao()
         val settingsManager = SettingsManager(this)
@@ -77,6 +77,47 @@ class MainActivity : ComponentActivity() {
                     val callViewModel: CallViewModel = viewModel()
                     val contactViewModel: ContactViewModel = viewModel()
 
+                    // ✅ PATCH 3 - STEP 2: Compose-safe incoming call handler
+                    // Jab notification se call open ho tab yeh trigger hoga
+                    LaunchedEffect(incomingCallSender) {
+                        if (incomingCallSender != null) {
+                            if (!callViewModel.callActive) {
+                                // 1. Call Screen dikhao
+                                val photoUrl = null // Abhi ke liye null, ya AppState se le sakte ho
+                                callViewModel.onIncomingCall(incomingCallSender, photoUrl)
+
+                                // 🔥 FIX: Check karo agar Service ne Offer pakad rakha hai kya?
+                                if (MyApplication.AppState.pendingCallOffer != null) {
+                                    Log.d("MAIN", "Restoring pending offer from Service")
+                                    callViewModel.setIncomingOffer(MyApplication.AppState.pendingCallOffer!!)
+
+                                    // Use karne ke baad clear kar do taaki dubara use na ho
+                                    MyApplication.AppState.pendingCallOffer = null
+                                }
+                            }
+                        }
+                    }
+
+                    // ✅ PATCH 3 - STEP 2: Notification se reject handle karega
+                    LaunchedEffect(rejectFromNotification) {
+                        if (rejectFromNotification == true) {
+                            val sender = intent?.getStringExtra("sender")
+                            if (sender != null) {
+                                // Reject signal bhejo
+                                val json = JSONObject().apply {
+                                    put("type", "call_rejected")
+                                    put("receiver", sender)
+                                }
+                                chatViewModel.sendRawSignal(json.toString())
+                                callViewModel.onCallEnded()
+
+                                // Notification cancel karo
+                                val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                nm.cancel(CALL_NOTIFICATION_ID)
+                            }
+                        }
+                    }
+
                     val webRTCClient = remember {
                         WebRTCClient(
                             context = applicationContext,
@@ -91,20 +132,13 @@ class MainActivity : ComponentActivity() {
                     var showAbout by rememberSaveable { mutableStateOf(false) }
                     var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
 
-                    // =============================
-                    // Ringtone lifecycle (SAFE)
-                    // =============================
+                    // 🔔 Ringtone lifecycle
                     LaunchedEffect(callViewModel.isRinging.value) {
-                        if (callViewModel.isRinging.value) {
-                            ringtoneManager.start()
-                        } else {
-                            ringtoneManager.stop()
-                        }
+                        if (callViewModel.isRinging.value) ringtoneManager.start()
+                        else ringtoneManager.stop()
                     }
 
-                    // =============================
-                    // Call / WebRTC Signal Bridge
-                    // =============================
+                    // 🔌 Call / WebRTC signal bridge
                     DisposableEffect(chatViewModel) {
                         chatViewModel.onCallSignal = { raw ->
                             try {
@@ -114,12 +148,9 @@ class MainActivity : ComponentActivity() {
                                     "call_request" -> {
                                         val sender = json.optString("sender")
                                         val rawPhoto = json.optString("profile_photo")
-
-                                        val fullPhotoUrl =
-                                            if (!rawPhoto.isNullOrEmpty() && rawPhoto != "null") {
-                                                settingsManager.getBaseUrl()
-                                                    .removeSuffix("/") + rawPhoto
-                                            } else null
+                                        val fullPhotoUrl = if (!rawPhoto.isNullOrEmpty() && rawPhoto != "null") {
+                                            settingsManager.getBaseUrl().removeSuffix("/") + rawPhoto
+                                        } else null
 
                                         callViewModel.onIncomingCall(sender, fullPhotoUrl)
                                     }
@@ -129,14 +160,15 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     "webrtc_offer" -> {
+                                        // 🔥 Offer set karo (Foreground case ke liye)
                                         callViewModel.setIncomingOffer(json.optString("sdp"))
                                     }
 
+                                    // ... (Answer aur Ice Candidate same rahenge)
                                     "webrtc_answer" -> {
                                         webRTCClient.onRemoteAnswer(json.optString("sdp"))
                                         callViewModel.onCallConnected()
                                     }
-
                                     "ice_candidate" -> {
                                         webRTCClient.onRemoteIceCandidate(
                                             json.getString("candidate"),
@@ -146,26 +178,19 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             } catch (e: Exception) {
-                                Log.e("CALL_SIGNAL", "Error: ${e.message}")
+                                Log.e("CALL_SIGNAL", "Error", e)
                             }
                         }
-
-                        onDispose {
-                            chatViewModel.onCallSignal = null
-                        }
+                        onDispose { chatViewModel.onCallSignal = null }
                     }
 
-                    // =============================
-                    // UI Navigation
-                    // =============================
+                    // 🧭 UI navigation
                     if (!isAuthenticated) {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
                         when {
 
-                            showAbout -> AboutScreen(
-                                onBack = { showAbout = false }
-                            )
+                            showAbout -> AboutScreen { showAbout = false }
 
                             showSettings -> SettingsScreen(
                                 onLogoutConfirmed = {
@@ -182,8 +207,7 @@ class MainActivity : ComponentActivity() {
                                     state = callViewModel.callState.value,
 
                                     onRejectCall = {
-                                        val target =
-                                            callViewModel.callState.value.targetUser
+                                        val target = callViewModel.callState.value.targetUser
                                         if (target.isNotEmpty()) {
                                             val json = JSONObject().apply {
                                                 put("type", "call_rejected")
@@ -200,20 +224,27 @@ class MainActivity : ComponentActivity() {
 
                                     onAcceptCall = {
                                         val offer = callViewModel.pendingOfferSdp
-                                        if (offer != null) {
-                                            webRTCClient.answerCall(
-                                                callViewModel.callState.value.targetUser,
-                                                offer
-                                            )
-                                            callViewModel.onCallConnected()
-                                            ringtoneManager.stop()
-                                            proximitySensor.deactivate()
+
+                                        // 🔥 FINAL CHECK: Agar abhi bhi offer null hai to log karo
+                                        if (offer == null) {
+                                            Log.w("CALL", "Accept pressed but offer NOT FOUND in ViewModel")
+                                            return@CallScreen
                                         }
+
+                                        // ✅ Fix for Double Ringtone: Stop immediately
+                                        ringtoneManager.stop()
+
+                                        webRTCClient.answerCall(
+                                            callViewModel.callState.value.targetUser,
+                                            offer
+                                        )
+                                        callViewModel.onCallConnected()
+                                        proximitySensor.deactivate()
                                     },
 
+
                                     onToggleMute = {
-                                        val newMute =
-                                            !callViewModel.callState.value.isMuted
+                                        val newMute = !callViewModel.callState.value.isMuted
                                         webRTCClient.toggleMute(newMute)
                                         callViewModel.updateMuteState(newMute)
                                     },
@@ -273,25 +304,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        // 🔥 AUTO-START SERVICE IF TOGGLE WAS ON
+
+        // ✅ PATCH 4: Service start with connection check
+        // Service sirf tab start hogi jab enabled ho AUR already connected na ho
         val settings = SettingsManager(this)
-
-        if (settings.isBackgroundServiceEnabled()) {
-            Log.d("AUTO_START", "Keep Intra Running ON → starting service")
-
+        if (settings.isBackgroundServiceEnabled() && !WsManager.isConnected) {
             val intent = Intent(this, IntraBackgroundService::class.java)
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
+            else startService(intent)
         }
-
-
-
     }
 
+    // ✅ PATCH 3 - STEP 3: onNewIntent (repeated notification taps handle karega)
+    // Jab app already open ho aur notification dobara tap karo tab yeh call hoga
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent) // Naya intent set karo taaki upar ke LaunchedEffect trigger ho
+    }
 
     override fun onResume() {
         super.onResume()
@@ -302,15 +332,12 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         AppState.isForeground = false
     }
+
     override fun onDestroy() {
         proximitySensor.deactivate()
         ringtoneManager.stop()
         super.onDestroy()
     }
-
-    // =============================
-    // Helpers
-    // =============================
 
     private fun cleanupCall(
         callViewModel: CallViewModel,
@@ -318,8 +345,7 @@ class MainActivity : ComponentActivity() {
     ) {
         try {
             webRTCClient.endCall()
-        } catch (_: Exception) {
-        }
+        } catch (_: Exception) {}
         callViewModel.onCallEnded()
         proximitySensor.deactivate()
         ringtoneManager.stop()
@@ -336,11 +362,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (fileName == null) {
-            fileName = "upload_${System.currentTimeMillis()}"
-        }
-
+        if (fileName == null) fileName = "upload_${System.currentTimeMillis()}"
         val tempFile = File(context.cacheDir, fileName!!)
+
         return try {
             resolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(tempFile).use { output ->
@@ -352,5 +376,10 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "File error", e)
             null
         }
+    }
+
+    // ✅ Constant definition (notification ID ke liye)
+    companion object {
+        const val CALL_NOTIFICATION_ID = 1001
     }
 }

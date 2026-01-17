@@ -15,9 +15,15 @@ class CallViewModel : ViewModel() {
     var isRinging = mutableStateOf(false)
         private set
 
+    var callActive = false
+        private set
+
     // --- Actions ---
 
     fun onIncomingCall(sender: String, profilePhotoUrl: String? = null) {
+        if (callActive) return
+        callActive = true
+        isRinging.value = true
         callState.value = CallState(
             status = CallStatus.INCOMING,
             targetUser = sender,
@@ -27,6 +33,7 @@ class CallViewModel : ViewModel() {
     }
 
     fun onStartOutgoingCall(target: String, profilePhotoUrl: String? = null) {
+        callActive = true
         callState.value = CallState(
             status = CallStatus.OUTGOING,
             targetUser = target,
@@ -42,6 +49,7 @@ class CallViewModel : ViewModel() {
     }
 
     fun onCallEnded() {
+        callActive = false
         callState.value = CallState()
         pendingOfferSdp = null
         isRinging.value = false // 🔕 Stop Ringing
