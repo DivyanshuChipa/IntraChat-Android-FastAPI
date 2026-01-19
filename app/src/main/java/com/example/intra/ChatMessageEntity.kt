@@ -14,5 +14,7 @@ data class ChatMessageEntity(
     val timestamp: Long = System.currentTimeMillis(),
     val senderName: String = "User",
     val sender: String,      // ✅ Default value mat do
-    val receiver: String     // ✅ Default value mat do
+    val receiver: String,    // ✅ Default value mat do
+    // 🆕 NEW FIELD: Read Status Tracking
+    val isRead: Boolean = false  // Default: unread
 )

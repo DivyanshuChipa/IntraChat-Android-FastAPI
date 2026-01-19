@@ -3,6 +3,7 @@ package com.example.intra
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -45,25 +46,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-        // ✅ 🆕 NEW GEMINI FIX - STEP 1: Intent se sender aur photo extract karo
-        // Yeh tab kaam karega jab app completely band thi aur notification se khuli
         val intentSender = intent?.getStringExtra("incoming_sender")
         val intentPhoto = intent?.getStringExtra("incoming_photo")
 
-        // 📝 Log karo debug ke liye
         if (intentSender != null) {
             Log.d("MAIN", "🔥 Recovered call from intent: sender=$intentSender, photo=$intentPhoto")
         }
 
-        // ✅ PREVIOUS PATCH 3 - STEP 1: Intent handling CLEAN (before Compose)
-        // Yeh notification se incoming call detect karega (purana approach)
         val incomingCallSender: String? =
             if (intent?.action == "OPEN_CALL_SCREEN") {
                 intent.getStringExtra("sender")
             } else null
 
-        // ✅ PREVIOUS PATCH 3 - STEP 1: Reject action detect karega
         val rejectFromNotification =
             intent?.action == "REJECT_CALL"
 
@@ -87,20 +83,27 @@ class MainActivity : ComponentActivity() {
                     val callViewModel: CallViewModel = viewModel()
                     val contactViewModel: ContactViewModel = viewModel()
 
-                    // ✅ 🆕 NEW GEMINI FIX - STEP 2: Intent se aayi call ko handle karo
-                    // Yeh LaunchedEffect tab trigger hoga jab intentSender null nahi hoga
+                    // ===============================
+                    // 🆕 STEP 5E: EVENT LISTENER
+                    // ===============================
+
+                    // Jab message aaye, contact list ko refresh karo
+                    LaunchedEffect(chatViewModel) {
+                        chatViewModel.contactUpdateEvent.collect { updatedUser ->
+                            Log.d("MAIN", "📱 Contact update event: $updatedUser")
+                            contactViewModel.fetchContacts() // Refresh list
+                        }
+                    }
+
                     LaunchedEffect(intentSender) {
                         if (intentSender != null) {
-                            // 🔥 Photo URL banao (agar relative path hai to base URL add karo)
                             val fullPhotoUrl = if (intentPhoto != null && !intentPhoto.startsWith("http")) {
                                 settingsManager.getBaseUrl().removeSuffix("/") + intentPhoto
                             } else intentPhoto
 
-                            // 📞 Call Screen dikhao with photo
                             Log.d("MAIN", "📞 Opening call screen for: $intentSender with photo: $fullPhotoUrl")
                             callViewModel.onIncomingCall(intentSender, fullPhotoUrl)
 
-                            // 🔥 Pending offer check karo (agar Service ne store kiya hai)
                             if (MyApplication.AppState.pendingCallOffer != null) {
                                 Log.d("MAIN", "✅ Restoring pending offer from AppState")
                                 callViewModel.setIncomingOffer(MyApplication.AppState.pendingCallOffer!!)
@@ -109,33 +112,25 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // ✅ PREVIOUS PATCH 3 - STEP 2: Compose-safe incoming call handler
-                    // Jab notification se call open ho tab yeh trigger hoga (purana approach)
                     LaunchedEffect(incomingCallSender) {
                         if (incomingCallSender != null) {
                             if (!callViewModel.callActive) {
-                                // 1. Call Screen dikhao
-                                val photoUrl = null // Abhi ke liye null, ya AppState se le sakte ho
+                                val photoUrl = null
                                 callViewModel.onIncomingCall(incomingCallSender, photoUrl)
 
-                                // 🔥 FIX: Check karo agar Service ne Offer pakad rakha hai kya?
                                 if (MyApplication.AppState.pendingCallOffer != null) {
                                     Log.d("MAIN", "Restoring pending offer from Service")
                                     callViewModel.setIncomingOffer(MyApplication.AppState.pendingCallOffer!!)
-
-                                    // Use karne ke baad clear kar do taaki dubara use na ho
                                     MyApplication.AppState.pendingCallOffer = null
                                 }
                             }
                         }
                     }
 
-                    // ✅ PREVIOUS PATCH 3 - STEP 2: Notification se reject handle karega
                     LaunchedEffect(rejectFromNotification) {
                         if (rejectFromNotification == true) {
                             val sender = intent?.getStringExtra("sender")
                             if (sender != null) {
-                                // Reject signal bhejo
                                 val json = JSONObject().apply {
                                     put("type", "call_rejected")
                                     put("receiver", sender)
@@ -143,20 +138,17 @@ class MainActivity : ComponentActivity() {
                                 chatViewModel.sendRawSignal(json.toString())
                                 callViewModel.onCallEnded()
 
-                                // Notification cancel karo
                                 val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                                 nm.cancel(CALL_NOTIFICATION_ID)
                             }
                         }
                     }
 
-                    // ✅ 🆕 NEW GEMINI FIX - STEP 3: Stuck Notification Fix
-                    // Jab call end/reject ho to notification zarur hatao
                     LaunchedEffect(callViewModel.callActive) {
                         if (!callViewModel.callActive) {
                             Log.d("MAIN", "🗑️ Call ended, removing notification")
                             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                            nm.cancel(CALL_NOTIFICATION_ID) // Force remove notification
+                            nm.cancel(CALL_NOTIFICATION_ID)
                         }
                     }
 
@@ -174,13 +166,11 @@ class MainActivity : ComponentActivity() {
                     var showAbout by rememberSaveable { mutableStateOf(false) }
                     var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
 
-                    // 🔔 Ringtone lifecycle
                     LaunchedEffect(callViewModel.isRinging.value) {
                         if (callViewModel.isRinging.value) ringtoneManager.start()
                         else ringtoneManager.stop()
                     }
 
-                    // 🔌 Call / WebRTC signal bridge
                     DisposableEffect(chatViewModel) {
                         chatViewModel.onCallSignal = { raw ->
                             try {
@@ -202,11 +192,9 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     "webrtc_offer" -> {
-                                        // 🔥 Offer set karo (Foreground case ke liye)
                                         callViewModel.setIncomingOffer(json.optString("sdp"))
                                     }
 
-                                    // ... (Answer aur Ice Candidate same rahenge)
                                     "webrtc_answer" -> {
                                         webRTCClient.onRemoteAnswer(json.optString("sdp"))
                                         callViewModel.onCallConnected()
@@ -226,7 +214,6 @@ class MainActivity : ComponentActivity() {
                         onDispose { chatViewModel.onCallSignal = null }
                     }
 
-                    // 🧭 UI navigation
                     if (!isAuthenticated) {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
@@ -267,13 +254,11 @@ class MainActivity : ComponentActivity() {
                                     onAcceptCall = {
                                         val offer = callViewModel.pendingOfferSdp
 
-                                        // 🔥 FINAL CHECK: Agar abhi bhi offer null hai to log karo
                                         if (offer == null) {
                                             Log.w("CALL", "Accept pressed but offer NOT FOUND in ViewModel")
                                             return@CallScreen
                                         }
 
-                                        // ✅ Fix for Double Ringtone: Stop immediately
                                         ringtoneManager.stop()
 
                                         webRTCClient.answerCall(
@@ -283,7 +268,6 @@ class MainActivity : ComponentActivity() {
                                         callViewModel.onCallConnected()
                                         proximitySensor.deactivate()
                                     },
-
 
                                     onToggleMute = {
                                         val newMute = !callViewModel.callState.value.isMuted
@@ -338,6 +322,7 @@ class MainActivity : ComponentActivity() {
                             else -> ContactListScreen(
                                 username = chatViewModel.currentUsername,
                                 typingStatuses = chatViewModel.typingStatuses,
+                                activeChatUser = chatViewModel.activeChatUser, // 🆕 STEP 6: Pass active chat
                                 onChatClick = { currentChatReceiver = it },
                                 onSettingsClick = { showSettings = true }
                             )
@@ -347,8 +332,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // ✅ PREVIOUS PATCH 4: Service start with connection check
-        // Service sirf tab start hogi jab enabled ho AUR already connected na ho
         val settings = SettingsManager(this)
         if (settings.isBackgroundServiceEnabled() && !WsManager.isConnected) {
             val intent = Intent(this, IntraBackgroundService::class.java)
@@ -358,22 +341,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ✅ 🆕 NEW GEMINI FIX - STEP 4: onNewIntent Override
-    // Yeh tab kaam karega jab app background me thi aur notification se naya intent aaya
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent) // ⚠️ IMPORTANT: Naya intent set karo taaki LaunchedEffect trigger ho
+        setIntent(intent)
 
-        // 🔥 Intent se sender aur photo extract karo
         val intentSender = intent.getStringExtra("incoming_sender")
         val intentPhoto = intent.getStringExtra("incoming_photo")
 
         if (intentSender != null) {
-            Log.d("MAIN", "🔄 onNewIntent: New call from $intentSender")
-
-            // 📝 NOTE: Yahan direct callViewModel.onIncomingCall() call mat karo
-            // Kyunki setIntent() ke baad LaunchedEffect automatically trigger hoga
-            // aur woh handle kar lega
+            val fullPhotoUrl = if (intentPhoto != null && !intentPhoto.startsWith("http")) {
+                SettingsManager(this@MainActivity).getBaseUrl().removeSuffix("/") + intentPhoto
+            } else {
+                intentPhoto
+            }
+            Log.d("IntraMain", "Notification se aya hai: $intentSender")
         }
     }
 
@@ -432,7 +413,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ✅ Constant definition (notification ID ke liye)
     companion object {
         const val CALL_NOTIFICATION_ID = 1001
     }

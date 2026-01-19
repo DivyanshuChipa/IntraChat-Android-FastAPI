@@ -24,9 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
-// 📸 NEW IMPORTS: Profile Photo Display ke liye
 import androidx.compose.ui.draw.clip
-import coil.request.CachePolicy // 👈 Ye zaroori hai
+import coil.request.CachePolicy
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
@@ -37,6 +36,7 @@ import coil.request.ImageRequest
 fun ContactListScreen(
     username: String,
     typingStatuses: Map<String, Boolean>,
+    activeChatUser: String? = null, // 🆕 STEP 6: Active chat detection
     onChatClick: (String) -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -67,7 +67,6 @@ fun ContactListScreen(
                         Icon(Icons.Filled.Refresh, null, tint = Color.White)
                     }
 
-                    // ⚙️ SETTINGS ICON
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Filled.Settings, null, tint = Color.White)
                     }
@@ -90,15 +89,24 @@ fun ContactListScreen(
                     icon = Icons.Filled.Group,
                     iconTint = Color(0xFF25BB4B),
                     isDark = isDark,
-                    profilePhotoUrl = null, // ✅ No photo for group
+                    profilePhotoUrl = null,
+                    unreadCount = 0, // Family Group ke liye badge nahi dikhana abhi
+                    isActive = activeChatUser == "Family Group", // 🆕 Active detection
                     onClick = { onChatClick("Family Group") }
                 )
             }
 
-            // ✅ UPDATED: User list mein profilePhoto pass kar rahe hain
+            // USER LIST
             items(contacts) { user ->
                 if (user.username != username) {
                     val isUserTyping = typingStatuses[user.username] == true
+
+                    // 🆕 STEP 6: Agar chat open hai toh badge hide karo
+                    val displayUnreadCount = if (activeChatUser == user.username) {
+                        0 // Chat open hai, badge mat dikhao
+                    } else {
+                        user.unreadCount // Chat closed hai, actual count dikhao
+                    }
 
                     ContactItem(
                         name = user.username,
@@ -107,7 +115,9 @@ fun ContactListScreen(
                         icon = Icons.Filled.Person,
                         iconTint = Color(0xFFB39DDB),
                         isDark = isDark,
-                        profilePhotoUrl = user.profilePhoto, // ✅ PASS THIS
+                        profilePhotoUrl = user.profilePhoto,
+                        unreadCount = displayUnreadCount, // 🆕 Updated logic
+                        isActive = activeChatUser == user.username, // 🆕 Active detection
                         onClick = { onChatClick(user.username) }
                     )
                 }
@@ -116,9 +126,6 @@ fun ContactListScreen(
     }
 }
 
-// ========================================
-// ✅ UPDATED: ContactItem with Profile Photo Support
-// ========================================
 @Composable
 fun ContactItem(
     name: String,
@@ -127,7 +134,9 @@ fun ContactItem(
     icon: ImageVector,
     iconTint: Color,
     isDark: Boolean,
-    profilePhotoUrl: String? = null, // ✅ NEW PARAMETER
+    profilePhotoUrl: String? = null,
+    unreadCount: Int = 0,
+    isActive: Boolean = false, // 🆕 STEP 6: Active chat indicator
     onClick: () -> Unit
 ) {
     val nameColor = if (isDark) Color.White else Color.Black
@@ -135,11 +144,16 @@ fun ContactItem(
     val typingColor = Color(0xFF8741E7)
     val avatarBg = if (isDark) Color(0xFF2A2B33) else Color(0xFFEDE7F6)
 
-    // ✅ Base URL construct karna padega (kyunki server relative path /uploads/... bhejta hai)
+    // 🆕 Active chat ka background color
+    val backgroundColor = if (isActive) {
+        if (isDark) Color(0xFF1E1E2E) else Color(0xFFE8DEF8)
+    } else {
+        Color.Transparent
+    }
+
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
 
-    // Full URL: http://192.168.x.x:8000/uploads/profiles/user.png
     val fullPhotoUrl = if (profilePhotoUrl != null) {
         settingsManager.getBaseUrl().removeSuffix("/") + profilePhotoUrl
     } else null
@@ -147,17 +161,18 @@ fun ContactItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(backgroundColor) // 🆕 Active highlight
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        // ✅ AVATAR: Agar Photo hai to wo dikhao, nahi to Icon
+        // AVATAR
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .background(avatarBg, CircleShape)
-                .clip(CircleShape), // ✅ Clip image to circle
+                .clip(CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (fullPhotoUrl != null) {
@@ -165,9 +180,7 @@ fun ContactItem(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(fullPhotoUrl)
                         .crossfade(true)
-                        // 🔥 FIX: Disk Cache band, taaki purani photo na chipki rahe
                         .diskCachePolicy(CachePolicy.DISABLED)
-                        // Memory Cache chalu rakho taaki scroll smooth rahe
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = null,
@@ -175,7 +188,6 @@ fun ContactItem(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // ✅ Photo nahi hai toh Icon dikhao
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -187,7 +199,8 @@ fun ContactItem(
 
         Spacer(Modifier.width(16.dp))
 
-        Column {
+        // NAME + TYPING/SUBTITLE
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name,
                 fontSize = 17.sp,
@@ -195,7 +208,6 @@ fun ContactItem(
                 color = nameColor
             )
 
-            // 🔥 Logic: Show "typing..." OR Subtitle
             if (isTyping) {
                 Text(
                     text = "typing...",
@@ -208,6 +220,21 @@ fun ContactItem(
                     text = subtitle,
                     fontSize = 13.sp,
                     color = subColor
+                )
+            }
+        }
+
+        // 🆕 UNREAD BADGE (Right Side)
+        if (unreadCount > 0) {
+            Badge(
+                containerColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Text(
+                    text = unreadCount.toString(),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
         }

@@ -11,6 +11,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
@@ -52,6 +55,16 @@ class ChatViewModel(
     private val TYPING_TIMEOUT = 3000L
     private var lastTypingSent = 0L
     private val TYPING_THROTTLE = 2000L
+
+    // ===============================
+    // 🆕 STEP 5A: REAL-TIME UPDATE EVENT
+    // ===============================
+
+    // Private mutable flow (internal use)
+    private val _contactUpdateEvent = MutableSharedFlow<String>()
+
+    // Public read-only flow (MainActivity subscribe karega)
+    val contactUpdateEvent: SharedFlow<String> = _contactUpdateEvent.asSharedFlow()
 
     // ===============================
     // 👤 CURRENT USER
@@ -101,6 +114,18 @@ class ChatViewModel(
         messages.clear()
         loadMessagesFromDb(user)
 
+        // 🔥 FIXED: Mark messages as read when chat opens
+        viewModelScope.launch(Dispatchers.IO) {
+            chatDao.markMessagesAsRead(user, currentUsername)
+
+            // Log for debugging
+            val unreadCount = chatDao.getUnreadCount(user, currentUsername)
+            Log.d(TAG, "✅ Chat opened: $user, Unread after mark: $unreadCount")
+
+            // Emit event to refresh contact list
+            _contactUpdateEvent.emit(user)
+        }
+
         Log.d(TAG, "Opened chat with $user")
     }
 
@@ -136,9 +161,13 @@ class ChatViewModel(
         )
 
         messages.add(msg)
-        saveToDb(msg, currentUsername, receiver)
+        saveToDb(msg, currentUsername, receiver, isRead = true) // My messages are auto-read
 
         WsManager.send(json.toString())
+
+        viewModelScope.launch {
+            _contactUpdateEvent.emit(receiver)
+        }
     }
 
     // ===============================
@@ -179,8 +208,10 @@ class ChatViewModel(
                 messages.add(msg)
             }
 
-            saveToDb(msg, currentUsername, receiver)
+            saveToDb(msg, currentUsername, receiver, isRead = true)
             WsManager.send(json.toString())
+            // 🆕 Emit event
+            _contactUpdateEvent.emit(receiver)
         }
     }
 
@@ -202,30 +233,32 @@ class ChatViewModel(
 
         WsManager.send(json.toString())
     }
+
     // ===============================
-// 📞 CALL REQUEST (Outgoing)
-// ===============================
+    // 📞 CALL REQUEST (Outgoing)
+    // ===============================
+
     fun sendCallRequest(receiver: String) {
         val myPhoto = settingsManager.getMyPhoto()
         val json = JSONObject().apply {
             put("type", "call_request")
             put("sender", currentUsername)
             put("receiver", receiver)
-            // 🔥 FIX: Photo URL bhi bhejo taaki samne wale ko dikhe
             put("profile_photo", myPhoto)
         }
         WsManager.send(json.toString())
     }
 
     // ===============================
-// 📡 RAW SIGNAL (WebRTC / Call)
-// ===============================
+    // 📡 RAW SIGNAL (WebRTC / Call)
+    // ===============================
+
     fun sendRawSignal(rawJson: String) {
         WsManager.send(rawJson)
     }
 
     // ===============================
-    // 📥 HANDLE INCOMING DATA
+    // 🔥 HANDLE INCOMING DATA
     // ===============================
 
     private suspend fun handleIncomingMessage(raw: String) {
@@ -263,13 +296,14 @@ class ChatViewModel(
 
             // 💬 Message
             val isSelf = sender == currentUsername
-            // 🔥 FIX 1: Check if message already exists in RAM (UI List)
-            // J2 jaise slow phone par DB se load hone ke baad bhi Socket event fire ho sakta hai
-            val alreadyExists = messages.any { it.timestamp == ts && it.text == json.optString("text") }
+
+            val alreadyExists = messages.any {
+                it.timestamp == ts && it.text == json.optString("text")
+            }
 
             if (alreadyExists) {
                 Log.d(TAG, "🚫 Duplicate message prevented in UI: $ts")
-                return // Yahi ruk jao, aage mat badho
+                return
             }
 
             val msg = if (type == "file") {
@@ -289,8 +323,10 @@ class ChatViewModel(
                 )
             }
 
-            // 🔥 FIX 2: Save to DB only if necessary (DB logic niche step 2 me hai)
-            saveToDb(msg, sender, json.optString("receiver"))
+           // saveToDb(msg, sender, json.optString("receiver"))
+
+            val isAlreadyRead = (activeChatUser == sender)
+            saveToDb(msg, sender, json.optString("receiver"), isRead = isAlreadyRead)
 
             val shouldShow = when {
                 activeChatUser == null -> false
@@ -305,6 +341,10 @@ class ChatViewModel(
                 }
             }
 
+            if (!isSelf) {
+                _contactUpdateEvent.emit(sender)
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "Parse error: ${e.message}", e)
         }
@@ -314,7 +354,12 @@ class ChatViewModel(
     // 💾 DATABASE
     // ===============================
 
-    private fun saveToDb(msg: ChatMessage, sender: String, receiver: String) {
+    private fun saveToDb(
+        msg: ChatMessage,
+        sender: String,
+        receiver: String,
+        isRead: Boolean = false // 🔥 NEW PARAMETER
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             chatDao.insertMessage(
                 ChatMessageEntity(
@@ -326,7 +371,8 @@ class ChatViewModel(
                     senderName = sender,
                     sender = sender,
                     receiver = receiver,
-                    timestamp = msg.timestamp
+                    timestamp = msg.timestamp,
+                    isRead = isRead  // 🔥 NEW FIELD
                 )
             )
         }

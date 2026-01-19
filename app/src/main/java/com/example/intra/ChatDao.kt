@@ -48,6 +48,41 @@ interface ChatDao {
             android.util.Log.d("ChatDao", "Duplicate message ignored in DB")
         }
     }
+    // 🆕 STEP 1A: Last Message Time Nikalne Ke Liye
+    @Query("""
+        SELECT MAX(timestamp) FROM messages 
+        WHERE (sender = :contactUsername AND receiver = :currentUser)
+           OR (sender = :currentUser AND receiver = :contactUsername)
+    """)
+    suspend fun getLastMessageTime(
+        contactUsername: String,
+        currentUser: String
+    ): Long?
+
+
+    // 🆕 STEP 1B: Unread Count Nikalne Ke Liye
+    @Query("""
+        SELECT COUNT(*) FROM messages 
+        WHERE sender = :contactUsername 
+          AND receiver = :currentUser 
+          AND isRead = 0
+    """)
+    suspend fun getUnreadCount(
+        contactUsername: String,
+        currentUser: String
+    ): Int
+    @Query("""
+        UPDATE messages 
+        SET isRead = 1
+        WHERE sender = :contactUsername 
+          AND receiver = :currentUser
+          AND isRead = 0
+    """)
+    suspend fun markMessagesAsRead(
+        contactUsername: String,
+        currentUser: String
+    )
+
 
 
     @Query("DELETE FROM messages")
