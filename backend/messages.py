@@ -1,0 +1,138 @@
+import sqlite3
+from datetime import datetime, timezone, timedelta
+
+DB_NAME = "chat_messages.db"
+
+# ✅ IST Timezone (UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def init_msg_db():
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text TEXT NOT NULL,
+        sender TEXT NOT NULL,
+        receiver TEXT NOT NULL,
+        msg_type TEXT NOT NULL,
+        file_url TEXT,
+        file_name TEXT,
+        ts INTEGER NOT NULL
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS delivery_status (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        msg_id INTEGER NOT NULL,
+        recipient TEXT NOT NULL,
+        delivered INTEGER DEFAULT 0,
+        delivered_at INTEGER,
+        FOREIGN KEY (msg_id) REFERENCES messages(id)
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+def save_message(text, sender, receiver, msg_type="text", file_url=None, file_name=None):
+    # ✅ IST timestamp
+    ts = int(datetime.now(IST).timestamp() * 1000)
+    
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("""
+    INSERT INTO messages (text, sender, receiver, msg_type, file_url, file_name, ts)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (text, sender, receiver, msg_type, file_url, file_name, ts))
+
+    msg_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return msg_id
+
+def create_delivery_entries(msg_id, recipients: list):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    for user in recipients:
+        cur.execute("""
+        INSERT INTO delivery_status (msg_id, recipient, delivered)
+        VALUES (?, ?, 0)
+        """, (msg_id, user))
+
+    conn.commit()
+    conn.close()
+
+def get_undelivered_messages(username: str):
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT m.*, d.id AS delivery_id
+    FROM messages m
+    JOIN delivery_status d ON m.id = d.msg_id
+    WHERE d.recipient = ? AND d.delivered = 0
+    ORDER BY m.ts ASC
+    """, (username,))
+
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def mark_delivered(delivery_id: int):
+    ts = int(datetime.now(IST).timestamp() * 1000)
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("""
+    UPDATE delivery_status
+    SET delivered = 1, delivered_at = ?
+    WHERE id = ?
+    """, (ts, delivery_id))
+
+    conn.commit()
+    conn.close()
+
+def mark_message_delivered_for_user(msg_id: int, recipient: str):
+    ts = int(datetime.now(IST).timestamp() * 1000)
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("""
+    UPDATE delivery_status
+    SET delivered = 1, delivered_at = ?
+    WHERE msg_id = ? AND recipient = ?
+    """, (ts, msg_id, recipient))
+
+    conn.commit()
+    conn.close()
+
+def get_recent_messages(limit: int = 200):
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT * FROM messages ORDER BY ts DESC LIMIT ?
+    """, (limit,))
+    
+    rows = cur.fetchall()
+    conn.close()
+
+    return [
+        {
+            "text": row["text"],
+            "sender": row["sender"],
+            "receiver": row["receiver"],
+            "type": row["msg_type"],
+            "fileUrl": row["file_url"],
+            "fileName": row["file_name"],
+            "timestamp": row["ts"]
+        }
+        for row in rows
+    ]
