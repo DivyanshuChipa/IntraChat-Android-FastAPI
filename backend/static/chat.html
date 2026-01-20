@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intra Web</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; }
+        
+        /* Left Sidebar: Contacts */
+        #sidebar { width: 30%; background: #f0f0f0; border-right: 1px solid #ccc; display: flex; flex-direction: column; }
+        #my-profile { padding: 15px; background: #008080; color: white; font-weight: bold; }
+        #user-list { flex: 1; overflow-y: auto; }
+        .user-item { padding: 10px; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; }
+        .user-item:hover { background: #e0e0e0; }
+        .user-item.active { background: #d0d0d0; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #ccc; }
+
+        /* Right Side: Chat */
+        #chat-area { flex: 1; display: flex; flex-direction: column; }
+        #chat-header { padding: 15px; background: #eee; border-bottom: 1px solid #ccc; font-weight: bold; }
+        #messages { flex: 1; padding: 10px; overflow-y: auto; background: #fff; }
+        #input-area { padding: 10px; border-top: 1px solid #ccc; display: flex; }
+        #msg { flex: 1; padding: 10px; }
+        button { padding: 10px 20px; background: #008080; color: white; border: none; cursor: pointer; }
+        
+        /* Message Bubbles */
+        .msg-row { display: flex; margin-bottom: 5px; }
+        .msg-bubble { padding: 8px 12px; border-radius: 10px; max-width: 70%; }
+        .sent { justify-content: flex-end; }
+        .sent .msg-bubble { background: #dcf8c6; }
+        .received { justify-content: flex-start; }
+        .received .msg-bubble { background: #e0e0e0; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div id="my-profile">loading...</div>
+        <div id="user-list"></div>
+    </div>
+
+    <div id="chat-area">
+        <div id="chat-header">Select a user to chat</div>
+        <div id="messages"></div>
+        <div id="input-area">
+            <input id="msg" placeholder="Type message..." onkeypress="handleEnter(event)">
+            <button onclick="sendMsg()">Send</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
