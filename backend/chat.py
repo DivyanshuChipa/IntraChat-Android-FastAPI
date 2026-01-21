@@ -21,10 +21,12 @@ SIGNAL_TYPES = {
     "webrtc_offer", "webrtc_answer", "ice_candidate"
 }
 
-async def send_to_user(username: str, message: str):
+async def send_to_user(username: str, message: str, exclude_ws: WebSocket = None):
     if username in connected_clients:
         to_remove = []
         for ws in connected_clients[username]:
+            if ws == exclude_ws:
+                continue
             try:
                 await ws.send_text(message)
             except Exception:
@@ -80,7 +82,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     # Isko DB me SAVE NAHI karna hai
                     # Bas receiver ko forward kar do
                     if receiver:
-                        await send_to_user(receiver, final_raw)
+                        await send_to_user(receiver, final_raw, exclude_ws=ws)
                         print(f"📡 Signal {msg_type} from {sender} to {receiver}")
                     
                     continue # Loop wapas ghuma do, niche save logic me mat jao
@@ -92,7 +94,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 # Typing (Already handled, but can be simplified)
                 if msg_type == "typing":
                     if receiver:
-                        await send_to_user(receiver, final_raw)
+                        await send_to_user(receiver, final_raw, exclude_ws=ws)
                     continue
 
                 # File / Text Logic
@@ -129,7 +131,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                         mark_message_delivered_for_user(msg_id, target)
 
                 # Sync with sender's other devices
-                await send_to_user(sender, final_raw)
+                await send_to_user(sender, final_raw, exclude_ws=ws)
             
             except Exception as e:
                 print(f"Error processing message: {e}")

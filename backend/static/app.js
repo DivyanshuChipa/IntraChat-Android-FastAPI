@@ -39,9 +39,22 @@ if (window.location.pathname.includes("chat.html")) {
     window.location = "/index.html";
   } else {
     document.getElementById("profile-name").innerText = "👤 " + myUsername;
+    initTheme();
     loadUsers();
     connectWS();
   }
+}
+
+function initTheme() {
+  const theme = localStorage.getItem("theme") || "light";
+  document.body.setAttribute("data-theme", theme);
+}
+
+function toggleTheme() {
+  const current = document.body.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  document.body.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
 }
 
 function toggleSettings() {
@@ -172,11 +185,52 @@ function addUserToList(user) {
 /***********************
  * SELECT CHAT
  ***********************/
-function selectUser(name) {
+async function selectUser(name) {
   currentReceiver = name;
-  document.getElementById("chat-header").innerText =
-    "Chat with: " + name;
+  document.getElementById("chat-header").innerText = name;
   document.getElementById("messages").innerHTML = "";
+
+  // Highlight active user
+  const userItems = document.querySelectorAll(".user-item");
+  userItems.forEach(item => {
+    if (item.innerText.includes(name)) {
+      item.classList.add("active");
+    } else {
+      item.classList.remove("active");
+    }
+  });
+
+  loadHistory();
+}
+
+async function loadHistory() {
+  try {
+    const res = await fetch("/messages");
+    const data = await res.json();
+
+    // The backend returns messages in descending order (newest first)
+    // We want to display them in chronological order
+    const filteredMsgs = data.filter(m => {
+      if (currentReceiver === "Family Group") {
+        return m.receiver === "Family Group";
+      } else {
+        // Private chat: either (Me -> Him) or (Him -> Me)
+        return (m.sender === myUsername && m.receiver === currentReceiver) ||
+               (m.sender === currentReceiver && m.receiver === myUsername);
+      }
+    }).reverse();
+
+    filteredMsgs.forEach(m => {
+      displayMessage(
+        m.sender,
+        m.text || "📎 Shared File: " + (m.fileName || "file"),
+        m.sender === myUsername ? "sent" : "received",
+        m.fileUrl
+      );
+    });
+  } catch (e) {
+    console.error("Error loading history:", e);
+  }
 }
 
 /***********************
@@ -226,7 +280,7 @@ function connectWS() {
         if (isRelevant) {
           displayMessage(
             msg.sender,
-            msg.text || "📎 File: " + (msg.filename || "received"),
+            msg.text || "📎 Shared File: " + (msg.filename || "received"),
             msg.sender === myUsername ? "sent" : "received",
             msg.url
           );
@@ -268,7 +322,7 @@ function sendMsg() {
 
   ws.send(JSON.stringify(payload));
 
-  // displayMessage(myUsername, text, "sent"); // Server will echo it back
+  displayMessage(myUsername, text, "sent");
   input.value = "";
 }
 
@@ -295,7 +349,7 @@ async function sendFile() {
         filename: data.filename
       };
       ws.send(JSON.stringify(payload));
-      // displayMessage(myUsername, "📎 Shared File: " + data.filename, "sent", data.url); // Server echo
+      displayMessage(myUsername, "📎 Shared File: " + data.filename, "sent", data.url);
     }
   } catch (e) {
     console.error("File upload error:", e);
@@ -315,7 +369,13 @@ function displayMessage(sender, text, type, fileUrl = null) {
 
   const displayName = sender === myUsername ? "Me" : sender;
 
-  let content = `<b>${displayName}:</b> `;
+  let content = "";
+  if (currentReceiver === "Family Group" || sender !== myUsername) {
+    content += `<b>${displayName}:</b> `;
+  } else {
+    content += `<b>Me:</b> `;
+  }
+
   if (fileUrl) {
     if (isImage(fileUrl)) {
       content += `<br><img src="${fileUrl}" style="max-width: 200px; border-radius: 5px; cursor: pointer" onclick="window.open('${fileUrl}')"><br>`;
@@ -345,7 +405,7 @@ function isImage(url) {
 let typingTimeout;
 function showTypingIndicator(sender) {
   const header = document.getElementById("chat-header");
-  const originalText = "Chat with: " + sender;
+  const originalText = sender;
   header.innerText = sender + " is typing...";
 
   clearTimeout(typingTimeout);
@@ -377,4 +437,3 @@ function handleEnter(e) {
     sendMsg();
   }
 }
-
