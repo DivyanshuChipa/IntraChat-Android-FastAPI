@@ -9,7 +9,11 @@
         
         /* Left Sidebar: Contacts */
         #sidebar { width: 30%; background: #f0f0f0; border-right: 1px solid #ccc; display: flex; flex-direction: column; }
-        #my-profile { padding: 15px; background: #008080; color: white; font-weight: bold; }
+        #my-profile { padding: 15px; background: #008080; color: white; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
+        #settings-panel { padding: 15px; background: #e0e0e0; border-bottom: 1px solid #ccc; display: none; flex-direction: column; align-items: center; }
+        #settings-panel img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid #008080; }
+        #settings-panel button { width: 100%; margin-top: 5px; font-size: 14px; }
+        .btn-delete { background: #ff4d4d !important; }
         #user-list { flex: 1; overflow-y: auto; }
         .user-item { padding: 10px; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; }
         .user-item:hover { background: #e0e0e0; }
@@ -36,7 +40,17 @@
 <body>
 
     <div id="sidebar">
-        <div id="my-profile">loading...</div>
+        <div id="my-profile">
+            <span id="profile-name">loading...</span>
+            <button onclick="toggleSettings()" style="padding: 5px 10px; font-size: 12px;">⚙️</button>
+        </div>
+        <div id="settings-panel">
+            <img id="my-avatar" src="https://via.placeholder.com/80" alt="Profile">
+            <input type="file" id="photo-input" style="display:none" accept="image/*" onchange="uploadPhoto()">
+            <button onclick="document.getElementById('photo-input').click()">Change Photo</button>
+            <button onclick="logout()">Logout</button>
+            <button class="btn-delete" onclick="deleteAccount()">Delete Account</button>
+        </div>
         <div id="user-list"></div>
     </div>
 

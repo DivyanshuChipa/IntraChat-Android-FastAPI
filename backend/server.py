@@ -128,3 +128,5 @@ app.include_router(chat.router)
 app.include_router(files.router)
 app.include_router(calls.router, prefix="/calls")
 app.include_router(profiles.router, prefix="/profile", tags=["Profile"])  # 👈 3. Add Profile Router
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")

@@ -16,6 +16,7 @@ async function login() {
 
     if (data.success) {
       localStorage.setItem("username", data.username);
+      localStorage.setItem("token", data.token);
       window.location = "/chat.html";
     } else {
       document.getElementById("error").innerText = "Login failed";
@@ -37,9 +38,78 @@ if (window.location.pathname.includes("chat.html")) {
   if (!myUsername) {
     window.location = "/index.html";
   } else {
-    document.getElementById("my-profile").innerText = "👤 " + myUsername;
+    document.getElementById("profile-name").innerText = "👤 " + myUsername;
     loadUsers();
     connectWS();
+  }
+}
+
+function toggleSettings() {
+  const panel = document.getElementById("settings-panel");
+  panel.style.display = panel.style.display === "flex" ? "none" : "flex";
+}
+
+async function logout() {
+  localStorage.removeItem("username");
+  localStorage.removeItem("token");
+  window.location = "/index.html";
+}
+
+async function uploadPhoto() {
+  const fileInput = document.getElementById("photo-input");
+  if (fileInput.files.length === 0) return;
+
+  const token = localStorage.getItem("token");
+  const formData = new FormData();
+  formData.append("username", myUsername);
+  formData.append("file", fileInput.files[0]);
+
+  try {
+    const res = await fetch("/profile/upload_profile", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById("my-avatar").src = data.profile_photo + "?t=" + Date.now();
+      alert("Profile photo updated!");
+      loadUsers(); // refresh user list to show new photo
+    } else {
+      alert("Upload failed");
+    }
+  } catch (e) {
+    console.error("Upload error:", e);
+    alert("Error uploading photo");
+  }
+}
+
+async function deleteAccount() {
+  const password = prompt("Enter your password to confirm account deletion:");
+  if (!password) return;
+
+  if (!confirm("Are you sure you want to permanently delete your account?")) return;
+
+  const token = localStorage.getItem("token");
+  try {
+    const res = await fetch("/delete_account", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ username: myUsername, password: password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("Account deleted.");
+      logout();
+    } else {
+      alert("Error: " + data.message);
+    }
+  } catch (e) {
+    console.error("Delete error:", e);
+    alert("Server error during deletion");
   }
 }
 
@@ -68,6 +138,11 @@ async function loadUsers() {
     data.users.forEach(user => {
       if (user.username !== myUsername) {
         addUserToList(user);
+      } else {
+        // Current user
+        if (user.profile_photo) {
+          document.getElementById("my-avatar").src = user.profile_photo;
+        }
       }
     });
 
