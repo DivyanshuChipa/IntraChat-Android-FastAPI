@@ -11,40 +11,85 @@ from messages import (
 )
 
 router = APIRouter()
-connected_clients = {}
+connected_clients = {}  # username -> set of websockets
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
 # ✅ List of messages that should NOT be saved to DB
 SIGNAL_TYPES = {
-    "call_request", "call_accept", "call_reject", "call_end","call_rejected",
+    "call_request", "call_accept", "call_reject", "call_end", "call_rejected",
     "webrtc_offer", "webrtc_answer", "ice_candidate"
 }
 
-async def send_to_user(username: str, message: str):
+async def send_to_user(username: str, message: str, exclude_ws: WebSocket = None):
+    """
+    Send message to all devices of a user
+    exclude_ws: Skip this WebSocket (to avoid echo on sender device)
+    """
     if username in connected_clients:
-        try:
-            await connected_clients[username].send_text(message)
-            return True
-        except Exception:
+        to_remove = []
+        sent_count = 0
+
+        for ws in connected_clients[username]:
+            if ws == exclude_ws:
+                continue
+            try:
+                await ws.send_text(message)
+                sent_count += 1
+            except Exception:
+                to_remove.append(ws)
+
+        # Cleanup dead connections
+        for ws in to_remove:
+            connected_clients[username].discard(ws)
+
+        # If no devices left, remove user entry
+        if not connected_clients[username]:
             connected_clients.pop(username, None)
+            return False
+
+        return sent_count > 0
     return False
 
 @router.websocket("/ws/{username}")
 async def websocket_endpoint(ws: WebSocket, username: str):
     await ws.accept()
-    connected_clients[username] = ws
 
-    # 1. Send offline messages (Same as before)
+    # Add this connection to user's device set
+    if username not in connected_clients:
+        connected_clients[username] = set()
+    connected_clients[username].add(ws)
+
+    print(f"✅ {username} connected (Total devices: {len(connected_clients[username])})")
+
+    # 1. Send offline messages
     pending = get_undelivered_messages(username)
     for msg in pending:
-        # ... (Offline msg logic same rahega) ...
-        # (Short karne ke liye yahan code skip kar raha hu, purana wala hi rahega)
-        pass 
+        try:
+            offline_data = {
+                "type": msg.get("msg_type", "text"),
+                "text": msg.get("text", ""),
+                "sender": msg.get("sender", "Unknown"),
+                "receiver": msg.get("receiver", username),
+                "timestamp": msg.get("ts", 0),
+                "url": msg.get("file_url"),
+                "filename": msg.get("file_name")
+            }
+            await ws.send_text(json.dumps(offline_data))
+
+            # Mark as delivered
+            delivery_id = msg.get("delivery_id")
+            if delivery_id:
+                mark_delivered(delivery_id)
+        except Exception as e:
+            print(f"Error sending offline message: {e}")
 
     try:
+        # Send connection confirmation
         await ws.send_text(json.dumps({
-            "type": "status", "text": "Connected", "user": username
+            "type": "status",
+            "text": "Connected",
+            "user": username
         }))
 
         while True:
@@ -55,40 +100,32 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 parsed = json.loads(raw)
                 parsed["timestamp"] = int(datetime.now(IST).timestamp() * 1000)
                 
-                # Receiver aur Type nikalo
                 receiver = parsed.get("receiver")
                 msg_type = parsed.get("type", "text")
                 
-                # Final JSON jo bhejna hai
                 final_raw = json.dumps(parsed)
 
                 # ==========================================
-                # 🚀 WEBRTC SIGNALING LOGIC (NEW)
+                # 🚀 WEBRTC SIGNALING LOGIC
                 # ==========================================
                 if msg_type in SIGNAL_TYPES:
-                    # Isko DB me SAVE NAHI karna hai
-                    # Bas receiver ko forward kar do
-                    if receiver and receiver in connected_clients:
-                        await connected_clients[receiver].send_text(final_raw)
+                    # Don't save to DB, just forward
+                    if receiver:
+                        await send_to_user(receiver, final_raw, exclude_ws=ws)
                         print(f"📡 Signal {msg_type} from {sender} to {receiver}")
-                    else:
-                        # Agar user online nahi hai, toh call request fail ho jayegi
-                        # Hum sender ko bata sakte hain (Optional)
-                        print(f"⚠️ User {receiver} offline for call.")
-                    
-                    continue # Loop wapas ghuma do, niche save logic me mat jao
-                
-                # ==========================================
-                # 💬 NORMAL CHAT LOGIC (OLD)
-                # ==========================================
-
-                # Typing (Already handled, but can be simplified)
-                if msg_type == "typing":
-                    if receiver and receiver in connected_clients:
-                        await connected_clients[receiver].send_text(final_raw)
                     continue
 
-                # File / Text Logic
+                # ==========================================
+                # ⌨️ TYPING INDICATOR
+                # ==========================================
+                if msg_type == "typing":
+                    if receiver:
+                        await send_to_user(receiver, final_raw, exclude_ws=ws)
+                    continue
+
+                # ==========================================
+                # 💬 NORMAL CHAT LOGIC (Text/File)
+                # ==========================================
                 file_url = parsed.get("url")
                 file_name = parsed.get("filename")
                 text_content = parsed.get("text", "")
@@ -96,7 +133,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 if msg_type == "file":
                     text_content = f"Shared File: {file_name}"
 
-                # Sirf Text/File hi DB me save honge
+                # Save to DB
                 msg_id = save_message(
                     text=text_content,
                     sender=sender,
@@ -106,7 +143,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     file_name=file_name
                 )
                 
-                # Delivery Logic (Same as before)
+                # Determine recipients
                 recipients = []
                 if receiver == "Family Group":
                     all_users = get_all_users()
@@ -116,16 +153,27 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 
                 create_delivery_entries(msg_id, recipients)
 
+                # ✅ FIXED: Send to all recipients with exclude
                 for target in recipients:
-                    if target in connected_clients:
-                        sent = await send_to_user(target, final_raw)
-                        if sent:
-                            mark_message_delivered_for_user(msg_id, target)
+                    sent = await send_to_user(target, final_raw, exclude_ws=ws)
+                    if sent:
+                        mark_message_delivered_for_user(msg_id, target)
+
+                # ✅ FIXED: Always sync sender's other devices
+                await send_to_user(sender, final_raw, exclude_ws=ws)
             
             except Exception as e:
-                print(f"Error processing message: {e}")
+                print(f"❌ Error processing message: {e}")
                 continue
 
     except WebSocketDisconnect:
-        connected_clients.pop(username, None)
-        print(f"🔴 {username} disconnected")
+        # Remove only this connection
+        if username in connected_clients:
+            connected_clients[username].discard(ws)
+            remaining = len(connected_clients[username])
+
+            if not connected_clients[username]:
+                connected_clients.pop(username, None)
+                print(f"🔴 {username} fully disconnected")
+            else:
+                print(f"🔴 {username} device disconnected ({remaining} devices remaining)")

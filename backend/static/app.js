@@ -39,9 +39,22 @@ if (window.location.pathname.includes("chat.html")) {
     window.location = "/index.html";
   } else {
     document.getElementById("profile-name").innerText = "👤 " + myUsername;
+    initTheme();
     loadUsers();
     connectWS();
   }
+}
+
+function initTheme() {
+  const theme = localStorage.getItem("theme") || "light";
+  document.body.setAttribute("data-theme", theme);
+}
+
+function toggleTheme() {
+  const current = document.body.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  document.body.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
 }
 
 function toggleSettings() {
@@ -94,7 +107,7 @@ async function deleteAccount() {
   try {
     const res = await fetch("/delete_account", {
       method: "POST",
-      headers: {
+      headers: { 
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
@@ -172,11 +185,52 @@ function addUserToList(user) {
 /***********************
  * SELECT CHAT
  ***********************/
-function selectUser(name) {
+async function selectUser(name) {
   currentReceiver = name;
-  document.getElementById("chat-header").innerText =
-    "Chat with: " + name;
+  document.getElementById("chat-header").innerText = name;
   document.getElementById("messages").innerHTML = "";
+  
+  // Highlight active user
+  const userItems = document.querySelectorAll(".user-item");
+  userItems.forEach(item => {
+    if (item.innerText.includes(name)) {
+      item.classList.add("active");
+    } else {
+      item.classList.remove("active");
+    }
+  });
+
+  loadHistory();
+}
+
+async function loadHistory() {
+  try {
+    const res = await fetch("/messages");
+    const data = await res.json();
+    
+    // The backend returns messages in descending order (newest first)
+    // We want to display them in chronological order
+    const filteredMsgs = data.filter(m => {
+      if (currentReceiver === "Family Group") {
+        return m.receiver === "Family Group";
+      } else {
+        // Private chat: either (Me -> Him) or (Him -> Me)
+        return (m.sender === myUsername && m.receiver === currentReceiver) ||
+               (m.sender === currentReceiver && m.receiver === myUsername);
+      }
+    }).reverse();
+
+    filteredMsgs.forEach(m => {
+      displayMessage(
+        m.sender,
+        m.text || "📎 Shared File: " + (m.fileName || "file"),
+        m.sender === myUsername ? "sent" : "received",
+        m.fileUrl
+      );
+    });
+  } catch (e) {
+    console.error("Error loading history:", e);
+  }
 }
 
 /***********************
@@ -198,26 +252,39 @@ function connectWS() {
       return;
     }
 
+    // Only display if relevant to current chat
+    const isRelevant = 
+      (currentReceiver === "Family Group" && msg.receiver === "Family Group") ||
+      (msg.sender === currentReceiver && msg.receiver === myUsername) ||
+      (msg.sender === myUsername && msg.receiver === currentReceiver);
+
     switch (msg.type) {
 
       case "text":
-        displayMessage(
-          msg.sender,
-          msg.text || msg.message || "",
-          msg.sender === myUsername ? "sent" : "received"
-        );
+        if (isRelevant) {
+          displayMessage(
+            msg.sender,
+            msg.text || msg.message || "",
+            msg.sender === myUsername ? "sent" : "received"
+          );
+        }
         break;
 
       case "typing":
-        // ignore for now (future typing UI)
+        if (msg.sender === currentReceiver) {
+          showTypingIndicator(msg.sender);
+        }
         break;
 
       case "file":
-        displayMessage(
-          msg.sender,
-          "📎 File: " + (msg.file_name || "received"),
-          "received"
-        );
+        if (isRelevant) {
+          displayMessage(
+            msg.sender,
+            msg.text || "📎 Shared File: " + (msg.filename || "received"),
+            msg.sender === myUsername ? "sent" : "received",
+            msg.url
+          );
+        }
         break;
 
       case "status":
@@ -255,20 +322,71 @@ function sendMsg() {
 
   ws.send(JSON.stringify(payload));
 
-  displayMessage("Me", text, "sent");
+  displayMessage(myUsername, text, "sent");
   input.value = "";
+}
+
+async function sendFile() {
+  const fileInput = document.getElementById("file-input");
+  if (fileInput.files.length === 0) return;
+
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("/upload", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+    
+    if (data.url) {
+      const payload = {
+        type: "file",
+        receiver: currentReceiver,
+        url: data.url,
+        filename: data.filename
+      };
+      ws.send(JSON.stringify(payload));
+      displayMessage(myUsername, "📎 Shared File: " + data.filename, "sent", data.url);
+    }
+  } catch (e) {
+    console.error("File upload error:", e);
+    alert("Error uploading file");
+  }
 }
 
 /***********************
  * DISPLAY MESSAGE
  ***********************/
-function displayMessage(sender, text, type) {
+function displayMessage(sender, text, type, fileUrl = null) {
   const row = document.createElement("div");
   row.className = `msg-row ${type}`;
 
   const bubble = document.createElement("div");
   bubble.className = "msg-bubble";
-  bubble.innerHTML = `<b>${sender}:</b> ${text}`;
+  
+  const displayName = sender === myUsername ? "Me" : sender;
+  
+  let content = "";
+  if (currentReceiver === "Family Group" || sender !== myUsername) {
+    content += `<b>${displayName}:</b> `;
+  } else {
+    content += `<b>Me:</b> `;
+  }
+
+  if (fileUrl) {
+    if (isImage(fileUrl)) {
+      content += `<br><img src="${fileUrl}" style="max-width: 200px; border-radius: 5px; cursor: pointer" onclick="window.open('${fileUrl}')"><br>`;
+    } else {
+      content += `<a href="${fileUrl}" target="_blank" style="color: inherit;">${text}</a>`;
+    }
+  } else {
+    content += text;
+  }
+  
+  bubble.innerHTML = content;
 
   row.appendChild(bubble);
   document.getElementById("messages").appendChild(row);
@@ -278,11 +396,44 @@ function displayMessage(sender, text, type) {
 }
 
 /***********************
+ * HELPERS
+ ***********************/
+function isImage(url) {
+  return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url);
+}
+
+let typingTimeout;
+function showTypingIndicator(sender) {
+  const header = document.getElementById("chat-header");
+  const originalText = sender;
+  header.innerText = sender + " is typing...";
+  
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    header.innerText = originalText;
+  }, 3000);
+}
+
+let lastTypingSent = 0;
+function handleTyping() {
+  if (!ws || !currentReceiver || currentReceiver === "Family Group") return;
+  
+  const now = Date.now();
+  if (now - lastTypingSent > 2000) { // Throttle typing notifications
+    ws.send(JSON.stringify({
+      type: "typing",
+      receiver: currentReceiver
+    }));
+    lastTypingSent = now;
+  }
+}
+
+/***********************
  * ENTER KEY HANDLER
  ***********************/
 function handleEnter(e) {
+  handleTyping();
   if (e.key === "Enter") {
     sendMsg();
   }
 }
-
