@@ -107,7 +107,7 @@ async function deleteAccount() {
   try {
     const res = await fetch("/delete_account", {
       method: "POST",
-      headers: {
+      headers: { 
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
@@ -189,7 +189,7 @@ async function selectUser(name) {
   currentReceiver = name;
   document.getElementById("chat-header").innerText = name;
   document.getElementById("messages").innerHTML = "";
-
+  
   // Highlight active user
   const userItems = document.querySelectorAll(".user-item");
   userItems.forEach(item => {
@@ -207,7 +207,7 @@ async function loadHistory() {
   try {
     const res = await fetch("/messages");
     const data = await res.json();
-
+    
     // The backend returns messages in descending order (newest first)
     // We want to display them in chronological order
     const filteredMsgs = data.filter(m => {
@@ -253,7 +253,7 @@ function connectWS() {
     }
 
     // Only display if relevant to current chat
-    const isRelevant =
+    const isRelevant = 
       (currentReceiver === "Family Group" && msg.receiver === "Family Group") ||
       (msg.sender === currentReceiver && msg.receiver === myUsername) ||
       (msg.sender === myUsername && msg.receiver === currentReceiver);
@@ -340,7 +340,7 @@ async function sendFile() {
       body: formData
     });
     const data = await res.json();
-
+    
     if (data.url) {
       const payload = {
         type: "file",
@@ -366,9 +366,9 @@ function displayMessage(sender, text, type, fileUrl = null) {
 
   const bubble = document.createElement("div");
   bubble.className = "msg-bubble";
-
+  
   const displayName = sender === myUsername ? "Me" : sender;
-
+  
   let content = "";
   if (currentReceiver === "Family Group" || sender !== myUsername) {
     content += `<b>${displayName}:</b> `;
@@ -385,7 +385,7 @@ function displayMessage(sender, text, type, fileUrl = null) {
   } else {
     content += text;
   }
-
+  
   bubble.innerHTML = content;
 
   row.appendChild(bubble);
@@ -407,7 +407,7 @@ function showTypingIndicator(sender) {
   const header = document.getElementById("chat-header");
   const originalText = sender;
   header.innerText = sender + " is typing...";
-
+  
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
     header.innerText = originalText;
@@ -417,7 +417,7 @@ function showTypingIndicator(sender) {
 let lastTypingSent = 0;
 function handleTyping() {
   if (!ws || !currentReceiver || currentReceiver === "Family Group") return;
-
+  
   const now = Date.now();
   if (now - lastTypingSent > 2000) { // Throttle typing notifications
     ws.send(JSON.stringify({
