@@ -5,38 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Intra Web</title>
     <style>
-        body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; }
+        :root {
+            --primary-color: #008080;
+            --bg-dark: #1e1212;
+            --sidebar-bg: #2d1b1b;
+            --bubble-sent: #f9a1a1; /* Pinkish like Android screenshot */
+            --bubble-received: #3d2b2b;
+            --text-light: #f0f0f0;
+        }
+        body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; background: var(--bg-dark); color: var(--text-light); }
         
         /* Left Sidebar: Contacts */
-        #sidebar { width: 30%; background: #f0f0f0; border-right: 1px solid #ccc; display: flex; flex-direction: column; }
-        #my-profile { padding: 15px; background: #008080; color: white; font-weight: bold; }
+        #sidebar { width: 30%; background: var(--sidebar-bg); border-right: 1px solid #444; display: flex; flex-direction: column; }
+        #my-profile { padding: 15px; background: var(--primary-color); color: white; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
+        #settings-panel { padding: 15px; background: #3d2b2b; border-bottom: 1px solid #444; display: none; flex-direction: column; align-items: center; }
+        #settings-panel img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid var(--primary-color); }
+        #settings-panel button { width: 100%; margin-top: 5px; font-size: 14px; border-radius: 4px; }
+        .btn-delete { background: #ff4d4d !important; }
         #user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 10px; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; }
-        .user-item:hover { background: #e0e0e0; }
-        .user-item.active { background: #d0d0d0; }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #ccc; }
+        .user-item { padding: 10px; border-bottom: 1px solid #444; cursor: pointer; display: flex; align-items: center; }
+        .user-item:hover { background: #3d2b2b; }
+        .user-item.active { background: #4d3b3b; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #555; }
 
         /* Right Side: Chat */
-        #chat-area { flex: 1; display: flex; flex-direction: column; }
-        #chat-header { padding: 15px; background: #eee; border-bottom: 1px solid #ccc; font-weight: bold; }
-        #messages { flex: 1; padding: 10px; overflow-y: auto; background: #fff; }
-        #input-area { padding: 10px; border-top: 1px solid #ccc; display: flex; }
-        #msg { flex: 1; padding: 10px; }
-        button { padding: 10px 20px; background: #008080; color: white; border: none; cursor: pointer; }
+        #chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-dark); }
+        #chat-header { padding: 15px; background: #2d1b1b; border-bottom: 1px solid #444; font-weight: bold; }
+        #messages { flex: 1; padding: 10px; overflow-y: auto; background: var(--bg-dark); display: flex; flex-direction: column; }
+        #input-area { padding: 10px; border-top: 1px solid #444; display: flex; align-items: center; }
+        #msg { flex: 1; padding: 10px; border: 1px solid #555; border-radius: 20px; margin: 0 10px; background: #2d1b1b; color: white; }
+        button { padding: 10px 20px; background: var(--primary-color); color: white; border: none; cursor: pointer; border-radius: 4px; }
         
         /* Message Bubbles */
-        .msg-row { display: flex; margin-bottom: 5px; }
-        .msg-bubble { padding: 8px 12px; border-radius: 10px; max-width: 70%; }
+        .msg-row { display: flex; margin-bottom: 10px; width: 100%; }
+        .msg-bubble { padding: 10px 15px; border-radius: 18px; max-width: 70%; font-size: 14px; line-height: 1.4; position: relative; }
         .sent { justify-content: flex-end; }
-        .sent .msg-bubble { background: #dcf8c6; }
+        .sent .msg-bubble { background: var(--bubble-sent); color: #000; border-bottom-right-radius: 4px; }
         .received { justify-content: flex-start; }
-        .received .msg-bubble { background: #e0e0e0; }
+        .received .msg-bubble { background: var(--bubble-received); color: white; border-bottom-left-radius: 4px; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <div id="my-profile">loading...</div>
+        <div id="my-profile">
+            <span id="profile-name">loading...</span>
+            <button onclick="toggleSettings()" style="padding: 5px 10px; font-size: 12px;">⚙️</button>
+        </div>
+        <div id="settings-panel">
+            <img id="my-avatar" src="https://via.placeholder.com/80" alt="Profile">
+            <input type="file" id="photo-input" style="display:none" accept="image/*" onchange="uploadPhoto()">
+            <button onclick="document.getElementById('photo-input').click()">Change Photo</button>
+            <button onclick="logout()">Logout</button>
+            <button class="btn-delete" onclick="deleteAccount()">Delete Account</button>
+        </div>
         <div id="user-list"></div>
     </div>
 
@@ -44,8 +66,10 @@
         <div id="chat-header">Select a user to chat</div>
         <div id="messages"></div>
         <div id="input-area">
-            <input id="msg" placeholder="Type message..." onkeypress="handleEnter(event)">
-            <button onclick="sendMsg()">Send</button>
+            <button onclick="document.getElementById('file-input').click()" style="background: transparent; color: var(--text-light); font-size: 20px;">📎</button>
+            <input type="file" id="file-input" style="display:none" onchange="sendFile()">
+            <input id="msg" placeholder="Type something..." onkeypress="handleEnter(event)">
+            <button onclick="sendMsg()" style="background: transparent; padding: 0;"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg></button>
         </div>
     </div>
 

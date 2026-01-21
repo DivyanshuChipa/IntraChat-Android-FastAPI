@@ -11,7 +11,7 @@ from messages import (
 )
 
 router = APIRouter()
-connected_clients = {}
+connected_clients = {} # username -> set of websockets
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -23,17 +23,28 @@ SIGNAL_TYPES = {
 
 async def send_to_user(username: str, message: str):
     if username in connected_clients:
-        try:
-            await connected_clients[username].send_text(message)
-            return True
-        except Exception:
+        to_remove = []
+        for ws in connected_clients[username]:
+            try:
+                await ws.send_text(message)
+            except Exception:
+                to_remove.append(ws)
+
+        for ws in to_remove:
+            connected_clients[username].discard(ws)
+
+        if not connected_clients[username]:
             connected_clients.pop(username, None)
+            return False
+        return True
     return False
 
 @router.websocket("/ws/{username}")
 async def websocket_endpoint(ws: WebSocket, username: str):
     await ws.accept()
-    connected_clients[username] = ws
+    if username not in connected_clients:
+        connected_clients[username] = set()
+    connected_clients[username].add(ws)
 
     # 1. Send offline messages (Same as before)
     pending = get_undelivered_messages(username)
@@ -68,13 +79,9 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 if msg_type in SIGNAL_TYPES:
                     # Isko DB me SAVE NAHI karna hai
                     # Bas receiver ko forward kar do
-                    if receiver and receiver in connected_clients:
-                        await connected_clients[receiver].send_text(final_raw)
+                    if receiver:
+                        await send_to_user(receiver, final_raw)
                         print(f"📡 Signal {msg_type} from {sender} to {receiver}")
-                    else:
-                        # Agar user online nahi hai, toh call request fail ho jayegi
-                        # Hum sender ko bata sakte hain (Optional)
-                        print(f"⚠️ User {receiver} offline for call.")
                     
                     continue # Loop wapas ghuma do, niche save logic me mat jao
                 
@@ -84,8 +91,8 @@ async def websocket_endpoint(ws: WebSocket, username: str):
 
                 # Typing (Already handled, but can be simplified)
                 if msg_type == "typing":
-                    if receiver and receiver in connected_clients:
-                        await connected_clients[receiver].send_text(final_raw)
+                    if receiver:
+                        await send_to_user(receiver, final_raw)
                     continue
 
                 # File / Text Logic
@@ -117,15 +124,20 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 create_delivery_entries(msg_id, recipients)
 
                 for target in recipients:
-                    if target in connected_clients:
-                        sent = await send_to_user(target, final_raw)
-                        if sent:
-                            mark_message_delivered_for_user(msg_id, target)
+                    sent = await send_to_user(target, final_raw)
+                    if sent:
+                        mark_message_delivered_for_user(msg_id, target)
+
+                # Sync with sender's other devices
+                await send_to_user(sender, final_raw)
             
             except Exception as e:
                 print(f"Error processing message: {e}")
                 continue
 
     except WebSocketDisconnect:
-        connected_clients.pop(username, None)
+        if username in connected_clients:
+            connected_clients[username].discard(ws)
+            if not connected_clients[username]:
+                connected_clients.pop(username, None)
         print(f"🔴 {username} disconnected")
