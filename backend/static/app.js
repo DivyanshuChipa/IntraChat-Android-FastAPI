@@ -8,7 +8,8 @@ function toggleAuthMode() {
   const btn = document.getElementById("auth-btn");
   const link = document.getElementById("toggle-link");
   const msg = document.getElementById("toggle-msg");
-  const title = document.querySelector(".brand-title");
+
+  if (!btn || !link || !msg) return;
 
   if (isLoginMode) {
     btn.innerText = "LOGIN";
@@ -19,16 +20,22 @@ function toggleAuthMode() {
     msg.innerText = "Have an account?";
     link.innerText = "Login";
   }
-  document.getElementById("error").innerText = "";
+  const errorEl = document.getElementById("error");
+  if (errorEl) errorEl.innerText = "";
 }
 
-async function handleAuth() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
+async function login() {
+  console.log("Login attempt...");
+  const userEl = document.getElementById("username");
+  const passEl = document.getElementById("password");
   const errorEl = document.getElementById("error");
 
+  if (!userEl || !passEl) return;
+  const username = userEl.value.trim();
+  const password = passEl.value.trim();
+
   if (!username || !password) {
-    errorEl.innerText = "Please fill all fields";
+    if (errorEl) errorEl.innerText = "Please fill all fields";
     return;
   }
 
@@ -47,19 +54,22 @@ async function handleAuth() {
       if (isLoginMode) {
         localStorage.setItem("username", data.username);
         localStorage.setItem("token", data.token);
-        window.location = "/chat.html";
+        window.location.href = "/chat.html";
       } else {
         alert("Registration successful! Please login.");
         toggleAuthMode();
       }
     } else {
-      errorEl.innerText = data.message || (isLoginMode ? "Login failed" : "Registration failed");
+      if (errorEl) errorEl.innerText = data.message || (isLoginMode ? "Login failed" : "Registration failed");
     }
   } catch (e) {
     console.error("Auth error:", e);
-    errorEl.innerText = "Server connection error";
+    if (errorEl) errorEl.innerText = "Server connection error";
   }
 }
+
+// Alias for compatibility
+const handleAuth = login;
 
 /***********************
  * CHAT (chat.html)
@@ -68,11 +78,19 @@ const myUsername = localStorage.getItem("username");
 let ws = null;
 let currentReceiver = "Family Group";
 
+// Auto-redirect logic
+if (window.location.pathname === "/" || window.location.pathname.includes("index.html")) {
+  if (myUsername) {
+    window.location.href = "/chat.html";
+  }
+}
+
 if (window.location.pathname.includes("chat.html")) {
   if (!myUsername) {
-    window.location = "/index.html";
+    window.location.href = "/index.html";
   } else {
-    document.getElementById("profile-name").innerText = "👤 " + myUsername;
+    const profileEl = document.getElementById("profile-name");
+    if (profileEl) profileEl.innerText = "👤 " + myUsername;
     initTheme();
     loadUsers();
     connectWS();
