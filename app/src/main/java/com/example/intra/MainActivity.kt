@@ -11,6 +11,7 @@ import android.provider.OpenableColumns
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -387,6 +388,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkAndRequestPermissions() {
+        // Runtime permissions were introduced in Android 6.0 (API 23)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
         val permissions = mutableListOf<String>()
 
         // Audio for Calls
@@ -410,7 +414,7 @@ class MainActivity : ComponentActivity() {
         }
 
         val toRequest = permissions.filter {
-            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
         }
 
         if (toRequest.isNotEmpty()) {
