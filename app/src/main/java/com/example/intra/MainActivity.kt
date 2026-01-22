@@ -28,6 +28,16 @@ import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val allGranted = permissions.entries.all { it.value }
+            if (allGranted) {
+                Log.d("PERMISSIONS", "✅ All permissions granted")
+            } else {
+                Log.w("PERMISSIONS", "⚠️ Some permissions denied")
+            }
+        }
+
     private lateinit var proximitySensor: ProximitySensor
     private lateinit var ringtoneManager: CallRingtoneManager
 
@@ -47,6 +57,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        checkAndRequestPermissions()
 
         val intentSender = intent?.getStringExtra("incoming_sender")
         val intentPhoto = intent?.getStringExtra("incoming_photo")
@@ -372,6 +384,39 @@ class MainActivity : ComponentActivity() {
         proximitySensor.deactivate()
         ringtoneManager.stop()
         super.onDestroy()
+    }
+
+    private fun checkAndRequestPermissions() {
+        val permissions = mutableListOf<String>()
+
+        // Audio for Calls
+        permissions.add(android.Manifest.permission.RECORD_AUDIO)
+
+        // Notifications (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        // Storage / Media
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
+            permissions.add(android.Manifest.permission.READ_MEDIA_VIDEO)
+            permissions.add(android.Manifest.permission.READ_MEDIA_AUDIO)
+        } else {
+            permissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                permissions.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+
+        val toRequest = permissions.filter {
+            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+
+        if (toRequest.isNotEmpty()) {
+            Log.d("PERMISSIONS", "Requesting: $toRequest")
+            requestPermissionLauncher.launch(toRequest.toTypedArray())
+        }
     }
 
     private fun cleanupCall(

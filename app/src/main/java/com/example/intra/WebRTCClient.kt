@@ -1,7 +1,9 @@
 package com.example.intra
 
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.os.Build
 import android.util.Log
 import org.json.JSONObject
 import org.webrtc.*
@@ -80,9 +82,27 @@ class WebRTCClient(
             audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
         }
 
-        // Speaker ON/OFF set karo
-        if (audioManager.isSpeakerphoneOn != enableSpeaker) {
-            audioManager.isSpeakerphoneOn = enableSpeaker
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Modern way (Android 12+)
+            val devices = audioManager.availableCommunicationDevices
+            val targetType = if (enableSpeaker) {
+                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            } else {
+                AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+            }
+            val device = devices.find { it.type == targetType }
+            if (device != null) {
+                audioManager.setCommunicationDevice(device)
+                Log.d("WebRTC", "🎧 Communication Device set to ${if (enableSpeaker) "Speaker" else "Earpiece"}")
+            } else {
+                // Fallback
+                audioManager.isSpeakerphoneOn = enableSpeaker
+            }
+        } else {
+            // Legacy way
+            if (audioManager.isSpeakerphoneOn != enableSpeaker) {
+                audioManager.isSpeakerphoneOn = enableSpeaker
+            }
         }
 
         // Mic mute hatao (just in case)
@@ -281,6 +301,11 @@ class WebRTCClient(
         }
         // Cleanup Audio Mode
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            audioManager.clearCommunicationDevice()
+        }
+
         audioManager.mode = AudioManager.MODE_NORMAL
         audioManager.isSpeakerphoneOn = false
         audioManager.isMicrophoneMute = false
