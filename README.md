@@ -177,37 +177,131 @@ Note down your local IP (e.g., `192.168.1.100`)
 
 ## 📱 Android App Setup
 
-### 1️⃣ Open in Android Studio
+## 📥 Download & Install
 
-1. Open Android Studio
-2. Select **"Open an Existing Project"**
-3. Navigate to `intra/android_app` folder
-4. Click **OK**
+### Latest Release
 
-### 2️⃣ Configure Server IP
+**Version:** 1.0.0 (Beta)  
+**Release Date:** January 2025  
+**Size:** ~15 MB  
 
-The app now has **Advanced Settings** in the login screen!
+[![Download APK](https://img.shields.io/badge/Download-APK-3DDC84?style=for-the-badge&logo=android)](https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI/releases/latest/download/Intra-v1.0.0.apk)
 
-**Method 1: In-App Settings (Recommended)**
-- Open the app
-- On login screen, tap **"Advanced Options (IP/Port)"**
-- Enter your server IP and port
-- These settings are saved automatically
+### Installation Steps
 
-**Method 2: Hardcode (Optional)**
-```kotlin
-// In ApiClient.kt
-private const val DEFAULT_IP = "192.168.1.100"
-private const val DEFAULT_PORT = "8000"
-```
+1. **Download APK** from the link above
+2. **Enable Unknown Sources**
+   - Go to Settings → Security
+   - Enable "Install from Unknown Sources"
+   - (On Android 8+: Allow installation from browser/file manager)
+3. **Install APK**
+   - Open downloaded file
+   - Tap "Install"
+   - Wait for installation to complete
+4. **Open App** and enjoy!
 
-### 3️⃣ Build & Run
+### System Requirements
 
-1. Connect your Android device via USB (with USB Debugging enabled)
-   - **OR** use an Android Emulator
-2. Click the **Run** button (▶️) in Android Studio
-3. Select your device/emulator
-4. Wait for the app to install and launch
+- Android 5.0 (Lollipop) or higher
+- Minimum 2GB RAM recommended
+- 50MB free storage space
+- WiFi/LAN connection for server access
+
+### Permissions Required
+
+| Permission | Why We Need It |
+|------------|----------------|
+| 📷 Camera | Profile photo upload |
+| 🖼️ Storage | File sharing & downloads |
+| 🌐 Internet | LAN server connection |
+
+---
+
+## 🔄 Update History
+
+### v1.0.0 (Beta) - 22 January 2025
+**Initial Release**
+- ✅ User registration & authentication
+- ✅ Real-time messaging via WebSocket
+- ✅ File sharing (images, documents, videos)
+- ✅ Profile photo upload
+- ✅ Group chat (Family Group)
+- ✅ Typing indicators
+- ✅ Offline message queue
+- ✅ Dark/Light theme support
+- ✅ Message persistence in local database
+- ✅ Configurable server IP/Port in-app
+
+**Known Issues:**
+- Voice/Video calling not yet implemented
+- No message search functionality
+- Profile photos require manual refresh after upload
+
+---
+
+## 🐛 Reporting Issues
+
+Found a bug? Please help us improve!
+
+**Before reporting:**
+1. Check if issue already exists in [Issues](https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI/issues)
+2. Try clearing app cache: Settings → Apps → Intra → Storage → Clear Cache
+3. Make sure server is running and accessible
+
+**When reporting:**
+- Android version
+- App version
+- Steps to reproduce
+- Expected vs Actual behavior
+- Screenshots/logs if possible
+
+**[Report Bug →](https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI/issues/new?template=bug_report.md)**
+
+---
+
+## 🔐 Security & Privacy
+
+- ✅ **No Internet Required** - Works entirely on LAN
+- ✅ **No Cloud Storage** - All data stays on your network
+- ✅ **Encrypted Passwords** - PBKDF2-SHA256 hashing
+- ✅ **Local Database** - Messages stored only on your device
+- ✅ **No Analytics** - Zero tracking or telemetry
+- ✅ **Open Source** - Code is fully auditable
+
+---
+
+## 🆘 FAQ
+
+**Q: Why does my antivirus flag this app?**  
+A: Some antivirus software flags unsigned APKs. This is a false positive. The app is open source and safe.
+
+**Q: Can I use this without the server?**  
+A: No, you need to run the Python FastAPI server on your local network.
+
+**Q: Does it work over mobile data?**  
+A: No, it's designed for LAN/WiFi networks only. Your phone must be connected to the same network as the server.
+
+**Q: How do I uninstall?**  
+A: Settings → Apps → Intra → Uninstall (or drag app icon to uninstall on home screen)
+
+**Q: Can I install on iOS?**  
+A: Not yet. iOS version is on the roadmap.
+
+---
+
+## 📧 Contact & Support
+
+**Email:** Divyanshu6062015@gmail.com  
+**GitHub Issues:** [Report Here](https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI/issues)  
+---
+
+## ⭐ Show Your Support
+
+If you find this app useful, please:
+- ⭐ Star this repository
+- 🐛 Report bugs
+- 💡 Suggest features
+- 📢 Share with others
 
 ---
 
