@@ -36,7 +36,7 @@ import coil.request.ImageRequest
 fun ContactListScreen(
     username: String,
     typingStatuses: Map<String, Boolean>,
-    activeChatUser: String? = null, // 🆕 STEP 6: Active chat detection
+    activeChatUser: String? = null,
     onChatClick: (String) -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -44,18 +44,19 @@ fun ContactListScreen(
     val contacts = contactViewModel.contacts
 
     val isDark = isSystemInDarkTheme()
+    val colorScheme = MaterialTheme.colorScheme
 
-    val bgColor = if (isDark) Color(0xFF0E0F14) else Color(0xFFFCFCFC)
-    val topBarColor = if (isDark) Color(0xFF1A1B22) else Color(0xFF6741A8)
+    val topBarColor = if (isDark) colorScheme.primaryContainer else Color(0xFF6741A8)
+    val topBarTextColor = if (isDark) colorScheme.onPrimaryContainer else Color.White
 
     Scaffold(
-        containerColor = bgColor,
+        containerColor = colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         "Intra Chats",
-                        color = Color.White,
+                        color = topBarTextColor,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -64,11 +65,11 @@ fun ContactListScreen(
                 ),
                 actions = {
                     IconButton(onClick = { contactViewModel.fetchContacts() }) {
-                        Icon(Icons.Filled.Refresh, null, tint = Color.White)
+                        Icon(Icons.Filled.Refresh, null, tint = topBarTextColor)
                     }
 
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Filled.Settings, null, tint = Color.White)
+                        Icon(Icons.Filled.Settings, null, tint = topBarTextColor)
                     }
                 }
             )
@@ -141,7 +142,7 @@ fun ContactItem(
 ) {
     val nameColor = if (isDark) Color.White else Color.Black
     val subColor = if (isDark) Color.LightGray else Color.DarkGray
-    val typingColor = Color(0xFF8741E7)
+    val typingColor = Color(0xFFD175FF)
     val avatarBg = if (isDark) Color(0xFF2A2B33) else Color(0xFFEDE7F6)
 
     // 🆕 Active chat ka background color

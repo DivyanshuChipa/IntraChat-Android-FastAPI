@@ -54,7 +54,7 @@ fun AboutScreen(
         ) {
             // 🔥 App Logo
             Image(
-                painter = painterResource(id = R.drawable.ic_about), // apna logo yaha
+                painter = painterResource(id = R.drawable.ic_notificationvector), // apna logo yaha
                 contentDescription = "App Logo",
                 modifier = Modifier
                     .size(96.dp)
