@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
         }
 
     private lateinit var proximitySensor: ProximitySensor
-    private lateinit var ringtoneManager: CallRingtoneManager
+    private val ringtoneManager by lazy { CallRingtoneManager.getInstance(this) }
 
     private var currentUploadViewModel: ChatViewModel? = null
     private var currentUploadReceiver: String? = null
@@ -68,16 +68,7 @@ class MainActivity : ComponentActivity() {
             Log.d("MAIN", "🔥 Recovered call from intent: sender=$intentSender, photo=$intentPhoto")
         }
 
-        val incomingCallSender: String? =
-            if (intent?.action == "OPEN_CALL_SCREEN") {
-                intent.getStringExtra("sender")
-            } else null
-
-        val rejectFromNotification =
-            intent?.action == "REJECT_CALL"
-
         proximitySensor = ProximitySensor(this)
-        ringtoneManager = CallRingtoneManager(this)
 
         val chatDao = ChatDatabase.getDatabase(applicationContext).chatDao()
         val settingsManager = SettingsManager(this)
@@ -125,37 +116,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(incomingCallSender) {
-                        if (incomingCallSender != null) {
-                            if (!callViewModel.callActive) {
-                                val photoUrl = null
-                                callViewModel.onIncomingCall(incomingCallSender, photoUrl)
 
-                                if (MyApplication.AppState.pendingCallOffer != null) {
-                                    Log.d("MAIN", "Restoring pending offer from Service")
-                                    callViewModel.setIncomingOffer(MyApplication.AppState.pendingCallOffer!!)
-                                    MyApplication.AppState.pendingCallOffer = null
-                                }
-                            }
-                        }
-                    }
-
-                    LaunchedEffect(rejectFromNotification) {
-                        if (rejectFromNotification == true) {
-                            val sender = intent?.getStringExtra("sender")
-                            if (sender != null) {
-                                val json = JSONObject().apply {
-                                    put("type", "call_rejected")
-                                    put("receiver", sender)
-                                }
-                                chatViewModel.sendRawSignal(json.toString())
-                                callViewModel.onCallEnded()
-
-                                val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                                nm.cancel(CALL_NOTIFICATION_ID)
-                            }
-                        }
-                    }
 
                     LaunchedEffect(callViewModel.callActive) {
                         if (!callViewModel.callActive) {

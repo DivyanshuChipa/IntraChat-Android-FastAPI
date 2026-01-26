@@ -6,9 +6,22 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 
-class CallRingtoneManager(private val context: Context) {
+class CallRingtoneManager private constructor(private val context: Context) {
     private var ringtone: Ringtone? = null
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+    companion object {
+        @Volatile
+        private var INSTANCE: CallRingtoneManager? = null
+
+        fun getInstance(context: Context): CallRingtoneManager {
+            return INSTANCE ?: synchronized(this) {
+                val instance = CallRingtoneManager(context.applicationContext)
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
 
     fun start() {
         if (ringtone?.isPlaying == true) return
@@ -34,6 +47,7 @@ class CallRingtoneManager(private val context: Context) {
     fun stop() {
         try {
             ringtone?.stop()
+            ringtone = null
             // Ringtone band hone ke baad speaker settings wapas normal kar sakte ho
             // ya Call connect hone par WebRTC khud handle karega
         } catch (e: Exception) {
