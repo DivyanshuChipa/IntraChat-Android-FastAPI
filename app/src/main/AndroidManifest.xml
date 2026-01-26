@@ -54,7 +54,7 @@ xmlns:tools="http://schemas.android.com/tools">
         android:name=".IntraBackgroundService"
         android:enabled="true"
         android:exported="false"
-        android:foregroundServiceType="dataSync">
+        android:foregroundServiceType="phoneCall|dataSync">
 </service>
     <receiver
         android:name=".CallActionReceiver"

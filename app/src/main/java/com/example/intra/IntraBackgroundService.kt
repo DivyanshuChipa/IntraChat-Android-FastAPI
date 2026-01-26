@@ -8,7 +8,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.intra.MainActivity.Companion.CALL_NOTIFICATION_ID
-import com.example.intra.MyApplication.AppState
 import com.example.intra.database.ChatDao
 import com.example.intra.database.ChatDatabase
 import com.example.intra.database.ChatMessageEntity
@@ -21,6 +20,7 @@ import org.json.JSONObject
 
 class IntraBackgroundService : Service(), WsManager.Listener {
     private lateinit var chatDao: ChatDao
+    private val ringtoneManager by lazy { CallRingtoneManager.getInstance(this) }
 
 
     // 🔥 ADD THIS (MISSING PART)
@@ -72,9 +72,20 @@ class IntraBackgroundService : Service(), WsManager.Listener {
 
                     MyApplication.AppState.pendingCallSender = sender
 
+                    // 🔥 Start Ringtone
+                    ringtoneManager.start()
+
                     // 🔥 यहाँ rawPhoto भी पास कर दो
                     showIncomingCallNotification(sender, rawPhoto)
                 }
+
+                "call_ended", "call_rejected", "call_accept" -> {
+                    Log.d("SERVICE", "Call signal received: $type. Stopping ringtone.")
+                    ringtoneManager.stop()
+                    val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    nm.cancel(CALL_NOTIFICATION_ID)
+                }
+
                 // 🔥 NEW: Offer को पकड़ कर सेव करो (Green button fix)
                 "webrtc_offer" -> {
                     val sdp = json.optString("sdp")
@@ -119,12 +130,24 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val rejectIntent = Intent(this, MainActivity::class.java).apply {
-            action = "REJECT_CALL"
+        // 🔥 ACCEPT Button
+        val acceptIntent = Intent(this, CallActionReceiver::class.java).apply {
+            action = "CALL_ACCEPT"
+            putExtra("sender", sender)
+            putExtra("photo", photoUrl)
+        }
+        val acceptPI = PendingIntent.getBroadcast(
+            this, 2, acceptIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // 🔥 REJECT Button
+        val rejectIntent = Intent(this, CallActionReceiver::class.java).apply {
+            action = "CALL_REJECT"
             putExtra("sender", sender)
         }
 
-        val rejectPI = PendingIntent.getActivity(
+        val rejectPI = PendingIntent.getBroadcast(
             this, 1, rejectIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -138,7 +161,9 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             .setOngoing(true)
             .setAutoCancel(true)
             .setContentIntent(contentPI)
+            .addAction(0, "Accept", acceptPI) // Added Accept
             .addAction(0, "Reject", rejectPI)
+            .setFullScreenIntent(contentPI, true) // Makes it pop up
             .build()
 
         // 🔥 J2 + ALL ANDROID SAFE WAY
@@ -184,6 +209,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
     override fun onDestroy() {
         WsManager.removeListener(this)
         serviceScope.cancel()   // 🔥 IMPORTANT
+        ringtoneManager.stop()
         super.onDestroy()
     }
 
