@@ -6,12 +6,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import coil.Coil
-import coil.request.ImageRequest
 import com.example.intra.MainActivity.Companion.CALL_NOTIFICATION_ID
 import com.example.intra.database.ChatDao
 import com.example.intra.database.ChatDatabase
@@ -80,15 +76,13 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             when (type) {
                 "call_request" -> {
                     val sender = json.optString("sender")
-                    // 🔥 ये लाइन जोड़ो: फोटो का URL निकालो
                     val rawPhoto = json.optString("profile_photo")
 
                     MyApplication.AppState.pendingCallSender = sender
 
-                    // 🔥 Start Ringtone
+                    // Start Ringtone
                     ringtoneManager.start()
 
-                    // 🔥 यहाँ rawPhoto भी पास कर दो
                     showIncomingCallNotification(sender, rawPhoto)
                 }
 
@@ -129,12 +123,6 @@ class IntraBackgroundService : Service(), WsManager.Listener {
     // --- Notifications ---
 
     private fun showIncomingCallNotification(sender: String, photoUrl: String?) {
-        val settings = SettingsManager(this)
-        val baseUrl = settings.getBaseUrl().removeSuffix("/")
-        val fullPhotoUrl = if (photoUrl != null && !photoUrl.startsWith("http")) {
-            "$baseUrl/$photoUrl"
-        } else photoUrl
-
         // ये है वो Intent जो ऐप खोलेगा और फोटो का डेटा ले जाएगा
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             action = "OPEN_CALL_SCREEN"
@@ -159,7 +147,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_abouticon)
             .setContentTitle("Incoming Call")
             .setContentText("$sender is calling…")
@@ -170,36 +158,11 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             .setContentIntent(contentPI)
             .addAction(0, "Reject", rejectPI)
             .setFullScreenIntent(contentPI, true) // Makes it pop up
+            .build()
 
-        // Initial notification without photo
+        // J2 + ALL ANDROID SAFE WAY
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(CALL_NOTIFICATION_ID, builder.build())
-
-        // 🔥 Load Photo if available
-        if (fullPhotoUrl != null) {
-            serviceScope.launch {
-                try {
-                    val loader = Coil.imageLoader(this@IntraBackgroundService)
-                    val request = ImageRequest.Builder(this@IntraBackgroundService)
-                        .data(fullPhotoUrl)
-                        .allowHardware(false) // Important for Notifications
-                        .build()
-
-                    val result = loader.execute(request)
-                    val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
-
-                    if (bitmap != null) {
-                        builder.setLargeIcon(bitmap)
-                        builder.setStyle(NotificationCompat.BigPictureStyle()
-                            .bigPicture(bitmap)
-                            .bigLargeIcon(null as Bitmap?))
-                        nm.notify(CALL_NOTIFICATION_ID, builder.build())
-                    }
-                } catch (e: Exception) {
-                    Log.e("SERVICE_PHOTO", "Failed to load photo", e)
-                }
-            }
-        }
+        nm.notify(CALL_NOTIFICATION_ID, notification)
     }
 
 
