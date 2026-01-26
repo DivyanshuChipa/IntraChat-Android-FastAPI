@@ -5,6 +5,7 @@ import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 
 class CallRingtoneManager private constructor(private val context: Context) {
     private var ringtone: Ringtone? = null
@@ -37,6 +38,10 @@ class CallRingtoneManager private constructor(private val context: Context) {
 
             // Stream Type Ring set karo
             ringtone?.streamType = AudioManager.STREAM_RING
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ringtone?.isLooping = true
+            }
 
             ringtone?.play()
         } catch (e: Exception) {

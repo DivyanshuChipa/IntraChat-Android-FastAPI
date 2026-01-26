@@ -3,6 +3,7 @@ package com.example.intra
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -40,7 +41,15 @@ class IntraBackgroundService : Service(), WsManager.Listener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // 1. Notification dikhao taaki Service kill na ho
-        startForeground(NOTIFICATION_ID, createBaseNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            }
+            startForeground(NOTIFICATION_ID, createBaseNotification(), type)
+        } else {
+            startForeground(NOTIFICATION_ID, createBaseNotification())
+        }
 
         // 2. Settings se username lo
         val settings = SettingsManager(this)
@@ -67,15 +76,13 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             when (type) {
                 "call_request" -> {
                     val sender = json.optString("sender")
-                    // 🔥 ये लाइन जोड़ो: फोटो का URL निकालो
                     val rawPhoto = json.optString("profile_photo")
 
                     MyApplication.AppState.pendingCallSender = sender
 
-                    // 🔥 Start Ringtone
+                    // Start Ringtone
                     ringtoneManager.start()
 
-                    // 🔥 यहाँ rawPhoto भी पास कर दो
                     showIncomingCallNotification(sender, rawPhoto)
                 }
 
@@ -116,7 +123,6 @@ class IntraBackgroundService : Service(), WsManager.Listener {
     // --- Notifications ---
 
     private fun showIncomingCallNotification(sender: String, photoUrl: String?) {
-
         // ये है वो Intent जो ऐप खोलेगा और फोटो का डेटा ले जाएगा
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             action = "OPEN_CALL_SCREEN"
@@ -127,17 +133,6 @@ class IntraBackgroundService : Service(), WsManager.Listener {
 
         val contentPI = PendingIntent.getActivity(
             this, 0, openAppIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // 🔥 ACCEPT Button
-        val acceptIntent = Intent(this, CallActionReceiver::class.java).apply {
-            action = "CALL_ACCEPT"
-            putExtra("sender", sender)
-            putExtra("photo", photoUrl)
-        }
-        val acceptPI = PendingIntent.getBroadcast(
-            this, 2, acceptIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -161,12 +156,11 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             .setOngoing(true)
             .setAutoCancel(true)
             .setContentIntent(contentPI)
-            .addAction(0, "Accept", acceptPI) // Added Accept
             .addAction(0, "Reject", rejectPI)
             .setFullScreenIntent(contentPI, true) // Makes it pop up
             .build()
 
-        // 🔥 J2 + ALL ANDROID SAFE WAY
+        // J2 + ALL ANDROID SAFE WAY
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(CALL_NOTIFICATION_ID, notification)
     }

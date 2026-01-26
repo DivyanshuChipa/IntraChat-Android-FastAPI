@@ -42,6 +42,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var proximitySensor: ProximitySensor
     private val ringtoneManager by lazy { CallRingtoneManager.getInstance(this) }
 
+    private var incomingCallData = mutableStateOf<Pair<String?, String?>>(null to null)
+
     private var currentUploadViewModel: ChatViewModel? = null
     private var currentUploadReceiver: String? = null
 
@@ -61,12 +63,7 @@ class MainActivity : ComponentActivity() {
 
         checkAndRequestPermissions()
 
-        val intentSender = intent?.getStringExtra("incoming_sender")
-        val intentPhoto = intent?.getStringExtra("incoming_photo")
-
-        if (intentSender != null) {
-            Log.d("MAIN", "🔥 Recovered call from intent: sender=$intentSender, photo=$intentPhoto")
-        }
+        handleIntent(intent)
 
         proximitySensor = ProximitySensor(this)
 
@@ -99,7 +96,8 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(intentSender) {
+                    val (intentSender, intentPhoto) = incomingCallData.value
+                    LaunchedEffect(intentSender, intentPhoto) {
                         if (intentSender != null) {
                             val fullPhotoUrl = if (intentPhoto != null && !intentPhoto.startsWith("http")) {
                                 settingsManager.getBaseUrl().removeSuffix("/") + intentPhoto
@@ -113,6 +111,9 @@ class MainActivity : ComponentActivity() {
                                 callViewModel.setIncomingOffer(MyApplication.AppState.pendingCallOffer!!)
                                 MyApplication.AppState.pendingCallOffer = null
                             }
+                            // Reset state after handling to avoid re-triggering on recomposition if not intended,
+                            // though LaunchedEffect handles it via keys. Resetting is safer.
+                            incomingCallData.value = null to null
                         }
                     }
 
@@ -318,17 +319,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIntent(intent)
+    }
 
-        val intentSender = intent.getStringExtra("incoming_sender")
-        val intentPhoto = intent.getStringExtra("incoming_photo")
-
-        if (intentSender != null) {
-            val fullPhotoUrl = if (intentPhoto != null && !intentPhoto.startsWith("http")) {
-                SettingsManager(this@MainActivity).getBaseUrl().removeSuffix("/") + intentPhoto
-            } else {
-                intentPhoto
-            }
-            Log.d("IntraMain", "Notification se aya hai: $intentSender")
+    private fun handleIntent(intent: Intent?) {
+        val sender = intent?.getStringExtra("incoming_sender")
+        val photo = intent?.getStringExtra("incoming_photo")
+        if (sender != null) {
+            Log.d("MAIN", "🔥 handleIntent: sender=$sender, photo=$photo")
+            incomingCallData.value = sender to photo
         }
     }
 
