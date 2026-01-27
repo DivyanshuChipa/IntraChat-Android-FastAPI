@@ -9,7 +9,6 @@ from messages import (
     mark_delivered, 
     mark_message_delivered_for_user
 )
-
 router = APIRouter()
 connected_clients = {}  # username -> set of websockets
 
@@ -29,7 +28,7 @@ async def send_to_user(username: str, message: str, exclude_ws: WebSocket = None
     if username in connected_clients:
         to_remove = []
         sent_count = 0
-
+        
         for ws in connected_clients[username]:
             if ws == exclude_ws:
                 continue
@@ -38,28 +37,28 @@ async def send_to_user(username: str, message: str, exclude_ws: WebSocket = None
                 sent_count += 1
             except Exception:
                 to_remove.append(ws)
-
+        
         # Cleanup dead connections
         for ws in to_remove:
             connected_clients[username].discard(ws)
-
+        
         # If no devices left, remove user entry
         if not connected_clients[username]:
             connected_clients.pop(username, None)
             return False
-
+        
         return sent_count > 0
     return False
 
 @router.websocket("/ws/{username}")
 async def websocket_endpoint(ws: WebSocket, username: str):
     await ws.accept()
-
+    
     # Add this connection to user's device set
     if username not in connected_clients:
         connected_clients[username] = set()
     connected_clients[username].add(ws)
-
+    
     print(f"✅ {username} connected (Total devices: {len(connected_clients[username])})")
 
     # 1. Send offline messages
@@ -76,7 +75,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 "filename": msg.get("file_name")
             }
             await ws.send_text(json.dumps(offline_data))
-
+            
             # Mark as delivered
             delivery_id = msg.get("delivery_id")
             if delivery_id:
@@ -87,8 +86,8 @@ async def websocket_endpoint(ws: WebSocket, username: str):
     try:
         # Send connection confirmation
         await ws.send_text(json.dumps({
-            "type": "status",
-            "text": "Connected",
+            "type": "status", 
+            "text": "Connected", 
             "user": username
         }))
 
@@ -99,7 +98,8 @@ async def websocket_endpoint(ws: WebSocket, username: str):
             try:
                 parsed = json.loads(raw)
                 parsed["timestamp"] = int(datetime.now(IST).timestamp() * 1000)
-                
+                parsed["sender"] = sender  #😈 yeah idendify krega ki sender chutiya hai kon labdekha
+
                 receiver = parsed.get("receiver")
                 msg_type = parsed.get("type", "text")
                 
@@ -158,7 +158,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     sent = await send_to_user(target, final_raw, exclude_ws=ws)
                     if sent:
                         mark_message_delivered_for_user(msg_id, target)
-
+                
                 # ✅ FIXED: Always sync sender's other devices
                 await send_to_user(sender, final_raw, exclude_ws=ws)
             
@@ -171,7 +171,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
         if username in connected_clients:
             connected_clients[username].discard(ws)
             remaining = len(connected_clients[username])
-
+            
             if not connected_clients[username]:
                 connected_clients.pop(username, None)
                 print(f"🔴 {username} fully disconnected")

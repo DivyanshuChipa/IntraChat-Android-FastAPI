@@ -2,6 +2,7 @@
 
 # lan_server/server.py
 from fastapi import FastAPI
+from fastapi import Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles  # 👈 Add this import
@@ -15,12 +16,19 @@ from messages import init_msg_db
 from users import get_all_users
 from messages import get_recent_messages
 from users import delete_user_data # 👈 Import the new function
+from fastapi.staticfiles import StaticFiles
 
 # ================= JWT CONFIG =================
 SECRET_KEY = "CHANGE_THIS_TO_SOMETHING_RANDOM_AND_LONG"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
+# ================= ADMIN CONFIG =================
+ADMIN_SECRET = "INTRA_ADMIN_123"
+
+def verify_admin(x_admin_key: str = Header(None)):
+    if x_admin_key != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Admin access denied")
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)")
 
@@ -34,6 +42,7 @@ app.add_middleware(
 )
 
 # 👈 2. Mount StaticFiles - uploads folder ko accessible banao
+
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # DB init (users.db for auth)
@@ -124,9 +133,15 @@ async def handle_delete_account(user: UserAuth):
 
 
 # ================= EXISTING MODULES =================
+
+import admin_api
+app.include_router(admin_api.router)
 app.include_router(chat.router)
 app.include_router(files.router)
 app.include_router(calls.router, prefix="/calls")
 app.include_router(profiles.router, prefix="/profile", tags=["Profile"])  # 👈 3. Add Profile Router
 
+# ================= STATIC FILES (WEB CLIENT) =================
+# ⚠️ Yeh line SABSE NEECHE honi chahiye!
+# Agar yeh upar hui toh WS aur Login kaam nahi karenge.
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

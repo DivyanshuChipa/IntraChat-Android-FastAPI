@@ -30,3 +30,5 @@ backend/uploads/
 intra/
 venv/
 .env
+.venv
+admintra/
