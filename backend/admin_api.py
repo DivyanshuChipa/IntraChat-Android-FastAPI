@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from server import verify_admin
 from users import get_all_users, delete_user_data, reset_user_password # 👈 Added import
 from messages import cleanup_old_messages # 👈 Added import
+from chat import connected_clients # 👈 Ye line upar add karo
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
