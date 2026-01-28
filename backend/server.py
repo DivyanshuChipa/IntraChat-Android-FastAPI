@@ -1,6 +1,7 @@
 # lan_server/server.py
 
 # lan_server/server.py
+import os
 from fastapi import FastAPI
 from fastapi import Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +25,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
 # ================= ADMIN CONFIG =================
-ADMIN_SECRET = "INTRA_ADMIN_123"
+ADMIN_SECRET = os.getenv("INTRA_ADMIN_KEY", "INTRA_ADMIN_123",)
 
 def verify_admin(x_admin_key: str = Header(None)):
     if x_admin_key != ADMIN_SECRET:

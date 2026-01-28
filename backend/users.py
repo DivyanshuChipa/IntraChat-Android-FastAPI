@@ -115,3 +115,25 @@ def delete_user_data(username):
         return {"success": False, "message": str(e)}
     finally:
         conn.close()
+
+        # ===== Add this at the end of users.py =====
+def reset_user_password(username, new_password):
+            # Hash the new password using existing logic
+            new_hash = pbkdf2_sha256.hash(new_password)
+
+            conn = sqlite3.connect(DATABASE_NAME)
+            cursor = conn.cursor()
+
+            # Update password_hash, NOT 'password'
+            cursor.execute(
+                "UPDATE users SET password_hash = ? WHERE username = ?",
+                (new_hash, username)
+            )
+
+            if cursor.rowcount == 0:
+                conn.close()
+                return {"success": False, "message": "User not found"}
+
+            conn.commit()
+            conn.close()
+            return {"success": True, "message": "Password reset successfully"}

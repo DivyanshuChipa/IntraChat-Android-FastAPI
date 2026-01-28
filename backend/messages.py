@@ -136,3 +136,25 @@ def get_recent_messages(limit: int = 200):
         }
         for row in rows
     ]
+
+
+# ===== Add this at the end of messages.py =====
+
+def cleanup_old_messages(days: int):
+    # Calculate cutoff time (Current Time - Days) in Milliseconds
+    cutoff_time = datetime.now(IST) - timedelta(days=days)
+    cutoff_ts = int(cutoff_time.timestamp() * 1000)
+
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    # Delete messages older than cutoff
+    cur.execute("DELETE FROM messages WHERE ts < ?", (cutoff_ts,))
+    deleted_count = cur.rowcount
+
+    # Optional: Delete delivery status for deleted messages
+    cur.execute("DELETE FROM delivery_status WHERE msg_id NOT IN (SELECT id FROM messages)")
+
+    conn.commit()
+    conn.close()
+    return deleted_count
