@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QPixmap, QFont
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFrame   # 👈 upar imports me add karna
 
 
 # ================= CONFIG =================
@@ -139,8 +140,10 @@ class AdminWindow(QMainWindow):
             for row, user in enumerate(users):
                 is_online = user.get("is_online", False)
                 # -------- PROFILE PHOTO --------
-                photo_wrapper = QWidget()
+                # -------- PROFILE PHOTO + GREEN DOT --------
+                photo_wrapper = QFrame()
                 photo_wrapper.setFixedSize(70, 70)
+                photo_wrapper.setStyleSheet("background: transparent;")
 
                 photo_label = QLabel(photo_wrapper)
                 photo_label.setFixedSize(64, 64)
@@ -167,16 +170,19 @@ class AdminWindow(QMainWindow):
                     )
                     photo_label.setStyleSheet("border-radius:32px;")
 
-                # 🟢 GREEN DOT
+                # 🟢 GREEN DOT (FIXED & GUARANTEED)
                 if is_online:
                     dot = QLabel(photo_wrapper)
                     dot.setFixedSize(14, 14)
                     dot.move(46, 46)
                     dot.setStyleSheet(
-                        "background:#00ff88; border-radius:7px; border:2px solid #1e1e1e ( ;"
+                        "background:#00ff88; border-radius:7px; border:2px solid #1e1e1e;"
                     )
+                    dot.raise_()
+                    dot.show()
 
                 self.users_table.setCellWidget(row, 0, photo_wrapper)
+                print(user["username"], "online =", is_online)
 
                 # -------- USERNAME --------
                 username = user.get("username", "unknown")
