@@ -31,3 +31,9 @@ def admin_cleanup(days: int, admin=Depends(verify_admin)):
         "deleted_messages": deleted,
         "message": f"Deleted {deleted} messages older than {days} days"
     }
+@router.get("/users")
+def admin_get_users(admin=Depends(verify_admin)):
+    users = get_all_users()
+    for u in users:
+        u["is_online"] = u["username"] in connected_clients
+    return {"success": True, "users": users}

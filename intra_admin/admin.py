@@ -1,5 +1,5 @@
-import os
 import sys
+import os
 import requests
 
 from PySide6.QtWidgets import (
@@ -9,13 +9,12 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QMessageBox,
     QInputDialog, QLineEdit
 )
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QFont
 from PySide6.QtCore import Qt
 
 
 # ================= CONFIG =================
-#SERVER_URL = "http://127.0.0.1:8000"   # agar Windows se run -> LAN IP daal
-SERVER_URL = "http://192.168.31.104:8000"   # LAN server
+SERVER_URL = "http://192.168.31.104:8000"
 ADMIN_KEY = os.getenv("INTRA_ADMIN_KEY", "INTRA_ADMIN_123")
 
 
@@ -23,7 +22,7 @@ class AdminWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Intra Admin Panel")
-        self.resize(1000, 600)
+        self.resize(1050, 650)
 
         tabs = QTabWidget()
 
@@ -32,15 +31,36 @@ class AdminWindow(QMainWindow):
         users_layout = QVBoxLayout()
 
         title = QLabel("👥 User Management")
-        title.setStyleSheet("font-size:18px; font-weight:bold;")
+        title.setStyleSheet("font-size:20px; font-weight:bold;")
 
         self.users_table = QTableWidget()
         self.users_table.setColumnCount(2)
         self.users_table.setHorizontalHeaderLabels(["Profile", "Username"])
-        self.users_table.setColumnWidth(0, 80)
+        self.users_table.setColumnWidth(0, 90)
         self.users_table.horizontalHeader().setStretchLastSection(True)
         self.users_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.users_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.users_table.setShowGrid(False)
+        self.users_table.setAlternatingRowColors(True)
+        self.users_table.verticalHeader().setDefaultSectionSize(80)
+
+        self.users_table.setStyleSheet("""
+        QTableWidget {
+            background-color: #1e1e1e;
+            color: white;
+            font-size: 15px;
+            alternate-background-color: #252525;
+        }
+        QHeaderView::section {
+            background-color: #2d2d2d;
+            padding: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        QTableWidget::item:selected {
+            background-color: #3a3a3a;
+        }
+        """)
 
         btn_layout = QHBoxLayout()
 
@@ -68,7 +88,7 @@ class AdminWindow(QMainWindow):
         cleanup_layout = QVBoxLayout()
 
         cleanup_title = QLabel("🧹 Server Maintenance")
-        cleanup_title.setStyleSheet("font-size:18px; font-weight:bold;")
+        cleanup_title.setStyleSheet("font-size:20px; font-weight:bold;")
 
         cleanup_desc = QLabel("Delete messages older than X days")
 
@@ -89,7 +109,7 @@ class AdminWindow(QMainWindow):
         # ================= SERVER TAB =================
         server_tab = QWidget()
         server_layout = QVBoxLayout()
-        server_layout.addWidget(QLabel("⚙️ Server Controls (future)"))
+        server_layout.addWidget(QLabel("⚙️ Server Controls (coming soon)"))
         server_tab.setLayout(server_layout)
 
         tabs.addTab(self.users_tab, "Users")
@@ -107,6 +127,7 @@ class AdminWindow(QMainWindow):
                 f"{SERVER_URL}/admin/users",
                 headers={"X-ADMIN-KEY": ADMIN_KEY},
                 timeout=5
+
             )
             data = res.json()
 
@@ -115,24 +136,54 @@ class AdminWindow(QMainWindow):
 
             users = data.get("users", [])
             self.users_table.setRowCount(len(users))
-
             for row, user in enumerate(users):
-                photo_label = QLabel()
-                photo_label.setFixedSize(48, 48)
+                is_online = user.get("is_online", False)
+                # -------- PROFILE PHOTO --------
+                photo_wrapper = QWidget()
+                photo_wrapper.setFixedSize(70, 70)
+
+                photo_label = QLabel(photo_wrapper)
+                photo_label.setFixedSize(64, 64)
+                photo_label.move(3, 3)
                 photo_label.setAlignment(Qt.AlignCenter)
 
+                pixmap = QPixmap()
                 if user.get("profile_photo"):
-                    pixmap = QPixmap(SERVER_URL + user["profile_photo"])
+                    try:
+                        r = requests.get(SERVER_URL + user["profile_photo"], timeout=3)
+                        if r.status_code == 200:
+                            pixmap.loadFromData(r.content)
+                    except:
+                        pass
+
+                if pixmap.isNull():
+                    photo_label.setText("👤")
+                    photo_label.setStyleSheet(
+                        "font-size:26px; background:#444; border-radius:32px;"
+                    )
+                else:
                     photo_label.setPixmap(
-                        pixmap.scaled(
-                            48, 48,
-                            Qt.KeepAspectRatio,
-                            Qt.SmoothTransformation
-                        )
+                        pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    )
+                    photo_label.setStyleSheet("border-radius:32px;")
+
+                # 🟢 GREEN DOT
+                if is_online:
+                    dot = QLabel(photo_wrapper)
+                    dot.setFixedSize(14, 14)
+                    dot.move(46, 46)
+                    dot.setStyleSheet(
+                        "background:#00ff88; border-radius:7px; border:2px solid #1e1e1e ( ;"
                     )
 
-                self.users_table.setCellWidget(row, 0, photo_label)
-                self.users_table.setItem(row, 1, QTableWidgetItem(user["username"]))
+                self.users_table.setCellWidget(row, 0, photo_wrapper)
+
+                # -------- USERNAME --------
+                username = user.get("username", "unknown")
+                item = QTableWidgetItem("  " + username)
+                item.setFont(self.get_bold_font(17))
+                item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                self.users_table.setItem(row, 1, item)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -144,7 +195,7 @@ class AdminWindow(QMainWindow):
             QMessageBox.warning(self, "Select User", "Please select a user first.")
             return
 
-        username = self.users_table.item(row, 1).text()
+        username = self.users_table.item(row, 1).text().strip()
 
         confirm = QMessageBox.question(
             self,
@@ -181,7 +232,7 @@ class AdminWindow(QMainWindow):
             QMessageBox.warning(self, "Select User", "Please select a user first.")
             return
 
-        username = self.users_table.item(row, 1).text()
+        username = self.users_table.item(row, 1).text().strip()
 
         new_pass, ok = QInputDialog.getText(
             self,
@@ -250,6 +301,12 @@ class AdminWindow(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
+
+    # ================= FONT HELPER =================
+    def get_bold_font(self, size):
+        font = QFont("Segoe UI", size)
+        font.setBold(True)
+        return font
 
 
 # ================= MAIN =================
