@@ -226,6 +226,7 @@ async function loadUsers() {
         // Current user
         if (user.profile_photo) {
           document.getElementById("my-avatar").src = user.profile_photo;
+          userAvatars[myUsername] = user.profile_photo;
         }
       }
     });
@@ -380,16 +381,24 @@ function connectWS() {
       case "call_reject":
       case "call_rejected":
         alert(msg.sender + " rejected the call");
+        stopWebRTC();
         hideCallOverlay();
         break;
 
       case "call_end":
+      case "call_ended":
         stopWebRTC();
         hideCallOverlay();
         break;
 
       case "webrtc_offer":
-        handleOffer(msg);
+        if (document.getElementById("call-overlay").style.display === "flex" &&
+            document.getElementById("accept-call").style.display === "block") {
+          // If we are showing the incoming call screen, wait for user to accept
+          pendingOffer = msg;
+        } else {
+          handleOffer(msg);
+        }
         break;
 
       case "webrtc_answer":
@@ -572,6 +581,7 @@ let peerConnection = null;
 let localStream = null;
 let callReceiver = null;
 let isCaller = false;
+let pendingOffer = null;
 
 const rtcConfig = {
   iceServers: [
@@ -591,11 +601,18 @@ async function startCall() {
   document.getElementById("reject-call").style.display = "none";
   document.getElementById("end-call").style.display = "block";
 
+  const myPhoto = userAvatars[myUsername];
+
   const payload = {
     type: "call_request",
-    receiver: callReceiver
+    receiver: callReceiver,
+    sender: myUsername,
+    profile_photo: myPhoto || null
   };
   ws.send(JSON.stringify(payload));
+
+  // Android expects offer immediately
+  setupWebRTC();
 }
 
 function showCallOverlay(username, status) {
@@ -614,10 +631,14 @@ function hideCallOverlay() {
   document.getElementById("call-overlay").style.display = "none";
   document.getElementById("ringtone").pause();
   document.getElementById("ringtone").currentTime = 0;
+  pendingOffer = null;
 }
 
 async function handleCallRequest(msg) {
   callReceiver = msg.sender;
+  if (msg.profile_photo) {
+    userAvatars[msg.sender] = msg.profile_photo;
+  }
   isCaller = false;
 
   showCallOverlay(callReceiver, "Incoming Call...");
@@ -641,12 +662,17 @@ async function acceptCall() {
   };
   ws.send(JSON.stringify(payload));
 
-  await setupWebRTC();
+  if (pendingOffer) {
+    await handleOffer(pendingOffer);
+    pendingOffer = null;
+  } else {
+    await setupWebRTC();
+  }
 }
 
 function rejectCall() {
   const payload = {
-    type: "call_reject",
+    type: "call_rejected",
     receiver: callReceiver
   };
   ws.send(JSON.stringify(payload));
@@ -655,7 +681,7 @@ function rejectCall() {
 
 function endCall() {
   const payload = {
-    type: "call_end",
+    type: "call_ended",
     receiver: callReceiver
   };
   ws.send(JSON.stringify(payload));
@@ -664,6 +690,7 @@ function endCall() {
 }
 
 async function setupWebRTC() {
+  if (peerConnection) return;
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
 
@@ -702,7 +729,11 @@ async function setupWebRTC() {
     }
   } catch (e) {
     console.error("WebRTC Setup Error:", e);
-    alert("Could not access microphone");
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      alert("Microphone access failed. Web calls require HTTPS to work on LAN.");
+    } else {
+      alert("Could not access microphone. Please check permissions.");
+    }
     endCall();
   }
 }
@@ -720,8 +751,13 @@ async function handleOffer(msg) {
 }
 
 async function handleAnswer(msg) {
-  await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
-  document.getElementById("call-status").innerText = "Connected";
+  if (!peerConnection) return;
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+    document.getElementById("call-status").innerText = "Connected";
+  } catch (e) {
+    console.error("Handle Answer Error:", e);
+  }
 }
 
 async function handleIceCandidate(msg) {
@@ -741,4 +777,7 @@ function stopWebRTC() {
   }
   const remoteAudio = document.getElementById("remote-audio");
   if (remoteAudio) remoteAudio.remove();
+
+  isCaller = false;
+  pendingOffer = null;
 }
