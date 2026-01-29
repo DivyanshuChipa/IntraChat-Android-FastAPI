@@ -16,7 +16,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 # ✅ List of messages that should NOT be saved to DB
 SIGNAL_TYPES = {
-    "call_request", "call_accept", "call_reject", "call_end", "call_rejected",
+    "call_request", "call_accept", "call_reject", "call_end", "call_rejected", "call_ended",
     "webrtc_offer", "webrtc_answer", "ice_candidate"
 }
 
