@@ -59,8 +59,10 @@ xmlns:tools="http://schemas.android.com/tools">
         android:name=".IntraBackgroundService"
         android:enabled="true"
         android:exported="false"
-        android:foregroundServiceType="phoneCall|dataSync">
-</service>
+        android:foregroundServiceType="phoneCall|dataSync|specialUse">
+        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+            android:value="Listening for incoming LAN chat messages and calls" />
+    </service>
     <receiver
         android:name=".CallActionReceiver"
         android:exported="false" />
