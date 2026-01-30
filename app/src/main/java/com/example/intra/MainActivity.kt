@@ -97,6 +97,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    LaunchedEffect(Unit) {
+                        val settings = SettingsManager(this@MainActivity)
+                        if (settings.isBackgroundServiceEnabled() && !WsManager.isConnected) {
+                            val serviceIntent = Intent(this@MainActivity, IntraBackgroundService::class.java)
+                            try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                                    startForegroundService(serviceIntent)
+                                else startService(serviceIntent)
+                            } catch (e: Exception) {
+                                Log.e("MAIN", "Safe service start failed", e)
+                            }
+                        }
+                    }
+
                     val (intentSender, intentPhoto) = incomingCallData.value
                     LaunchedEffect(intentSender, intentPhoto) {
                         if (intentSender != null) {
@@ -324,13 +338,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val settings = SettingsManager(this)
-        if (settings.isBackgroundServiceEnabled() && !WsManager.isConnected) {
-            val intent = Intent(this, IntraBackgroundService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                startForegroundService(intent)
-            else startService(intent)
-        }
     }
 
     override fun onNewIntent(intent: Intent) {

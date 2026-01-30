@@ -41,14 +41,26 @@ class IntraBackgroundService : Service(), WsManager.Listener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // 1. Notification dikhao taaki Service kill na ho
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                }
+                // Also add specialUse for more stability on Android 14+ if declared in manifest
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                }
+                startForeground(NOTIFICATION_ID, createBaseNotification(), type)
+            } else {
+                startForeground(NOTIFICATION_ID, createBaseNotification())
             }
-            startForeground(NOTIFICATION_ID, createBaseNotification(), type)
-        } else {
-            startForeground(NOTIFICATION_ID, createBaseNotification())
+        } catch (e: Exception) {
+            Log.e("SERVICE", "Failed to start foreground service", e)
+            // On Android 12+, we might get ForegroundServiceStartNotAllowedException
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
+                // Cannot start foreground, will run as background until killed or we try again
+            }
         }
 
         // 2. Settings se username lo
