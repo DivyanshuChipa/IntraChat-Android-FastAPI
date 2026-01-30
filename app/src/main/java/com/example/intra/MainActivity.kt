@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private val ringtoneManager by lazy { CallRingtoneManager.getInstance(this) }
 
     private var incomingCallData = mutableStateOf<Pair<String?, String?>>(null to null)
+    private var sharedImageUri = mutableStateOf<Uri?>(null)
 
     private var currentUploadViewModel: ChatViewModel? = null
     private var currentUploadReceiver: String? = null
@@ -193,6 +194,22 @@ class MainActivity : ComponentActivity() {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
                         when {
+                            sharedImageUri.value != null -> {
+                                ShareScreen(
+                                    imageUri = sharedImageUri.value!!,
+                                    onBack = { sharedImageUri.value = null },
+                                    onSend = { receiver ->
+                                        val uri = sharedImageUri.value!!
+                                        val file = uriToTempFile(this@MainActivity, uri)
+                                        if (file != null) {
+                                            chatViewModel.openChat(receiver)
+                                            chatViewModel.uploadFile(file, receiver)
+                                            currentChatReceiver = receiver
+                                        }
+                                        sharedImageUri.value = null
+                                    }
+                                )
+                            }
 
                             showAbout -> AboutScreen { showAbout = false }
 
@@ -328,6 +345,20 @@ class MainActivity : ComponentActivity() {
         if (sender != null) {
             Log.d("MAIN", "🔥 handleIntent: sender=$sender, photo=$photo")
             incomingCallData.value = sender to photo
+        }
+
+        // Handle Share Intent
+        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+            }
+            uri?.let {
+                Log.d("MAIN", "📸 Received share intent for image: $it")
+                sharedImageUri.value = it
+            }
         }
     }
 
