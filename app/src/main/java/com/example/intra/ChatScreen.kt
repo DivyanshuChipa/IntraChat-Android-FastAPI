@@ -29,6 +29,11 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import android.util.Patterns
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -264,7 +269,8 @@ fun MessageBubble(message: ChatMessage) {
 
                     // 🖼️ Image Preview
                     if (isImage) {
-                        val baseUrl = "http://192.168.31.104:8000"
+                        val settingsManager = remember { SettingsManager(context) }
+                        val baseUrl = settingsManager.getBaseUrl().removeSuffix("/")
                         val fullUrl = if (message.fileUrl.startsWith("http"))
                             message.fileUrl
                         else
@@ -325,7 +331,8 @@ fun MessageBubble(message: ChatMessage) {
                     Button(
                         onClick = {
                             try {
-                                val baseUrl = "http://192.168.31.104:8000"
+                                val settingsManager = SettingsManager(context)
+                                val baseUrl = settingsManager.getBaseUrl().removeSuffix("/")
                                 val finalUrl = if (message.fileUrl.startsWith("http"))
                                     message.fileUrl
                                 else
@@ -358,13 +365,53 @@ fun MessageBubble(message: ChatMessage) {
                     }
 
                 } else {
-                    // 💬 TEXT MESSAGE
-                    Text(
-                        text = message.text,
-                        color = if (message.isSelf)
-                            MaterialTheme.colorScheme.onPrimary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                    // 💬 TEXT MESSAGE (With Clickable Links)
+                    val textColor = if (message.isSelf)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+
+                    val annotatedString = buildAnnotatedString {
+                        append(message.text)
+                        val matcher = Patterns.WEB_URL.matcher(message.text)
+                        while (matcher.find()) {
+                            val start = matcher.start()
+                            val end = matcher.end()
+                            addStyle(
+                                style = SpanStyle(
+                                    color = if (message.isSelf) Color.Cyan else Color(0xFF2196F3),
+                                    textDecoration = TextDecoration.Underline
+                                ),
+                                start = start,
+                                end = end
+                            )
+                            addStringAnnotation(
+                                tag = "URL",
+                                annotation = message.text.substring(start, end),
+                                start = start,
+                                end = end
+                            )
+                        }
+                    }
+
+                    ClickableText(
+                        text = annotatedString,
+                        style = LocalTextStyle.current.copy(color = textColor),
+                        onClick = { offset ->
+                            annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                                .firstOrNull()?.let { annotation ->
+                                    var url = annotation.item
+                                    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                                        url = "http://$url"
+                                    }
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Log.e("Chat", "Link open error", e)
+                                    }
+                                }
+                        }
                     )
                 }
 
