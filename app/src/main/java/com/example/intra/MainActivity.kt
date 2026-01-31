@@ -43,7 +43,9 @@ class MainActivity : ComponentActivity() {
     private val ringtoneManager by lazy { CallRingtoneManager.getInstance(this) }
 
     private var incomingCallData = mutableStateOf<Pair<String?, String?>>(null to null)
-    private var sharedImageUri = mutableStateOf<Uri?>(null)
+    private var sharedUri = mutableStateOf<Uri?>(null)
+    private var sharedText = mutableStateOf<String?>(null)
+    private var sharedMimeType = mutableStateOf<String?>(null)
 
     private var currentUploadViewModel: ChatViewModel? = null
     private var currentUploadReceiver: String? = null
@@ -208,19 +210,33 @@ class MainActivity : ComponentActivity() {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
                         when {
-                            sharedImageUri.value != null -> {
+                            sharedUri.value != null || sharedText.value != null -> {
                                 ShareScreen(
-                                    imageUri = sharedImageUri.value!!,
-                                    onBack = { sharedImageUri.value = null },
+                                    sharedUri = sharedUri.value,
+                                    sharedText = sharedText.value,
+                                    mimeType = sharedMimeType.value,
+                                    onBack = {
+                                        sharedUri.value = null
+                                        sharedText.value = null
+                                        sharedMimeType.value = null
+                                    },
                                     onSend = { receiver ->
-                                        val uri = sharedImageUri.value!!
-                                        val file = uriToTempFile(this@MainActivity, uri)
-                                        if (file != null) {
+                                        if (sharedText.value != null) {
                                             chatViewModel.openChat(receiver)
-                                            chatViewModel.uploadFile(file, receiver)
+                                            chatViewModel.inputMessage.value = sharedText.value!!
+                                            chatViewModel.sendMessage(receiver)
                                             currentChatReceiver = receiver
+                                        } else if (sharedUri.value != null) {
+                                            val file = uriToTempFile(this@MainActivity, sharedUri.value!!)
+                                            if (file != null) {
+                                                chatViewModel.openChat(receiver)
+                                                chatViewModel.uploadFile(file, receiver)
+                                                currentChatReceiver = receiver
+                                            }
                                         }
-                                        sharedImageUri.value = null
+                                        sharedUri.value = null
+                                        sharedText.value = null
+                                        sharedMimeType.value = null
                                     }
                                 )
                             }
@@ -355,16 +371,27 @@ class MainActivity : ComponentActivity() {
         }
 
         // Handle Share Intent
-        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
-            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
-            }
-            uri?.let {
-                Log.d("MAIN", "📸 Received share intent for image: $it")
-                sharedImageUri.value = it
+        if (intent?.action == Intent.ACTION_SEND) {
+            val type = intent.type
+            sharedMimeType.value = type
+
+            if (type == "text/plain") {
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+                if (text != null) {
+                    Log.d("MAIN", "📝 Received share intent for text: $text")
+                    sharedText.value = text
+                }
+            } else if (type != null) {
+                val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+                }
+                uri?.let {
+                    Log.d("MAIN", "📸 Received share intent for $type: $it")
+                    sharedUri.value = it
+                }
             }
         }
     }
