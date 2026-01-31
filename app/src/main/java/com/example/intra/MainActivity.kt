@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
     private val ringtoneManager by lazy { CallRingtoneManager.getInstance(this) }
 
     private var incomingCallData = mutableStateOf<Pair<String?, String?>>(null to null)
-    private var sharedUri = mutableStateOf<Uri?>(null)
+    private var sharedUris = mutableStateListOf<Uri>()
     private var sharedText = mutableStateOf<String?>(null)
     private var sharedMimeType = mutableStateOf<String?>(null)
 
@@ -51,11 +51,11 @@ class MainActivity : ComponentActivity() {
     private var currentUploadReceiver: String? = null
 
     private val filePickerLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            uri?.let {
-                val file = uriToTempFile(this, it)
-                if (file != null) {
-                    currentUploadViewModel?.uploadFile(file, currentUploadReceiver!!)
+        registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+            if (uris.isNotEmpty()) {
+                val files = uris.mapNotNull { uriToTempFile(this, it) }
+                if (files.isNotEmpty()) {
+                    currentUploadViewModel?.uploadMultipleFiles(files, currentUploadReceiver!!)
                 }
             }
         }
@@ -210,13 +210,13 @@ class MainActivity : ComponentActivity() {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
                         when {
-                            sharedUri.value != null || sharedText.value != null -> {
+                            sharedUris.isNotEmpty() || sharedText.value != null -> {
                                 ShareScreen(
-                                    sharedUri = sharedUri.value,
+                                    sharedUris = sharedUris,
                                     sharedText = sharedText.value,
                                     mimeType = sharedMimeType.value,
                                     onBack = {
-                                        sharedUri.value = null
+                                        sharedUris.clear()
                                         sharedText.value = null
                                         sharedMimeType.value = null
                                     },
@@ -226,15 +226,15 @@ class MainActivity : ComponentActivity() {
                                             chatViewModel.inputMessage.value = sharedText.value!!
                                             chatViewModel.sendMessage(receiver)
                                             currentChatReceiver = receiver
-                                        } else if (sharedUri.value != null) {
-                                            val file = uriToTempFile(this@MainActivity, sharedUri.value!!)
-                                            if (file != null) {
+                                        } else if (sharedUris.isNotEmpty()) {
+                                            val files = sharedUris.mapNotNull { uriToTempFile(this@MainActivity, it) }
+                                            if (files.isNotEmpty()) {
                                                 chatViewModel.openChat(receiver)
-                                                chatViewModel.uploadFile(file, receiver)
+                                                chatViewModel.uploadMultipleFiles(files, receiver)
                                                 currentChatReceiver = receiver
                                             }
                                         }
-                                        sharedUri.value = null
+                                        sharedUris.clear()
                                         sharedText.value = null
                                         sharedMimeType.value = null
                                     }
@@ -390,8 +390,23 @@ class MainActivity : ComponentActivity() {
                 }
                 uri?.let {
                     Log.d("MAIN", "📸 Received share intent for $type: $it")
-                    sharedUri.value = it
+                    sharedUris.clear()
+                    sharedUris.add(it)
                 }
+            }
+        } else if (intent?.action == Intent.ACTION_SEND_MULTIPLE) {
+            val type = intent.type
+            sharedMimeType.value = type
+            val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+            }
+            uris?.let {
+                Log.d("MAIN", "📸 Received multiple share intent: ${it.size} files")
+                sharedUris.clear()
+                sharedUris.addAll(it.take(20))
             }
         }
     }

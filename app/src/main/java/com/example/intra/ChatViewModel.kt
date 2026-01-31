@@ -174,8 +174,11 @@ class ChatViewModel(
     // 📎 SEND FILE
     // ===============================
 
-    fun uploadFile(file: File, receiver: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+    /**
+     * Internal suspend function to handle sequential file uploads
+     */
+    private suspend fun uploadFileInternal(file: File, receiver: String) {
+        try {
             val ts = System.currentTimeMillis()
 
             val part = MultipartBody.Part.createFormData(
@@ -185,9 +188,12 @@ class ChatViewModel(
             )
 
             val response = ApiClient.apiService.uploadFile(part)
-            if (!response.isSuccessful) return@launch
+            if (!response.isSuccessful) {
+                Log.e(TAG, "❌ Upload failed for ${file.name}: ${response.code()}")
+                return
+            }
 
-            val raw = response.body()?.string() ?: return@launch
+            val raw = response.body()?.string() ?: return
             val json = JSONObject(raw).apply {
                 put("type", "file")
                 put("sender", currentUsername)
@@ -210,8 +216,34 @@ class ChatViewModel(
 
             saveToDb(msg, currentUsername, receiver, isRead = true)
             WsManager.send(json.toString())
-            // 🆕 Emit event
             _contactUpdateEvent.emit(receiver)
+
+            Log.d(TAG, "✅ File uploaded and signal sent: ${file.name}")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error uploading file ${file.name}", e)
+        }
+    }
+
+    /**
+     * Single file upload (maintains compatibility)
+     */
+    fun uploadFile(file: File, receiver: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            uploadFileInternal(file, receiver)
+        }
+    }
+
+    /**
+     * Multiple file upload - Sequential
+     */
+    fun uploadMultipleFiles(files: List<File>, receiver: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            Log.d(TAG, "🚀 Starting sequential upload of ${files.size} files")
+            files.forEachIndexed { index, file ->
+                Log.d(TAG, "📤 Uploading file ${index + 1}/${files.size}: ${file.name}")
+                uploadFileInternal(file, receiver)
+            }
+            Log.d(TAG, "🏁 All files processed")
         }
     }
 

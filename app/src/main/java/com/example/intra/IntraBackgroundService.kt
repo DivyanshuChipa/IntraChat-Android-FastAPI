@@ -160,7 +160,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_abouticon)
+            .setSmallIcon(R.drawable.ic_notificationvector)
             .setContentTitle("Incoming Call")
             .setContentText("$sender is calling…")
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -180,7 +180,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
 
     private fun showMessageNotification(sender: String, message: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_abouticon)
+            .setSmallIcon(R.drawable.ic_notificationvector)
             .setContentTitle(sender)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -196,7 +196,7 @@ class IntraBackgroundService : Service(), WsManager.Listener {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Intra Service")
             .setContentText("Listening for LAN connections...")
-            .setSmallIcon(R.drawable.ic_abouticon)
+            .setSmallIcon(R.drawable.ic_notificationvector)
             .build()
     }
 
