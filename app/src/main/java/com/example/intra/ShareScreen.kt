@@ -1,15 +1,13 @@
 package com.example.intra
 
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -26,7 +25,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareScreen(
-    imageUri: Uri,
+    sharedUri: Uri? = null,
+    sharedText: String? = null,
+    mimeType: String? = null,
     onBack: () -> Unit,
     onSend: (String) -> Unit
 ) {
@@ -41,10 +42,24 @@ fun ShareScreen(
     val settingsManager = remember { SettingsManager(context) }
     val myUsername = remember { settingsManager.getUsername() ?: "" }
 
+    // Get filename if URI is present
+    val fileName = remember(sharedUri) {
+        if (sharedUri != null) {
+            var name: String? = null
+            context.contentResolver.query(sharedUri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (index >= 0) name = cursor.getString(index)
+                }
+            }
+            name ?: "Unknown File"
+        } else null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Share Photo") },
+                title = { Text("Share Content") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -75,17 +90,17 @@ fun ShareScreen(
                 ) {
                     Icon(Icons.Default.Send, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Send Photo", fontWeight = FontWeight.Bold)
+                    Text("Send Now", fontWeight = FontWeight.Bold)
                 }
             }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Photo Preview
+            // Preview Section
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
+                    .height(200.dp)
                     .padding(12.dp),
                 shape = MaterialTheme.shapes.medium,
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -93,15 +108,77 @@ fun ShareScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black),
+                        .background(if (isDark) Color(0xFF2A2B33) else Color(0xFFF5F5F5)),
                     contentAlignment = Alignment.Center
                 ) {
-                    AsyncImage(
-                        model = imageUri,
-                        contentDescription = "Preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
+                    when {
+                        // Image Preview
+                        mimeType?.startsWith("image/") == true -> {
+                            AsyncImage(
+                                model = sharedUri,
+                                contentDescription = "Image Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                        // Video Preview (Icon + Name)
+                        mimeType?.startsWith("video/") == true -> {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.VideoLibrary,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = if (isDark) Color.LightGray else Color.Gray
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    fileName ?: "Video",
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        // Text / Link Preview
+                        sharedText != null -> {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.Link,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color(0xFF673AB7)
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    sharedText,
+                                    maxLines = 4,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                        // Document / Generic File
+                        else -> {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.Description,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = if (isDark) Color.LightGray else Color.Gray
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    fileName ?: "Document",
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
