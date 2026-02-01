@@ -116,7 +116,7 @@ fun ShareScreen(
                         contentPadding = PaddingValues()
                     ) {
                         val buttonBrush = if (selectedRecipient != null) primaryGradient
-                                          else Brush.linearGradient(listOf(Color.Gray, Color.Gray))
+                        else Brush.linearGradient(listOf(Color.Gray, Color.Gray))
 
                         Box(
                             modifier = Modifier
@@ -257,8 +257,8 @@ fun FilePreviewItem(uri: Uri, name: String, mimeType: String?, isDark: Boolean) 
                 contentAlignment = Alignment.Center
             ) {
                 val currentMime = if (name.lowercase().endsWith(".jpg") || name.lowercase().endsWith(".png")) "image/"
-                                 else if (name.lowercase().endsWith(".mp4")) "video/"
-                                 else mimeType
+                else if (name.lowercase().endsWith(".mp4")) "video/"
+                else mimeType
 
                 when {
                     currentMime?.startsWith("image/") == true -> {
