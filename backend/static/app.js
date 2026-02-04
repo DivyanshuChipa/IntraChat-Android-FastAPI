@@ -8,6 +8,7 @@ function toggleAuthMode() {
   const btn = document.getElementById("auth-btn");
   const link = document.getElementById("toggle-link");
   const msg = document.getElementById("toggle-msg");
+  const errorEl = document.getElementById("error");
 
   if (!btn || !link || !msg) return;
 
@@ -20,23 +21,38 @@ function toggleAuthMode() {
     msg.innerText = "Have an account?";
     link.innerText = "Login";
   }
-  const errorEl = document.getElementById("error");
-  if (errorEl) errorEl.innerText = "";
+
+  // Clear error when switching modes
+  if (errorEl) {
+      errorEl.innerText = "";
+      errorEl.style.color = "var(--error-color)"; // Reset color
+  }
 }
 
 async function login() {
-  console.log("Login attempt...");
+  console.log("Auth attempt...");
   const userEl = document.getElementById("username");
   const passEl = document.getElementById("password");
   const errorEl = document.getElementById("error");
+  const btn = document.getElementById("auth-btn");
 
   if (!userEl || !passEl) return;
+
   const username = userEl.value.trim();
   const password = passEl.value.trim();
 
   if (!username || !password) {
-    if (errorEl) errorEl.innerText = "Please fill all fields";
+    if (errorEl) {
+        errorEl.innerText = "Please fill all fields";
+        errorEl.style.color = "var(--error-color)";
+    }
     return;
+  }
+
+  // Disable button to prevent double clicks
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "Wait...";
   }
 
   const endpoint = isLoginMode ? "/login" : "/register";
@@ -52,19 +68,40 @@ async function login() {
 
     if (data.success) {
       if (isLoginMode) {
+        // ✅ LOGIN SUCCESS
         localStorage.setItem("username", data.username);
         localStorage.setItem("token", data.token);
         window.location.href = "/chat.html";
       } else {
-        alert("Registration successful! Please login.");
+        // ✅ REGISTER SUCCESS (Might be Pending or Active)
+        alert(data.message); // Server ka message dikhao (Wait for approval etc.)
         toggleAuthMode();
       }
     } else {
-      if (errorEl) errorEl.innerText = data.message || (isLoginMode ? "Login failed" : "Registration failed");
+      // ❌ FAILURE / PENDING STATUS
+      if (errorEl) {
+          errorEl.innerText = data.message || "Operation failed";
+
+          // Agar Pending hai toh Orange color, warna Red
+          if (res.status === 403 || (data.message && data.message.toLowerCase().includes("pending"))) {
+              errorEl.style.color = "#FF9800"; // Orange
+          } else {
+              errorEl.style.color = "var(--error-color)"; // Red
+          }
+      }
     }
   } catch (e) {
     console.error("Auth error:", e);
-    if (errorEl) errorEl.innerText = "Server connection error";
+    if (errorEl) {
+        errorEl.innerText = "Server connection error";
+        errorEl.style.color = "var(--error-color)";
+    }
+  } finally {
+      // Re-enable button
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = isLoginMode ? "LOGIN" : "REGISTER";
+      }
   }
 }
 
@@ -136,6 +173,7 @@ function toggleSettings() {
 async function logout() {
   localStorage.removeItem("username");
   localStorage.removeItem("token");
+  if (ws) ws.close();
   window.location = "/index.html";
 }
 
@@ -332,6 +370,13 @@ function connectWS() {
     } catch (e) {
       console.error("Invalid WS JSON:", event.data);
       return;
+    }
+
+    // 🔥 SECURITY CHECK HANDLER 🔥
+    if (msg.type === "error") {
+        alert("Session Error: " + msg.text);
+        logout(); // Kick user out if server rejects connection
+        return;
     }
 
     // Only display if relevant to current chat
@@ -559,10 +604,12 @@ function handleTyping() {
  * ENTER KEY HANDLER
  ***********************/
 function handleEnter(e) {
-  handleTyping();
-  if (e.key === "Enter") {
-    sendMsg();
+  const now = Date.now();
+  if (now - lastTypingSent > 2000 && ws && currentReceiver !== "Family Group") {
+      ws.send(JSON.stringify({ type: "typing", receiver: currentReceiver }));
+      lastTypingSent = now;
   }
+  if (e.key === "Enter") sendMsg();
 }
 
 window.addEventListener('resize', () => {
