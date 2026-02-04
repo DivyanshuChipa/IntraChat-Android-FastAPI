@@ -5,10 +5,11 @@ import requests
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
-    QInputDialog, QLineEdit, QFrame, QHeaderView, QCheckBox, QDialog, QDialogButtonBox, QFormLayout
+    QInputDialog, QLineEdit, QFrame, QHeaderView, QCheckBox, QDialog,
+    QDialogButtonBox, QFormLayout, QStackedWidget
 )
 from PySide6.QtGui import QPixmap, QFont, QIcon, QColor
-from PySide6.QtCore import Qt, QSize, QSettings
+from PySide6.QtCore import Qt, QSize, QSettings, QTimer
 
 # Global Config (Will be set via Dialog)
 SERVER_URL = ""
@@ -170,30 +171,28 @@ class AdminWindow(QMainWindow):
         sidebar_layout.addStretch()
 
         # --- Content Area ---
-        content_area = QWidget()
-        self.content_layout = QVBoxLayout(content_area)
-        self.content_layout.setContentsMargins(20, 20, 20, 20)
+        self.stack = QStackedWidget()
 
         # Pages
         self.page_users = self.create_users_page()
         self.page_settings = self.create_settings_page()
         self.page_cleanup = self.create_cleanup_page()
 
-        self.content_layout.addWidget(self.page_users)
-        self.content_layout.addWidget(self.page_settings)
-        self.content_layout.addWidget(self.page_cleanup)
-
-        # Hide initially
-        self.page_settings.hide()
-        self.page_cleanup.hide()
+        self.stack.addWidget(self.page_users)
+        self.stack.addWidget(self.page_settings)
+        self.stack.addWidget(self.page_cleanup)
 
         # Add to main layout
         main_layout.addWidget(sidebar)
-        main_layout.addWidget(content_area)
+        main_layout.addWidget(self.stack)
+
+        # Refresh Timer
+        self.refresh_timer = QTimer()
+        self.refresh_timer.setInterval(30000) # 30 seconds
+        self.refresh_timer.timeout.connect(self.load_users)
 
         # Initial Load
         self.switch_tab(0)
-        self.load_users()
 
     def create_nav_btn(self, text):
         btn = QPushButton(text)
@@ -207,22 +206,26 @@ class AdminWindow(QMainWindow):
         self.btn_settings.setProperty("active", "false")
         self.btn_cleanup.setProperty("active", "false")
 
-        self.page_users.hide()
-        self.page_settings.hide()
-        self.page_cleanup.hide()
+        self.stack.setCurrentIndex(index)
 
+        # Timer management
         if index == 0:
             self.btn_users.setProperty("active", "true")
-            self.page_users.show()
-        elif index == 1:
+            self.load_users()
+            self.refresh_timer.start()
+        else:
+            self.refresh_timer.stop()
+
+        if index == 1:
             self.btn_settings.setProperty("active", "true")
-            self.page_settings.show()
             self.load_settings()
         elif index == 2:
             self.btn_cleanup.setProperty("active", "true")
-            self.page_cleanup.show()
 
-        self.setStyleSheet(STYLESHEET) # Force refresh style
+        # Update styling to reflect active property
+        self.btn_users.setStyle(self.btn_users.style())
+        self.btn_settings.setStyle(self.btn_settings.style())
+        self.btn_cleanup.setStyle(self.btn_cleanup.style())
 
     # ================= PAGE: USERS =================
     def create_users_page(self):
@@ -347,8 +350,12 @@ class AdminWindow(QMainWindow):
 
     def approve_user(self, username):
         try:
-            requests.post(f"{self.server_url}/admin/approve_user", headers=self.headers, params={"username": username})
-            self.load_users()
+            res = requests.post(f"{self.server_url}/admin/approve_user", headers=self.headers, params={"username": username}, timeout=3)
+            if res.status_code == 200:
+                self.load_users()
+                # Show a temporary status? For now QMessageBox is fine or just refresh.
+            else:
+                raise Exception(f"Server error: {res.status_code}")
         except Exception as e:
             QMessageBox.warning(self, "Error", str(e))
 
@@ -368,31 +375,77 @@ class AdminWindow(QMainWindow):
     def create_settings_page(self):
         page = QWidget()
         layout = QVBoxLayout(page)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         lbl = QLabel("Global Settings")
-        lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
+        lbl.setStyleSheet("font-size: 24px; font-weight: bold; color: #cba6f7; margin-bottom: 10px;")
 
         # Toggle Card
         card = QFrame()
-        card.setStyleSheet("background-color: #181825; border-radius: 10px; padding: 20px;")
+        card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
         card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(30, 30, 30, 30)
+        card_layout.setSpacing(15)
 
         self.chk_approval = QCheckBox("Require Admin Approval for New Users")
-        self.chk_approval.setTristate(False)   # 🔒 Qt ko confuse hone se roko
-        self.chk_approval.setChecked(False)    # 🔒 explicit default
-        self.chk_approval.setStyleSheet("QCheckBox { font-size: 16px; color: #cdd6f4; } QCheckBox::indicator { width: 20px; height: 20px; }")
+        self.chk_approval.setTristate(False)
+        self.chk_approval.setChecked(False)
+        self.chk_approval.setCursor(Qt.PointingHandCursor)
+        self.chk_approval.setStyleSheet("""
+            QCheckBox {
+                font-size: 18px;
+                color: #cdd6f4;
+                font-weight: 500;
+            }
+            QCheckBox::indicator {
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                border: 2px solid #45475a;
+                background-color: #313244;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #cba6f7;
+                border-color: #cba6f7;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #cba6f7;
+            }
+        """)
 
-        desc = QLabel("If enabled, new users will be in 'Pending' state until you approve them here.\nIf disabled, they can chat immediately after registering.")
-        desc.setStyleSheet("color: #a6adc8; margin-top: 5px;")
+        desc = QLabel("When enabled, new users must be manually approved by an admin before they can log in. If disabled, registration is automatic and immediate.")
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #9399b2; font-size: 14px; line-height: 1.5;")
 
-        save_btn = QPushButton("Save Settings")
+        # Status Label for feedback
+        self.settings_status = QLabel("")
+        self.settings_status.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.settings_status.setAlignment(Qt.AlignCenter)
+
+        # Big Save Button
+        save_btn = QPushButton("💾 SAVE SETTINGS")
         save_btn.setObjectName("SaveBtn")
-        save_btn.setProperty("class", "actionBtn")
+        save_btn.setMinimumHeight(55)
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setStyleSheet("""
+            QPushButton#SaveBtn {
+                background-color: #cba6f7;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+                margin-top: 10px;
+            }
+            QPushButton#SaveBtn:hover {
+                background-color: #b4befe;
+            }
+        """)
         save_btn.clicked.connect(self.save_settings)
 
         card_layout.addWidget(self.chk_approval)
         card_layout.addWidget(desc)
-        card_layout.addSpacing(20)
+        card_layout.addSpacing(10)
+        card_layout.addWidget(self.settings_status)
         card_layout.addWidget(save_btn)
 
         layout.addWidget(lbl)
@@ -401,45 +454,83 @@ class AdminWindow(QMainWindow):
         return page
 
     def load_settings(self):
-      try:
-        res = requests.get(f"{self.server_url}/admin/settings", headers=self.headers)
-        data = res.json()
-        if data["success"]:
-            self.chk_approval.blockSignals(True)   # 🔥
-            self.chk_approval.setChecked(bool(data["require_approval"]))
-            self.chk_approval.blockSignals(False)  # 🔥
-      except Exception as e:
-        print("load_settings error:", e)
+        try:
+            self.settings_status.setText("") # Clear previous status
+            res = requests.get(f"{self.server_url}/admin/settings", headers=self.headers, timeout=3)
+            data = res.json()
+            if data["success"]:
+                self.chk_approval.blockSignals(True)
+                self.chk_approval.setChecked(bool(data["require_approval"]))
+                self.chk_approval.blockSignals(False)
+        except Exception as e:
+            print("load_settings error:", e)
 
     def save_settings(self):
         try:
+            self.settings_status.setText("Saving...")
+            self.settings_status.setStyleSheet("color: #89b4fa;")
+
             val = self.chk_approval.isChecked()
-            requests.post(f"{self.server_url}/admin/toggle_approval", headers=self.headers, params={"enabled": val})
-            QMessageBox.information(self, "Saved", "Settings updated successfully.")
+            res = requests.post(f"{self.server_url}/admin/toggle_approval",
+                              headers=self.headers,
+                              params={"enabled": val},
+                              timeout=3)
+
+            if res.status_code == 200:
+                self.settings_status.setText("✅ Settings Saved Successfully!")
+                self.settings_status.setStyleSheet("color: #a6e3a1;")
+            else:
+                raise Exception(f"Server error: {res.status_code}")
         except Exception as e:
-            QMessageBox.warning(self, "Error", str(e))
+            self.settings_status.setText(f"❌ Error: {str(e)}")
+            self.settings_status.setStyleSheet("color: #f38ba8;")
 
     # ================= PAGE: CLEANUP =================
     def create_cleanup_page(self):
         page = QWidget()
         layout = QVBoxLayout(page)
+        layout.setContentsMargins(20, 20, 20, 20)
+
         lbl = QLabel("Server Maintenance")
-        lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
+        lbl.setStyleSheet("font-size: 24px; font-weight: bold; color: #f38ba8; margin-bottom: 10px;")
 
         card = QFrame()
-        card.setStyleSheet("background-color: #181825; border-radius: 10px; padding: 20px;")
+        card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
         c_layout = QVBoxLayout(card)
+        c_layout.setContentsMargins(30, 30, 30, 30)
+        c_layout.setSpacing(15)
+
+        title = QLabel("Cleanup Database")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #cdd6f4;")
+
+        desc = QLabel("Remove old messages from the database to save space. This action is irreversible.")
+        desc.setStyleSheet("color: #9399b2; font-size: 14px;")
 
         self.days_input = QLineEdit()
-        self.days_input.setPlaceholderText("Enter days (e.g. 30)")
+        self.days_input.setPlaceholderText("Number of days (e.g., 30)")
+        self.days_input.setMinimumHeight(45)
 
-        btn = QPushButton("🗑️ Delete Old Messages")
+        btn = QPushButton("🗑️ DELETE MESSAGES")
         btn.setObjectName("DeleteBtn")
-        btn.setProperty("class", "actionBtn")
+        btn.setMinimumHeight(50)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet("""
+            QPushButton#DeleteBtn {
+                background-color: #f38ba8;
+                color: #11111b;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton#DeleteBtn:hover {
+                background-color: #eba0ac;
+            }
+        """)
         btn.clicked.connect(self.run_cleanup)
 
-        c_layout.addWidget(QLabel("Delete messages older than X days:"))
+        c_layout.addWidget(title)
+        c_layout.addWidget(desc)
         c_layout.addWidget(self.days_input)
+        c_layout.addSpacing(10)
         c_layout.addWidget(btn)
 
         layout.addWidget(lbl)
