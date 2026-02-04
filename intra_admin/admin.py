@@ -1,323 +1,473 @@
+# ===== File: admin.py =====
 import sys
 import os
 import requests
-
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget,
-    QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTabWidget, QTableWidget,
-    QTableWidgetItem, QMessageBox,
-    QInputDialog, QLineEdit
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
+    QInputDialog, QLineEdit, QFrame, QHeaderView, QCheckBox, QDialog, QDialogButtonBox, QFormLayout
 )
-from PySide6.QtGui import QPixmap, QFont
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame   # 👈 upar imports me add karna
+from PySide6.QtGui import QPixmap, QFont, QIcon, QColor
+from PySide6.QtCore import Qt, QSize, QSettings
 
+# Global Config (Will be set via Dialog)
+SERVER_URL = ""
+ADMIN_KEY = ""
 
-# ================= CONFIG =================
-SERVER_URL = "http://192.168.31.104:8000"
-ADMIN_KEY = os.getenv("INTRA_ADMIN_KEY", "INTRA_ADMIN_123")
+# ================= MODERN STYLESHEET (Dark Theme) =================
+STYLESHEET = """
+QMainWindow { background-color: #1e1e2e; }
+QWidget { color: #cdd6f4; font-family: 'Segoe UI', sans-serif; }
 
+/* Tabs (Sidebar style) */
+QPushButton#TabBtn {
+    background-color: transparent;
+    color: #a6adc8;
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+}
+QPushButton#TabBtn:hover { background-color: #313244; color: #fff; }
+QPushButton#TabBtn[active="true"] {
+    background-color: #cba6f7;
+    color: #1e1e2e;
+    font-weight: bold;
+}
 
-class AdminWindow(QMainWindow):
+/* Table */
+QTableWidget {
+    background-color: #181825;
+    border: 1px solid #313244;
+    gridline-color: #313244;
+    border-radius: 8px;
+    selection-background-color: #45475a;
+}
+QHeaderView::section {
+    background-color: #1e1e2e;
+    padding: 8px;
+    border: none;
+    font-weight: bold;
+    color: #cba6f7;
+}
+
+/* Action Buttons */
+QPushButton.actionBtn {
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-weight: bold;
+    color: white;
+}
+QPushButton#RefreshBtn { background-color: #89b4fa; border: none; color: #1e1e2e;}
+QPushButton#ApproveBtn { background-color: #a6e3a1; border: none; color: #1e1e2e;}
+QPushButton#ResetBtn { background-color: #f9e2af; border: none; color: #1e1e2e;}
+QPushButton#DeleteBtn { background-color: #f38ba8; border: none; color: #1e1e2e;}
+QPushButton#SaveBtn { background-color: #cba6f7; border: none; color: #1e1e2e; padding: 10px;}
+
+QPushButton.actionBtn:hover { margin-top: -2px; }
+
+/* Inputs */
+QLineEdit {
+    background-color: #313244;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 8px;
+    color: white;
+}
+"""
+
+# ================= CONNECTION DIALOG =================
+class ConnectDialog(QDialog):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Intra Admin Panel")
-        self.resize(1050, 650)
-
-        tabs = QTabWidget()
-
-        # ================= USERS TAB =================
-        self.users_tab = QWidget()
-        users_layout = QVBoxLayout()
-
-        title = QLabel("👥 User Management")
-        title.setStyleSheet("font-size:20px; font-weight:bold;")
-
-        self.users_table = QTableWidget()
-        self.users_table.setColumnCount(2)
-        self.users_table.setHorizontalHeaderLabels(["Profile", "Username"])
-        self.users_table.setColumnWidth(0, 90)
-        self.users_table.horizontalHeader().setStretchLastSection(True)
-        self.users_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.users_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.users_table.setShowGrid(False)
-        self.users_table.setAlternatingRowColors(True)
-        self.users_table.verticalHeader().setDefaultSectionSize(80)
-
-        self.users_table.setStyleSheet("""
-        QTableWidget {
-            background-color: #1e1e1e;
-            color: white;
-            font-size: 15px;
-            alternate-background-color: #252525;
-        }
-        QHeaderView::section {
-            background-color: #2d2d2d;
-            padding: 8px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        QTableWidget::item:selected {
-            background-color: #3a3a3a;
-        }
+        self.setWindowTitle("Connect to Intra Server")
+        self.setFixedSize(400, 250)
+        self.setStyleSheet("""
+            QDialog { background-color: #1e1e2e; color: white; }
+            QLineEdit { background-color: #313244; padding: 8px; border-radius: 5px; color: white; border: 1px solid #45475a;}
+            QLabel { font-size: 14px; font-weight: bold; color: #cba6f7; }
+            QPushButton { background-color: #cba6f7; color: #1e1e2e; padding: 8px; border-radius: 5px; font-weight: bold; }
         """)
 
-        btn_layout = QHBoxLayout()
+        # Load saved settings
+        self.settings = QSettings("Intra", "AdminPanel")
+        saved_ip = self.settings.value("server_ip", "192.168.31.104")
+        saved_port = self.settings.value("server_port", "8000")
+        saved_key = self.settings.value("admin_key", "INTRA_ADMIN_123")
 
-        load_btn = QPushButton("🔄 Load Users")
-        reset_btn = QPushButton("🔐 Reset Password")
-        delete_btn = QPushButton("❌ Delete User")
+        layout = QVBoxLayout()
+        form = QFormLayout()
 
-        load_btn.clicked.connect(self.load_users)
-        reset_btn.clicked.connect(self.reset_password)
-        delete_btn.clicked.connect(self.delete_user)
+        self.ip_input = QLineEdit(saved_ip)
+        self.port_input = QLineEdit(saved_port)
+        self.key_input = QLineEdit(saved_key)
+        self.key_input.setEchoMode(QLineEdit.Password)
 
-        btn_layout.addWidget(load_btn)
-        btn_layout.addWidget(reset_btn)
-        btn_layout.addWidget(delete_btn)
-        btn_layout.addStretch()
+        form.addRow("Server IP:", self.ip_input)
+        form.addRow("Port:", self.port_input)
+        form.addRow("Admin Key:", self.key_input)
 
-        users_layout.addWidget(title)
-        users_layout.addWidget(self.users_table)
-        users_layout.addLayout(btn_layout)
+        layout.addLayout(form)
 
-        self.users_tab.setLayout(users_layout)
+        self.btn_connect = QPushButton("Connect")
+        self.btn_connect.clicked.connect(self.save_and_accept)
+        layout.addWidget(self.btn_connect)
 
-        # ================= CLEANUP TAB =================
-        cleanup_tab = QWidget()
-        cleanup_layout = QVBoxLayout()
+        self.setLayout(layout)
 
-        cleanup_title = QLabel("🧹 Server Maintenance")
-        cleanup_title.setStyleSheet("font-size:20px; font-weight:bold;")
+    def save_and_accept(self):
+        self.settings.setValue("server_ip", self.ip_input.text())
+        self.settings.setValue("server_port", self.port_input.text())
+        self.settings.setValue("admin_key", self.key_input.text())
+        self.accept()
 
-        cleanup_desc = QLabel("Delete messages older than X days")
+# ================= MAIN ADMIN WINDOW =================
+class AdminWindow(QMainWindow):
+    def __init__(self, server_url, admin_key):
+        super().__init__()
+        self.server_url = server_url
+        self.headers = {"X-ADMIN-KEY": admin_key}
+
+        self.setWindowTitle("Intra Admin Panel (Pro)")
+        self.resize(1100, 700)
+        self.setStyleSheet(STYLESHEET)
+
+
+        # Main Layout
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # --- Sidebar ---
+        sidebar = QFrame()
+        sidebar.setFixedWidth(220)
+        sidebar.setStyleSheet("background-color: #11111b; border-right: 1px solid #313244;")
+        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout.setContentsMargins(15, 30, 15, 30)
+        sidebar_layout.setSpacing(10)
+
+        # Title
+        title_lbl = QLabel("INTRA\nADMIN")
+        title_lbl.setAlignment(Qt.AlignCenter)
+        title_lbl.setStyleSheet("font-size: 24px; font-weight: bold; color: #cba6f7; margin-bottom: 20px;")
+        sidebar_layout.addWidget(title_lbl)
+
+        # Nav Buttons
+        self.btn_users = self.create_nav_btn("👥 Users")
+        self.btn_settings = self.create_nav_btn("⚙️ Settings")
+        self.btn_cleanup = self.create_nav_btn("🧹 Cleanup")
+
+        self.btn_users.clicked.connect(lambda: self.switch_tab(0))
+        self.btn_settings.clicked.connect(lambda: self.switch_tab(1))
+        self.btn_cleanup.clicked.connect(lambda: self.switch_tab(2))
+
+        sidebar_layout.addWidget(self.btn_users)
+        sidebar_layout.addWidget(self.btn_settings)
+        sidebar_layout.addWidget(self.btn_cleanup)
+        sidebar_layout.addStretch()
+
+        # --- Content Area ---
+        content_area = QWidget()
+        self.content_layout = QVBoxLayout(content_area)
+        self.content_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Pages
+        self.page_users = self.create_users_page()
+        self.page_settings = self.create_settings_page()
+        self.page_cleanup = self.create_cleanup_page()
+
+        self.content_layout.addWidget(self.page_users)
+        self.content_layout.addWidget(self.page_settings)
+        self.content_layout.addWidget(self.page_cleanup)
+
+        # Hide initially
+        self.page_settings.hide()
+        self.page_cleanup.hide()
+
+        # Add to main layout
+        main_layout.addWidget(sidebar)
+        main_layout.addWidget(content_area)
+
+        # Initial Load
+        self.switch_tab(0)
+        self.load_users()
+
+    def create_nav_btn(self, text):
+        btn = QPushButton(text)
+        btn.setObjectName("TabBtn")
+        btn.setCursor(Qt.PointingHandCursor)
+        return btn
+
+    def switch_tab(self, index):
+        # Reset styles
+        self.btn_users.setProperty("active", "false")
+        self.btn_settings.setProperty("active", "false")
+        self.btn_cleanup.setProperty("active", "false")
+
+        self.page_users.hide()
+        self.page_settings.hide()
+        self.page_cleanup.hide()
+
+        if index == 0:
+            self.btn_users.setProperty("active", "true")
+            self.page_users.show()
+        elif index == 1:
+            self.btn_settings.setProperty("active", "true")
+            self.page_settings.show()
+            self.load_settings()
+        elif index == 2:
+            self.btn_cleanup.setProperty("active", "true")
+            self.page_cleanup.show()
+
+        self.setStyleSheet(STYLESHEET) # Force refresh style
+
+    # ================= PAGE: USERS =================
+    def create_users_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        # Header
+        header = QHBoxLayout()
+        lbl = QLabel("User Management")
+        lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
+
+        refresh_btn = QPushButton("🔄 Refresh")
+        refresh_btn.setObjectName("RefreshBtn")
+        refresh_btn.setFixedSize(100, 35)
+        refresh_btn.setProperty("class", "actionBtn")
+        refresh_btn.clicked.connect(self.load_users)
+
+        header.addWidget(lbl)
+        header.addStretch()
+        header.addWidget(refresh_btn)
+
+        # Table
+        self.table = QTableWidget()
+        self.table.setColumnCount(5) # Photo, Name, Status, Approved?, Actions
+        self.table.setHorizontalHeaderLabels(["Photo", "Username", "Online", "Status", "Actions"])
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setFocusPolicy(Qt.NoFocus)
+        self.table.verticalHeader().setDefaultSectionSize(70)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+
+        layout.addLayout(header)
+        layout.addWidget(self.table)
+        return page
+
+    def load_users(self):
+        try:
+            res = requests.get(f"{self.server_url}/admin/users", headers=self.headers, timeout=3)
+            data = res.json()
+            if not data.get("success"): raise Exception("API Error")
+
+            users = data.get("users", [])
+            self.table.setRowCount(len(users))
+
+            for row, user in enumerate(users):
+                username = user.get("username", "Unknown")
+                is_online = user.get("is_online", False)
+                is_approved = user.get("is_approved", True)
+                photo_url = user.get("profile_photo")
+
+                # 1. Photo
+                photo_lbl = QLabel()
+                photo_lbl.setFixedSize(50, 50)
+                photo_lbl.setAlignment(Qt.AlignCenter)
+                photo_lbl.setStyleSheet("background-color: #45475a; border-radius: 25px;")
+                if photo_url:
+                    self.load_image_async(photo_lbl, photo_url)
+                else:
+                    photo_lbl.setText(username[0].upper())
+
+                cell_photo = QWidget()
+                p_layout = QHBoxLayout(cell_photo)
+                p_layout.addWidget(photo_lbl)
+                p_layout.setAlignment(Qt.AlignCenter)
+                p_layout.setContentsMargins(0,0,0,0)
+                self.table.setCellWidget(row, 0, cell_photo)
+
+                # 2. Name
+                self.table.setItem(row, 1, QTableWidgetItem(username))
+
+                # 3. Online Status
+                status_item = QTableWidgetItem("🟢 Online" if is_online else "⚫ Offline")
+                status_item.setForeground(QColor("#a6e3a1") if is_online else QColor("#585b70"))
+                self.table.setItem(row, 2, status_item)
+
+                # 4. Approval Status
+                app_text = "✅ Approved" if is_approved else "⏳ PENDING"
+                app_item = QTableWidgetItem(app_text)
+                app_item.setForeground(QColor("#a6e3a1") if is_approved else QColor("#f9e2af"))
+                app_item.setFont(QFont("Segoe UI", 10, QFont.Bold))
+                self.table.setItem(row, 3, app_item)
+
+                # 5. Actions (Buttons)
+                action_widget = QWidget()
+                action_layout = QHBoxLayout(action_widget)
+                action_layout.setContentsMargins(5, 5, 5, 5)
+
+                if not is_approved:
+                    btn_approve = QPushButton("Approve")
+                    btn_approve.setObjectName("ApproveBtn")
+                    btn_approve.setProperty("class", "actionBtn")
+                    btn_approve.clicked.connect(lambda _, u=username: self.approve_user(u))
+                    action_layout.addWidget(btn_approve)
+
+                btn_reset = QPushButton("Reset Pass")
+                btn_reset.setObjectName("ResetBtn")
+                btn_reset.setProperty("class", "actionBtn")
+                btn_reset.clicked.connect(lambda _, u=username: self.reset_pass(u))
+
+                btn_del = QPushButton("Delete")
+                btn_del.setObjectName("DeleteBtn")
+                btn_del.setProperty("class", "actionBtn")
+                btn_del.clicked.connect(lambda _, u=username: self.delete_user(u))
+
+                action_layout.addWidget(btn_reset)
+                action_layout.addWidget(btn_del)
+                self.table.setCellWidget(row, 4, action_widget)
+
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self, "Connection Error", f"Could not connect to {self.server_url}")
+
+    def load_image_async(self, label, url):
+        # Simply trying to fetch in main thread for simplicity (LAN is fast)
+        try:
+            r = requests.get(self.server_url + url, timeout=1)
+            pix = QPixmap()
+            pix.loadFromData(r.content)
+            label.setPixmap(pix.scaled(50, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        except:
+            pass
+
+    def approve_user(self, username):
+        try:
+            requests.post(f"{self.server_url}/admin/approve_user", headers=self.headers, params={"username": username})
+            self.load_users()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
+
+    def reset_pass(self, username):
+        pwd, ok = QInputDialog.getText(self, "Reset Password", f"New password for {username}:")
+        if ok and pwd:
+            requests.post(f"{self.server_url}/admin/reset_password", headers=self.headers, params={"username": username, "new_pass": pwd})
+            QMessageBox.information(self, "Success", "Password changed.")
+
+    def delete_user(self, username):
+        res = QMessageBox.question(self, "Confirm", f"Delete {username}?", QMessageBox.Yes | QMessageBox.No)
+        if res == QMessageBox.Yes:
+            requests.post(f"{self.server_url}/admin/delete_user", headers=self.headers, params={"username": username})
+            self.load_users()
+
+    # ================= PAGE: SETTINGS =================
+    def create_settings_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        lbl = QLabel("Global Settings")
+        lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
+
+        # Toggle Card
+        card = QFrame()
+        card.setStyleSheet("background-color: #181825; border-radius: 10px; padding: 20px;")
+        card_layout = QVBoxLayout(card)
+
+        self.chk_approval = QCheckBox("Require Admin Approval for New Users")
+        self.chk_approval.setTristate(False)   # 🔒 Qt ko confuse hone se roko
+        self.chk_approval.setChecked(False)    # 🔒 explicit default
+        self.chk_approval.setStyleSheet("QCheckBox { font-size: 16px; color: #cdd6f4; } QCheckBox::indicator { width: 20px; height: 20px; }")
+
+        desc = QLabel("If enabled, new users will be in 'Pending' state until you approve them here.\nIf disabled, they can chat immediately after registering.")
+        desc.setStyleSheet("color: #a6adc8; margin-top: 5px;")
+
+        save_btn = QPushButton("Save Settings")
+        save_btn.setObjectName("SaveBtn")
+        save_btn.setProperty("class", "actionBtn")
+        save_btn.clicked.connect(self.save_settings)
+
+        card_layout.addWidget(self.chk_approval)
+        card_layout.addWidget(desc)
+        card_layout.addSpacing(20)
+        card_layout.addWidget(save_btn)
+
+        layout.addWidget(lbl)
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    def load_settings(self):
+      try:
+        res = requests.get(f"{self.server_url}/admin/settings", headers=self.headers)
+        data = res.json()
+        if data["success"]:
+            self.chk_approval.blockSignals(True)   # 🔥
+            self.chk_approval.setChecked(bool(data["require_approval"]))
+            self.chk_approval.blockSignals(False)  # 🔥
+      except Exception as e:
+        print("load_settings error:", e)
+
+    def save_settings(self):
+        try:
+            val = self.chk_approval.isChecked()
+            requests.post(f"{self.server_url}/admin/toggle_approval", headers=self.headers, params={"enabled": val})
+            QMessageBox.information(self, "Saved", "Settings updated successfully.")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
+
+    # ================= PAGE: CLEANUP =================
+    def create_cleanup_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        lbl = QLabel("Server Maintenance")
+        lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
+
+        card = QFrame()
+        card.setStyleSheet("background-color: #181825; border-radius: 10px; padding: 20px;")
+        c_layout = QVBoxLayout(card)
 
         self.days_input = QLineEdit()
         self.days_input.setPlaceholderText("Enter days (e.g. 30)")
 
-        cleanup_btn = QPushButton("🗑️ Run Cleanup")
-        cleanup_btn.clicked.connect(self.run_cleanup)
+        btn = QPushButton("🗑️ Delete Old Messages")
+        btn.setObjectName("DeleteBtn")
+        btn.setProperty("class", "actionBtn")
+        btn.clicked.connect(self.run_cleanup)
 
-        cleanup_layout.addWidget(cleanup_title)
-        cleanup_layout.addWidget(cleanup_desc)
-        cleanup_layout.addWidget(self.days_input)
-        cleanup_layout.addWidget(cleanup_btn)
-        cleanup_layout.addStretch()
+        c_layout.addWidget(QLabel("Delete messages older than X days:"))
+        c_layout.addWidget(self.days_input)
+        c_layout.addWidget(btn)
 
-        cleanup_tab.setLayout(cleanup_layout)
+        layout.addWidget(lbl)
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
 
-        # ================= SERVER TAB =================
-        server_tab = QWidget()
-        server_layout = QVBoxLayout()
-        server_layout.addWidget(QLabel("⚙️ Server Controls (coming soon)"))
-        server_tab.setLayout(server_layout)
-
-        tabs.addTab(self.users_tab, "Users")
-        tabs.addTab(cleanup_tab, "Cleanup")
-        tabs.addTab(server_tab, "Server")
-
-        self.setCentralWidget(tabs)
-
-        self.load_users()
-
-    # ================= LOAD USERS =================
-    def load_users(self):
-        try:
-            res = requests.get(
-                f"{SERVER_URL}/admin/users",
-                headers={"X-ADMIN-KEY": ADMIN_KEY},
-                timeout=5
-
-            )
-            data = res.json()
-
-            if not data.get("success"):
-                raise Exception("Admin API failed")
-
-            users = data.get("users", [])
-            self.users_table.setRowCount(len(users))
-            for row, user in enumerate(users):
-                is_online = user.get("is_online", False)
-                # -------- PROFILE PHOTO --------
-                # -------- PROFILE PHOTO + GREEN DOT --------
-                photo_wrapper = QFrame()
-                photo_wrapper.setFixedSize(70, 70)
-                photo_wrapper.setStyleSheet("background: transparent;")
-
-                photo_label = QLabel(photo_wrapper)
-                photo_label.setFixedSize(64, 64)
-                photo_label.move(3, 3)
-                photo_label.setAlignment(Qt.AlignCenter)
-
-                pixmap = QPixmap()
-                if user.get("profile_photo"):
-                    try:
-                        r = requests.get(SERVER_URL + user["profile_photo"], timeout=3)
-                        if r.status_code == 200:
-                            pixmap.loadFromData(r.content)
-                    except:
-                        pass
-
-                if pixmap.isNull():
-                    photo_label.setText("👤")
-                    photo_label.setStyleSheet(
-                        "font-size:26px; background:#444; border-radius:32px;"
-                    )
-                else:
-                    photo_label.setPixmap(
-                        pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                    )
-                    photo_label.setStyleSheet("border-radius:32px;")
-
-                # 🟢 GREEN DOT (FIXED & GUARANTEED)
-                if is_online:
-                    dot = QLabel(photo_wrapper)
-                    dot.setFixedSize(14, 14)
-                    dot.move(46, 46)
-                    dot.setStyleSheet(
-                        "background:#00ff88; border-radius:7px; border:2px solid #1e1e1e;"
-                    )
-                    dot.raise_()
-                    dot.show()
-
-                self.users_table.setCellWidget(row, 0, photo_wrapper)
-                print(user["username"], "online =", is_online)
-
-                # -------- USERNAME --------
-                username = user.get("username", "unknown")
-                item = QTableWidgetItem("  " + username)
-                item.setFont(self.get_bold_font(17))
-                item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-                self.users_table.setItem(row, 1, item)
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
-
-    # ================= DELETE USER =================
-    def delete_user(self):
-        row = self.users_table.currentRow()
-        if row < 0:
-            QMessageBox.warning(self, "Select User", "Please select a user first.")
-            return
-
-        username = self.users_table.item(row, 1).text().strip()
-
-        confirm = QMessageBox.question(
-            self,
-            "Confirm Delete",
-            f"Delete user '{username}' permanently?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if confirm != QMessageBox.Yes:
-            return
-
-        try:
-            res = requests.post(
-                f"{SERVER_URL}/admin/delete_user",
-                headers={"X-ADMIN-KEY": ADMIN_KEY},
-                params={"username": username},
-                timeout=5
-            )
-            data = res.json()
-
-            if not data.get("success"):
-                raise Exception(data.get("message", "Delete failed"))
-
-            QMessageBox.information(self, "Deleted", f"User '{username}' deleted.")
-            self.load_users()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
-
-    # ================= RESET PASSWORD =================
-    def reset_password(self):
-        row = self.users_table.currentRow()
-        if row < 0:
-            QMessageBox.warning(self, "Select User", "Please select a user first.")
-            return
-
-        username = self.users_table.item(row, 1).text().strip()
-
-        new_pass, ok = QInputDialog.getText(
-            self,
-            "Reset Password",
-            f"Enter NEW password for '{username}':",
-            QLineEdit.Password
-        )
-
-        if not ok or not new_pass:
-            return
-
-        try:
-            res = requests.post(
-                f"{SERVER_URL}/admin/reset_password",
-                headers={"X-ADMIN-KEY": ADMIN_KEY},
-                params={"username": username, "new_pass": new_pass},
-                timeout=5
-            )
-            data = res.json()
-
-            if not data.get("success"):
-                raise Exception(data.get("message", "Reset failed"))
-
-            QMessageBox.information(self, "Success", "Password reset successfully.")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
-
-    # ================= CLEANUP =================
     def run_cleanup(self):
-        days_str = self.days_input.text()
+        d = self.days_input.text()
+        if not d.isdigit(): return
+        requests.post(f"{self.server_url}/admin/cleanup", headers=self.headers, params={"days": int(d)})
+        QMessageBox.information(self, "Done", "Cleanup complete.")
 
-        if not days_str.isdigit():
-            QMessageBox.warning(self, "Invalid Input", "Enter valid number of days.")
-            return
-
-        days = int(days_str)
-
-        confirm = QMessageBox.question(
-            self,
-            "Confirm Cleanup",
-            f"Delete messages older than {days} days?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if confirm != QMessageBox.Yes:
-            return
-
-        try:
-            res = requests.post(
-                f"{SERVER_URL}/admin/cleanup",
-                headers={"X-ADMIN-KEY": ADMIN_KEY},
-                params={"days": days},
-                timeout=10
-            )
-            data = res.json()
-
-            if not data.get("success"):
-                raise Exception("Cleanup failed")
-
-            QMessageBox.information(
-                self,
-                "Cleanup Done",
-                f"Deleted {data.get('deleted_messages', 0)} messages."
-            )
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
-
-    # ================= FONT HELPER =================
-    def get_bold_font(self, size):
-        font = QFont("Segoe UI", size)
-        font.setBold(True)
-        return font
-
-
-# ================= MAIN =================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    win = AdminWindow()
-    win.show()
-    sys.exit(app.exec())
+
+    # 1. Show Connection Dialog first
+    conn_dialog = ConnectDialog()
+    if conn_dialog.exec() == QDialog.Accepted:
+        ip = conn_dialog.ip_input.text()
+        port = conn_dialog.port_input.text()
+        key = conn_dialog.key_input.text()
+
+        url = f"http://{ip}:{port}"
+
+        # 2. Launch Main Admin Panel
+        window = AdminWindow(url, key)
+        window.show()
+        sys.exit(app.exec())
+    else:
+        sys.exit()

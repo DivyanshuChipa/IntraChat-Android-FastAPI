@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime, timezone, timedelta
-from users import get_all_users
+from users import get_all_users, is_user_approved  # 👈 Import is_user_approved
 from messages import (
     save_message, 
     create_delivery_entries, 
@@ -53,6 +53,17 @@ async def send_to_user(username: str, message: str, exclude_ws: WebSocket = None
 @router.websocket("/ws/{username}")
 async def websocket_endpoint(ws: WebSocket, username: str):
     await ws.accept()
+    
+    # 🔥 SECURITY CHECK: Defense in Depth
+    # Agar user approved nahi hai, toh connection close kar do.
+    if not is_user_approved(username):
+        print(f"🚫 Rejected connection from unapproved user: {username}")
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "text": "Your account is not approved yet."
+        }))
+        await ws.close(code=1008)  # Policy Violation
+        return
     
     # Add this connection to user's device set
     if username not in connected_clients:

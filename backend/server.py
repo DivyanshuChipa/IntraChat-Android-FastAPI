@@ -82,7 +82,12 @@ async def handle_login(user: UserAuth):
             status_code=400,
             content={"success": False, "message": "Username and password required"},
         )
-    if verify_user(user.username, user.password):
+    
+    # 🔥 Updated Logic based on ChatGPT feedback
+    result = verify_user(user.username, user.password)
+    status = result["status"]
+    
+    if status == "OK":
         expire = datetime.now(timezone.utc) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
         to_encode = {"sub": user.username, "exp": expire}
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -91,11 +96,18 @@ async def handle_login(user: UserAuth):
             "token": encoded_jwt,
             "username": user.username,
         }
-    return JSONResponse(
-        status_code=401,
-        content={"success": False, "message": "Invalid credentials"},
-    )
-
+        
+    elif status == "PENDING":
+        return JSONResponse(
+            status_code=403,
+            content={"success": False, "message": "Account pending approval from Admin."},
+        )
+        
+    else: # INVALID
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "Invalid credentials"},
+        )
 @app.get("/users")
 async def get_users_list():
     users = get_all_users()
