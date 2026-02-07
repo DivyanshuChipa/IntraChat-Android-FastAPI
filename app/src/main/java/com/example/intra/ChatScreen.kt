@@ -40,6 +40,11 @@ import java.text.SimpleDateFormat
 import java.util.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.draw.alpha
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -258,8 +263,39 @@ fun MessageBubble(message: ChatMessage) {
         ) {
             Column(modifier = Modifier.padding(10.dp)) {
 
+                if (message.isLoading) {
+                    val fileName = message.fileName ?: "File"
+                    val fileExtension = fileName.substringAfterLast(".", "").lowercase()
+                    val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
+
+                    if (message.localUri != null && isImage) {
+                         Box(contentAlignment = Alignment.Center) {
+                             AsyncImage(
+                                 model = message.localUri,
+                                 contentDescription = "Uploading",
+                                 modifier = Modifier
+                                     .fillMaxWidth()
+                                     .heightIn(max = 200.dp)
+                                     .clip(RoundedCornerShape(8.dp))
+                                     .alpha(0.6f),
+                                 contentScale = ContentScale.Crop
+                             )
+                             UniqueLoader()
+                         }
+                    } else {
+                         Row(verticalAlignment = Alignment.CenterVertically) {
+                             UniqueLoader(Modifier.size(24.dp))
+                             Spacer(Modifier.width(8.dp))
+                             Text(
+                                 text = "Uploading $fileName...",
+                                 fontSize = 12.sp,
+                                 color = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                             )
+                         }
+                    }
+                }
                 // 🔥 IMPROVED: File Message with Preview & Modern UI
-                if (message.type == "file" && message.fileUrl != null) {
+                else if (message.type == "file" && message.fileUrl != null) {
                     val fileName = message.fileName ?: "File"
                     val fileExtension = fileName.substringAfterLast(".", "").lowercase()
 
@@ -433,4 +469,24 @@ fun MessageBubble(message: ChatMessage) {
 fun formatTime(ts: Long): String {
     val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
     return sdf.format(Date(ts))
+}
+
+@Composable
+fun UniqueLoader(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition()
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+    )
+
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .rotate(rotation)
+            .border(3.dp, Color.White.copy(alpha=0.8f), RoundedCornerShape(4.dp))
+    )
 }

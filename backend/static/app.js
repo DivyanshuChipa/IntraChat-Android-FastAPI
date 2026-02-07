@@ -501,6 +501,13 @@ async function sendFile() {
   const formData = new FormData();
   formData.append("file", file);
 
+  // 🔥 OPTIMISTIC UI: Show "uploading" state immediately
+  const tempId = 'msg-' + Date.now();
+  const localUrl = URL.createObjectURL(file);
+
+  // Show message with loader
+  displayMessage(myUsername, "Uploading...", "sent", localUrl, tempId, true);
+
   try {
     const res = await fetch("/upload", {
       method: "POST",
@@ -508,7 +515,33 @@ async function sendFile() {
     });
     const data = await res.json();
 
+    const msgElement = document.getElementById(tempId);
+
     if (data.url) {
+      // ✅ UPLOAD SUCCESS
+      if (msgElement) {
+        // Remove loader styles
+        const bubble = msgElement.querySelector('.msg-bubble');
+        if (bubble) bubble.classList.remove('loading');
+
+        const loader = msgElement.querySelector('.loader-overlay');
+        if (loader) loader.remove();
+
+        // Update image click to open real URL
+        const img = msgElement.querySelector('img');
+        if (img) {
+            img.onclick = () => window.open(data.url);
+        }
+
+        // Update file link if it's not an image
+        const link = msgElement.querySelector('a');
+        if (link) {
+            link.href = data.url;
+            link.innerText = "📎 Shared File: " + data.filename;
+        }
+      }
+
+      // Send WS message
       const payload = {
         type: "file",
         receiver: currentReceiver,
@@ -516,23 +549,36 @@ async function sendFile() {
         filename: data.filename
       };
       ws.send(JSON.stringify(payload));
-      displayMessage(myUsername, "📎 Shared File: " + data.filename, "sent", data.url);
+
+    } else {
+       throw new Error("Upload failed");
     }
   } catch (e) {
     console.error("File upload error:", e);
-    alert("Error uploading file");
+    const msgElement = document.getElementById(tempId);
+    if (msgElement) {
+        const bubble = msgElement.querySelector('.msg-bubble');
+        if (bubble) {
+             bubble.classList.remove('loading');
+             bubble.innerHTML += `<br><span style="color:red; font-size: 12px;">❌ Upload Failed</span>`;
+        }
+        const loader = msgElement.querySelector('.loader-overlay');
+        if (loader) loader.remove();
+    }
   }
 }
 
 /***********************
  * DISPLAY MESSAGE
  ***********************/
-function displayMessage(sender, text, type, fileUrl = null) {
+function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoading = false) {
   const row = document.createElement("div");
   row.className = `msg-row ${type}`;
+  if (msgId) row.id = msgId;
 
   const bubble = document.createElement("div");
   bubble.className = "msg-bubble";
+  if (isLoading) bubble.classList.add('loading');
 
   const displayName = sender === myUsername ? "Me" : sender;
 
@@ -545,12 +591,21 @@ function displayMessage(sender, text, type, fileUrl = null) {
 
   if (fileUrl) {
     if (isImage(fileUrl)) {
-      content += `<br><img src="${fileUrl}" style="max-width: 200px; border-radius: 5px; cursor: pointer" onclick="window.open('${fileUrl}')"><br>`;
+      content += `<br>
+        <div style="position: relative; display: inline-block;">
+            <img src="${fileUrl}" style="max-width: 200px; border-radius: 5px; cursor: pointer" onclick="window.open('${fileUrl}')">
+            ${isLoading ? '<div class="loader-overlay"></div>' : ''}
+        </div>
+        <br>`;
     } else {
-      content += `<a href="${fileUrl}" target="_blank" style="color: inherit;">${text}</a>`;
+      content += `<div style="position: relative;">
+          <a href="${fileUrl}" target="_blank" style="color: inherit;">${text}</a>
+          ${isLoading ? '<div class="loader-overlay" style="width: 20px; height: 20px; border-width: 2px;"></div>' : ''}
+      </div>`;
     }
   } else {
-    content += text;
+    // 🔥 LINKIFY TEXT
+    content += linkify(text);
   }
 
   bubble.innerHTML = content;
@@ -565,8 +620,16 @@ function displayMessage(sender, text, type, fileUrl = null) {
 /***********************
  * HELPERS
  ***********************/
+function linkify(text) {
+    // Regex for URLs starting with http:// or https://
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, function(url) {
+        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline;">${url}</a>`;
+    });
+}
+
 function isImage(url) {
-  return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url);
+  return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url) || url.startsWith("blob:");
 }
 
 let typingTimeout;
