@@ -25,7 +25,9 @@ data class ChatMessage(
     val type: String = "text",
     val fileUrl: String? = null,
     val fileName: String? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isLoading: Boolean = false,
+    val localUri: String? = null
 )
 
 class ChatViewModel(
@@ -178,9 +180,24 @@ class ChatViewModel(
      * Internal suspend function to handle sequential file uploads
      */
     private suspend fun uploadFileInternal(file: File, receiver: String) {
-        try {
-            val ts = System.currentTimeMillis()
+        val ts = System.currentTimeMillis()
 
+        // 🔥 OPTIMISTIC UI: Show uploading state
+        val tempMsg = ChatMessage(
+            text = "Uploading: ${file.name}",
+            isSelf = true,
+            type = "file",
+            fileName = file.name,
+            timestamp = ts,
+            isLoading = true,
+            localUri = file.absolutePath
+        )
+
+        withContext(Dispatchers.Main) {
+            messages.add(tempMsg)
+        }
+
+        try {
             val part = MultipartBody.Part.createFormData(
                 "file",
                 file.name,
@@ -190,6 +207,7 @@ class ChatViewModel(
             val response = ApiClient.apiService.uploadFile(part)
             if (!response.isSuccessful) {
                 Log.e(TAG, "❌ Upload failed for ${file.name}: ${response.code()}")
+                withContext(Dispatchers.Main) { messages.remove(tempMsg) }
                 return
             }
 
@@ -201,26 +219,34 @@ class ChatViewModel(
                 put("timestamp", ts)
             }
 
-            val msg = ChatMessage(
+            val finalMsg = ChatMessage(
                 text = "Shared File: ${json.optString("filename")}",
                 isSelf = true,
                 type = "file",
                 fileUrl = json.optString("url"),
                 fileName = json.optString("filename"),
-                timestamp = ts
+                timestamp = ts,
+                isLoading = false
             )
 
             withContext(Dispatchers.Main) {
-                messages.add(msg)
+                // Replace temp message with final message
+                val index = messages.indexOf(tempMsg)
+                if (index != -1) {
+                    messages[index] = finalMsg
+                } else {
+                    messages.add(finalMsg)
+                }
             }
 
-            saveToDb(msg, currentUsername, receiver, isRead = true)
+            saveToDb(finalMsg, currentUsername, receiver, isRead = true)
             WsManager.send(json.toString())
             _contactUpdateEvent.emit(receiver)
 
             Log.d(TAG, "✅ File uploaded and signal sent: ${file.name}")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error uploading file ${file.name}", e)
+            withContext(Dispatchers.Main) { messages.remove(tempMsg) }
         }
     }
 
