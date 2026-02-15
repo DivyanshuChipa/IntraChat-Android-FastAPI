@@ -381,7 +381,7 @@ class ChatViewModel(
                 )
             }
 
-           // saveToDb(msg, sender, json.optString("receiver"))
+            // saveToDb(msg, sender, json.optString("receiver"))
 
             val isAlreadyRead = (activeChatUser == sender)
             saveToDb(msg, sender, json.optString("receiver"), isRead = isAlreadyRead)

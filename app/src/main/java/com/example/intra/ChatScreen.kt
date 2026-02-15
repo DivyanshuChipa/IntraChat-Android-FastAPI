@@ -269,29 +269,29 @@ fun MessageBubble(message: ChatMessage) {
                     val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
 
                     if (message.localUri != null && isImage) {
-                         Box(contentAlignment = Alignment.Center) {
-                             AsyncImage(
-                                 model = message.localUri,
-                                 contentDescription = "Uploading",
-                                 modifier = Modifier
-                                     .fillMaxWidth()
-                                     .heightIn(max = 200.dp)
-                                     .clip(RoundedCornerShape(8.dp))
-                                     .alpha(0.6f),
-                                 contentScale = ContentScale.Crop
-                             )
-                             UniqueLoader()
-                         }
+                        Box(contentAlignment = Alignment.Center) {
+                            AsyncImage(
+                                model = message.localUri,
+                                contentDescription = "Uploading",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .alpha(0.6f),
+                                contentScale = ContentScale.Crop
+                            )
+                            UniqueLoader()
+                        }
                     } else {
-                         Row(verticalAlignment = Alignment.CenterVertically) {
-                             UniqueLoader(Modifier.size(24.dp))
-                             Spacer(Modifier.width(8.dp))
-                             Text(
-                                 text = "Uploading $fileName...",
-                                 fontSize = 12.sp,
-                                 color = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                             )
-                         }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            UniqueLoader(Modifier.size(24.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Uploading $fileName...",
+                                fontSize = 12.sp,
+                                color = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 // 🔥 IMPROVED: File Message with Preview & Modern UI
