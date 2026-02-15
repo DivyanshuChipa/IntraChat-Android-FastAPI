@@ -603,16 +603,26 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
         </div>
         <br>`;
     } else if (isVideo(fileUrl, mimeType)) {
-      const previewSrc = videoThumbnail || fileUrl;
-      content += `<br>
-        <div class="media-preview-container">
-          <div class="video-thumbnail-wrapper">
-            <img src="${previewSrc}" class="media-preview-image video-thumbnail" onclick="window.open('${fileUrl}')">
-            <span class="video-play-icon">▶</span>
+      if (videoThumbnail) {
+        // Local upload with generated thumbnail
+        content += `<br>
+          <div class="media-preview-container">
+            <div class="video-thumbnail-wrapper">
+              <img src="${videoThumbnail}" class="media-preview-image video-thumbnail" onclick="window.open('${fileUrl}')">
+              <span class="video-play-icon">▶</span>
+            </div>
+            ${isLoading ? '<div class="loader-overlay"></div>' : ''}
           </div>
-          ${isLoading ? '<div class="loader-overlay"></div>' : ''}
-        </div>
-        <br>`;
+          <br>`;
+      } else {
+        // Received video: Use native <video> tag for preview
+        content += `<br>
+          <div class="media-preview-container">
+            <video src="${fileUrl}" class="media-preview-image video-thumbnail video-thumbnail-player" controls preload="metadata"></video>
+            ${isLoading ? '<div class="loader-overlay"></div>' : ''}
+          </div>
+          <br>`;
+      }
     } else {
       content += `<div style="position: relative;">
           <a href="${fileUrl}" target="_blank" style="color: inherit;">${text}</a>
