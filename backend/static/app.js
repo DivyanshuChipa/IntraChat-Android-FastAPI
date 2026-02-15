@@ -673,7 +673,7 @@ function createVideoThumbnail(videoUrl) {
     video.playsInline = true;
     video.preload = "metadata";
 
-    const fallback = () => resolve(videoUrl);
+    const fallback = () => resolve(null); // Return null to fallback to native video player
 
     video.onloadeddata = () => {
       try {
