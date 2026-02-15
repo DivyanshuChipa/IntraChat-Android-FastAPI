@@ -359,3 +359,12 @@ body:not(.auth-page) {
 .msg-bubble.loading {
     cursor: wait;
 }
+
+.video-thumbnail-player {
+    max-height: 200px;
+    object-fit: contain;
+    width: 100%;
+    max-width: 300px;
+    border-radius: 8px;
+    background: #000;
+}
