@@ -498,15 +498,17 @@ async function sendFile() {
   if (fileInput.files.length === 0) return;
 
   const file = fileInput.files[0];
+  const isVideoFile = file.type.startsWith("video/");
   const formData = new FormData();
   formData.append("file", file);
 
   // 🔥 OPTIMISTIC UI: Show "uploading" state immediately
   const tempId = 'msg-' + Date.now();
   const localUrl = URL.createObjectURL(file);
+  const localThumbnail = isVideoFile ? await createVideoThumbnail(localUrl) : null;
 
   // Show message with loader
-  displayMessage(myUsername, "Uploading...", "sent", localUrl, tempId, true);
+  displayMessage(myUsername, "Uploading...", "sent", localUrl, tempId, true, localThumbnail, file.type);
 
   try {
     const res = await fetch("/upload", {
@@ -565,13 +567,16 @@ async function sendFile() {
         const loader = msgElement.querySelector('.loader-overlay');
         if (loader) loader.remove();
     }
+  } finally {
+    URL.revokeObjectURL(localUrl);
+    fileInput.value = "";
   }
 }
 
 /***********************
  * DISPLAY MESSAGE
  ***********************/
-function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoading = false) {
+function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoading = false, videoThumbnail = null, mimeType = "") {
   const row = document.createElement("div");
   row.className = `msg-row ${type}`;
   if (msgId) row.id = msgId;
@@ -590,11 +595,22 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
   }
 
   if (fileUrl) {
-    if (isImage(fileUrl)) {
+    if (isImage(fileUrl, mimeType)) {
       content += `<br>
-        <div style="position: relative; display: inline-block;">
-            <img src="${fileUrl}" style="max-width: 200px; border-radius: 5px; cursor: pointer" onclick="window.open('${fileUrl}')">
+        <div class="media-preview-container">
+            <img src="${fileUrl}" class="media-preview-image" onclick="window.open('${fileUrl}')">
             ${isLoading ? '<div class="loader-overlay"></div>' : ''}
+        </div>
+        <br>`;
+    } else if (isVideo(fileUrl, mimeType)) {
+      const previewSrc = videoThumbnail || fileUrl;
+      content += `<br>
+        <div class="media-preview-container">
+          <div class="video-thumbnail-wrapper">
+            <img src="${previewSrc}" class="media-preview-image video-thumbnail" onclick="window.open('${fileUrl}')">
+            <span class="video-play-icon">▶</span>
+          </div>
+          ${isLoading ? '<div class="loader-overlay"></div>' : ''}
         </div>
         <br>`;
     } else {
@@ -628,8 +644,43 @@ function linkify(text) {
     });
 }
 
-function isImage(url) {
-  return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url) || url.startsWith("blob:");
+function isImage(url, mimeType = "") {
+  if (mimeType.startsWith("image/")) return true;
+  if (mimeType.startsWith("video/")) return false;
+  return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url);
+}
+
+function isVideo(url, mimeType = "") {
+  if (mimeType.startsWith("video/")) return true;
+  return /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(url);
+}
+
+function createVideoThumbnail(videoUrl) {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.src = videoUrl;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+
+    const fallback = () => resolve(videoUrl);
+
+    video.onloadeddata = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 320;
+        canvas.height = (video.videoHeight / video.videoWidth) * 320 || 180;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      } catch (e) {
+        console.error("Thumbnail generation failed:", e);
+        fallback();
+      }
+    };
+
+    video.onerror = fallback;
+  });
 }
 
 let typingTimeout;
