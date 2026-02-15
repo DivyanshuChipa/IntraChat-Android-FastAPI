@@ -65,6 +65,8 @@ dependencies {
         // ... (पहले से मौजूद dependencies)
     //Sabse pehle image load karne ke liye Coil library add karni hogi. Ye wahi library hai jo automatic caching karegi
     implementation("io.coil-kt:coil-compose:2.4.0")
+    // 🔥 YE ADD KARO: Video Thumbnails ke liye (Version same hona chahiye)
+    implementation("io.coil-kt:coil-video:2.4.0")
 
 
 

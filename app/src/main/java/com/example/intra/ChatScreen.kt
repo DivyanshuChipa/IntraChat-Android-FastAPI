@@ -42,9 +42,11 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.draw.alpha
+import coil.request.videoFrameMillis
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -263,26 +265,42 @@ fun MessageBubble(message: ChatMessage) {
         ) {
             Column(modifier = Modifier.padding(10.dp)) {
 
-                if (message.isLoading) {
-                    val fileName = message.fileName ?: "File"
-                    val fileExtension = fileName.substringAfterLast(".", "").lowercase()
-                    val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
+                // File extensions detect karo
+                val fileName = message.fileName ?: "File"
+                val fileExtension = fileName.substringAfterLast(".", "").lowercase()
 
-                    if (message.localUri != null && isImage) {
+                val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
+                // 🔥 Video detect karne ke liye
+                val isVideo = fileExtension in listOf("mp4", "mkv", "avi", "mov", "webm")
+
+                // ==========================================
+                // CASE 1: UPLOADING STAGE (Loader + Thumbnail)
+                // ==========================================
+                if (message.isLoading) {
+
+                    // Agar Image YA Video hai, toh thumbnail dikhao
+                    if (message.localUri != null && (isImage || isVideo)) { // 👈 '|| isVideo' add kiya
                         Box(contentAlignment = Alignment.Center) {
+                            // 1. Thumbnail
                             AsyncImage(
-                                model = message.localUri,
-                                contentDescription = "Uploading",
+                                model = ImageRequest.Builder(context)
+                                    .data(message.localUri) // Video path
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Uploading Preview",
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(max = 200.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .alpha(0.6f),
+                                    .alpha(0.6f), // Thoda dhundhla taaki loader dikhe
                                 contentScale = ContentScale.Crop
                             )
+
+                            // 2. 🔥 Aapka Favorite Square Loader (Center mein)
                             UniqueLoader()
                         }
                     } else {
+                        // Non-media file uploading (Doc/PDF etc)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             UniqueLoader(Modifier.size(24.dp))
                             Spacer(Modifier.width(8.dp))
@@ -294,36 +312,51 @@ fun MessageBubble(message: ChatMessage) {
                         }
                     }
                 }
-                // 🔥 IMPROVED: File Message with Preview & Modern UI
+
+                // ==========================================
+                // CASE 2: FILE SENT / RECEIVED (Thumbnail + Play Icon)
+                // ==========================================
                 else if (message.type == "file" && message.fileUrl != null) {
-                    val fileName = message.fileName ?: "File"
-                    val fileExtension = fileName.substringAfterLast(".", "").lowercase()
 
-                    // Determine file type
-                    val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
-                    val isVideo = fileExtension in listOf("mp4", "mkv", "avi", "mov", "webm")
+                    // Agar Image YA Video hai
+                    if (isImage || isVideo) { // 👈 Yahan bhi Video allow kiya
 
-                    // 🖼️ Image Preview
-                    if (isImage) {
                         val settingsManager = remember { SettingsManager(context) }
                         val baseUrl = settingsManager.getBaseUrl().removeSuffix("/")
+
+                        // URL banao
                         val fullUrl = if (message.fileUrl.startsWith("http"))
                             message.fileUrl
                         else
                             baseUrl + message.fileUrl
 
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(fullUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = fileName,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            // 1. Thumbnail Load karo
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(fullUrl)
+                                    .videoFrameMillis(2000) // 👈 Video ke 2nd second ka frame lega (better thumbnail)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = fileName,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            // 2. 🔥 Video hai toh PLAY icon dikhao
+                            if (isVideo) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayCircle, // Ensure icon import
+                                    contentDescription = "Play",
+                                    tint = Color.White.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(48.dp)
+                                        .background(Color.Black.copy(alpha=0.3f), CircleShape)
+                                )
+                            }
+                        }
 
                         Spacer(Modifier.height(6.dp))
                     }
