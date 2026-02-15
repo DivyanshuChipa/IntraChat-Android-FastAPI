@@ -535,6 +535,13 @@ async function sendFile() {
             img.onclick = () => window.open(data.url);
         }
 
+        // Update video source for fallback previews that rendered <video src="blob:...">
+        const video = msgElement.querySelector('video');
+        if (video) {
+            video.src = data.url;
+            video.load();
+        }
+
         // Update file link if it's not an image
         const link = msgElement.querySelector('a');
         if (link) {
