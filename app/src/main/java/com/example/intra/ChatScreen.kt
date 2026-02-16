@@ -50,6 +50,7 @@ import coil.request.videoFrameMillis
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.compose.foundation.isSystemInDarkTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,25 +65,16 @@ fun ChatScreen(
 
     // Set Status Bar Color
     val view = LocalView.current
-    if (!view.isInEditMode) {
-        val currentContext = LocalContext.current
-        val colorScheme = MaterialTheme.colorScheme
-        // Typically TopAppBar uses a primary or surface color depending on theme.
-        // Standard Material3 TopAppBar uses 'surface' by default, or 'primary' if colored.
-        // Assuming we want to match the TopAppBar's default purple-ish look in this app:
-        // Let's use the primary color from the theme which is usually Purple40/80 in standard compose templates,
-        // OR the specific purple used in ContactList if we want consistency.
-        // The user asked to "match the topbar theme".
-        // Let's grab the primary container color which is often used for top bars in M3,
-        // or just hardcode the purple if that's what the user explicitly liked in ContactList (0xFF6741A8).
-        // Given the request "chat screen mai jo status bar hai bo fi purple hai bho hi colour kerdo na",
-        // it implies they want the SAME purple as ContactList.
-        val statusBarColor = Color(0xFF6741A8) // Matches ContactListScreen
+    val isDark = isSystemInDarkTheme()
+    val statusBarColor = MaterialTheme.colorScheme.background
 
+    if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as android.app.Activity).window
             window.statusBarColor = statusBarColor.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false // Always white icons
+            // Agar Dark mode hai (isDark = true) -> toh LightStatusBars = false (White Icons)
+            // Agar Light mode hai (isDark = false) -> toh LightStatusBars = true (Black Icons)
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
         }
     }
 
