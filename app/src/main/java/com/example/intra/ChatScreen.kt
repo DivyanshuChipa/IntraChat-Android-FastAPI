@@ -47,6 +47,10 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.draw.alpha
 import coil.request.videoFrameMillis
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.compose.foundation.isSystemInDarkTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +62,21 @@ fun ChatScreen(
     onStartCall: () -> Unit,
 ) {
     val listState = rememberLazyListState()
+
+    // Set Status Bar Color
+    val view = LocalView.current
+    val isDark = isSystemInDarkTheme()
+    val statusBarColor = MaterialTheme.colorScheme.background
+
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = statusBarColor.toArgb()
+            // Agar Dark mode hai (isDark = true) -> toh LightStatusBars = false (White Icons)
+            // Agar Light mode hai (isDark = false) -> toh LightStatusBars = true (Black Icons)
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
+        }
+    }
 
     // Open / Close chat safely
     LaunchedEffect(receiverName) {

@@ -41,6 +41,10 @@ import kotlinx.coroutines.launch
 import android.content.Intent
 import com.example.intra.util.FileUtils
 import coil.request.CachePolicy
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.compose.foundation.isSystemInDarkTheme
 
 // ==========================================
 // 🔹 ENUM FOR SECTION MANAGEMENT
@@ -180,6 +184,21 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Set Status Bar Color
+    val view = LocalView.current
+    val isDark = isSystemInDarkTheme()
+    val statusBarColor = MaterialTheme.colorScheme.background
+
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = statusBarColor.toArgb()
+            // Agar Dark mode hai (isDark = true) -> toh LightStatusBars = false (White Icons)
+            // Agar Light mode hai (isDark = false) -> toh LightStatusBars = true (Black Icons)
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
         }
     }
 
