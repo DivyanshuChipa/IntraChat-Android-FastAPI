@@ -63,7 +63,7 @@ fun ContactListScreen(
         SideEffect {
             val window = (view.context as android.app.Activity).window
             window.statusBarColor = topBarColor.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isDark
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false // Always white icons
         }
     }
 

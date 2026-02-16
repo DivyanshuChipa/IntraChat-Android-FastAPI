@@ -41,6 +41,9 @@ import kotlinx.coroutines.launch
 import android.content.Intent
 import com.example.intra.util.FileUtils
 import coil.request.CachePolicy
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 // ==========================================
 // 🔹 ENUM FOR SECTION MANAGEMENT
@@ -180,6 +183,17 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Set Status Bar Color
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        val statusBarColor = MaterialTheme.colorScheme.background
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = statusBarColor.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false // Always white icons per user request
         }
     }
 
