@@ -9,14 +9,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +57,18 @@ fun ContactListScreen(
     val topBarColor = if (isDark) colorScheme.primaryContainer else Color(0xFF6741A8)
     val topBarTextColor = if (isDark) colorScheme.onPrimaryContainer else Color.White
 
+    // Set Status Bar Color
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = topBarColor.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isDark
+        }
+    }
+
+    var searchQuery by remember { mutableStateOf("") }
+
     Scaffold(
         containerColor = colorScheme.surface,
         topBar = {
@@ -64,10 +84,6 @@ fun ContactListScreen(
                     containerColor = topBarColor
                 ),
                 actions = {
-                    IconButton(onClick = { contactViewModel.fetchContacts() }) {
-                        Icon(Icons.Filled.Refresh, null, tint = topBarTextColor)
-                    }
-
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Filled.Settings, null, tint = topBarTextColor)
                     }
@@ -75,52 +91,86 @@ fun ContactListScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-
-            // FAMILY GROUP
-            item {
-                ContactItem(
-                    name = "Family Group",
-                    subtitle = "Broadcast to everyone",
-                    isTyping = false,
-                    icon = Icons.Filled.Group,
-                    iconTint = Color(0xFF25BB4B),
-                    isDark = isDark,
-                    profilePhotoUrl = null,
-                    unreadCount = 0, // Family Group ke liye badge nahi dikhana abhi
-                    isActive = activeChatUser == "Family Group", // 🆕 Active detection
-                    onClick = { onChatClick("Family Group") }
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Search contacts...") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                singleLine = true,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = topBarColor,
+                    cursorColor = topBarColor
                 )
-            }
+            )
 
-            // USER LIST
-            items(contacts) { user ->
-                if (user.username != username) {
-                    val isUserTyping = typingStatuses[user.username] == true
+            // Pull to Refresh & List
+            PullToRefreshBox(
+                isRefreshing = contactViewModel.isRefreshing,
+                onRefresh = { contactViewModel.fetchContacts() },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-                    // 🆕 STEP 6: Agar chat open hai toh badge hide karo
-                    val displayUnreadCount = if (activeChatUser == user.username) {
-                        0 // Chat open hai, badge mat dikhao
-                    } else {
-                        user.unreadCount // Chat closed hai, actual count dikhao
+                    // FAMILY GROUP (Filtered)
+                    if (searchQuery.isBlank() || "Family Group".contains(searchQuery, ignoreCase = true)) {
+                        item {
+                            ContactItem(
+                                name = "Family Group",
+                                subtitle = "Broadcast to everyone",
+                                isTyping = false,
+                                icon = Icons.Filled.Group,
+                                iconTint = Color(0xFF25BB4B),
+                                isDark = isDark,
+                                profilePhotoUrl = null,
+                                unreadCount = 0, // Family Group ke liye badge nahi dikhana abhi
+                                isActive = activeChatUser == "Family Group", // 🆕 Active detection
+                                onClick = { onChatClick("Family Group") }
+                            )
+                        }
                     }
 
-                    ContactItem(
-                        name = user.username,
-                        subtitle = "Tap to chat",
-                        isTyping = isUserTyping,
-                        icon = Icons.Filled.Person,
-                        iconTint = Color(0xFFB39DDB),
-                        isDark = isDark,
-                        profilePhotoUrl = user.profilePhoto,
-                        unreadCount = displayUnreadCount, // 🆕 Updated logic
-                        isActive = activeChatUser == user.username, // 🆕 Active detection
-                        onClick = { onChatClick(user.username) }
-                    )
+                    // USER LIST (Filtered)
+                    val filteredContacts = if (searchQuery.isBlank()) {
+                        contacts
+                    } else {
+                        contacts.filter { it.username.contains(searchQuery, ignoreCase = true) }
+                    }
+
+                    items(filteredContacts) { user ->
+                        if (user.username != username) {
+                            val isUserTyping = typingStatuses[user.username] == true
+
+                            // 🆕 STEP 6: Agar chat open hai toh badge hide karo
+                            val displayUnreadCount = if (activeChatUser == user.username) {
+                                0 // Chat open hai, badge mat dikhao
+                            } else {
+                                user.unreadCount // Chat closed hai, actual count dikhao
+                            }
+
+                            ContactItem(
+                                name = user.username,
+                                subtitle = "Tap to chat",
+                                isTyping = isUserTyping,
+                                icon = Icons.Filled.Person,
+                                iconTint = Color(0xFFB39DDB),
+                                isDark = isDark,
+                                profilePhotoUrl = user.profilePhoto,
+                                unreadCount = displayUnreadCount, // 🆕 Updated logic
+                                isActive = activeChatUser == user.username, // 🆕 Active detection
+                                onClick = { onChatClick(user.username) }
+                            )
+                        }
+                    }
                 }
             }
         }

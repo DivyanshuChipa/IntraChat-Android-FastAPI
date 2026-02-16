@@ -2,12 +2,19 @@ package com.example.intra
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.intra.database.ChatDatabase
 import kotlinx.coroutines.launch
 
 class ContactViewModel : ViewModel() {
+
+    // Refresh state for Pull-to-Refresh
+    var isRefreshing by mutableStateOf(false)
+        private set
 
     private val apiService = ApiClient.apiService
 
@@ -30,6 +37,7 @@ class ContactViewModel : ViewModel() {
 
     fun fetchContacts() {
         viewModelScope.launch {
+            isRefreshing = true
             try {
                 // ✅ STEP 3C: Server se users fetch karo (same as before)
                 val response = apiService.getUsers()
@@ -67,6 +75,8 @@ class ContactViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("ContactVM", "Error fetching contacts", e)
                 e.printStackTrace()
+            } finally {
+                isRefreshing = false
             }
         }
     }
