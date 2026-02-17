@@ -2,56 +2,94 @@ package com.example.intra
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import android.util.Patterns
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
-import android.util.Patterns
-import androidx.compose.ui.layout.ContentScale
-import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.border
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.draw.alpha
 import coil.request.videoFrameMillis
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
-import androidx.compose.foundation.isSystemInDarkTheme
-import android.os.Build
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.delay
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,12 +102,13 @@ fun ChatScreen(
     onStartCall: () -> Unit,
 ) {
     val listState = rememberLazyListState()
+    var videoUrlToPlay by remember { mutableStateOf<String?>(null) }
+    var imageUrlToView by remember { mutableStateOf<String?>(null) } // 👈 YE ADD HUA
 
     // Set Status Bar Color
     val view = LocalView.current
     val isDark = isSystemInDarkTheme()
     val backgroundColor = MaterialTheme.colorScheme.background
-    val primaryDarkColor = Color(0xFF512DA8) // Dark Purple (Aapka theme color)
 
     if (!view.isInEditMode) {
         SideEffect {
@@ -80,8 +119,8 @@ fun ChatScreen(
                 window.statusBarColor = backgroundColor.toArgb()
                 insetsController.isAppearanceLightStatusBars = !isDark
             } else {
-                     if (!isDark) {
-                      window.statusBarColor = Color.Black.toArgb()
+                if (!isDark) {
+                    window.statusBarColor = Color.Black.toArgb()
                 } else {
                     window.statusBarColor = backgroundColor.toArgb()
                 }
@@ -117,6 +156,22 @@ fun ChatScreen(
             listState.animateScrollToItem(viewModel.messages.size) // Scroll to typing indicator
         }
     }
+
+    if (videoUrlToPlay != null) {
+        VideoPlayerDialog(
+            videoUrl = videoUrlToPlay!!,
+            onDismiss = { videoUrlToPlay = null }
+        )
+    }
+    
+    // 👈 YE CODE ADD HUA:
+    if (imageUrlToView != null) {
+        ImageViewerDialog(
+            imageUrl = imageUrlToView!!,
+            onDismiss = { imageUrlToView = null }
+        )
+    }
+
 
     Scaffold(
         topBar = {
@@ -163,7 +218,6 @@ fun ChatScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // 🔥 FIX 3: Messages bottom se start honge (reverseLayout hataya)
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -175,10 +229,14 @@ fun ChatScreen(
                 )
             ) {
                 items(viewModel.messages) { msg ->
-                    MessageBubble(msg)
+                    // 👈 YE LINE UPDATE HUI
+                    MessageBubble(
+                        message = msg,
+                        onVideoClick = { url -> videoUrlToPlay = url },
+                        onImageClick = { url -> imageUrlToView = url }
+                    )
                 }
 
-                // Typing Indicator inside the list
                 if (isTyping) {
                     item {
                         TypingIndicatorUI(receiverName)
@@ -274,7 +332,11 @@ fun TypingIndicatorUI(name: String) {
 }
 
 @Composable
-fun MessageBubble(message: ChatMessage) {
+fun MessageBubble(
+    message: ChatMessage,
+    onVideoClick: (String) -> Unit = {},
+    onImageClick: (String) -> Unit = {} // 👈 YE ADD HUA
+) {
     val context = LocalContext.current
 
     Row(
@@ -296,26 +358,18 @@ fun MessageBubble(message: ChatMessage) {
         ) {
             Column(modifier = Modifier.padding(10.dp)) {
 
-                // File extensions detect karo
                 val fileName = message.fileName ?: "File"
                 val fileExtension = fileName.substringAfterLast(".", "").lowercase()
 
                 val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
-                // 🔥 Video detect karne ke liye
                 val isVideo = fileExtension in listOf("mp4", "mkv", "avi", "mov", "webm")
 
-                // ==========================================
-                // CASE 1: UPLOADING STAGE (Loader + Thumbnail)
-                // ==========================================
                 if (message.isLoading) {
-
-                    // Agar Image YA Video hai, toh thumbnail dikhao
-                    if (message.localUri != null && (isImage || isVideo)) { // 👈 '|| isVideo' add kiya
+                    if (message.localUri != null && (isImage || isVideo)) {
                         Box(contentAlignment = Alignment.Center) {
-                            // 1. Thumbnail
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
-                                    .data(message.localUri) // Video path
+                                    .data(message.localUri)
                                     .crossfade(true)
                                     .build(),
                                 contentDescription = "Uploading Preview",
@@ -323,15 +377,12 @@ fun MessageBubble(message: ChatMessage) {
                                     .fillMaxWidth()
                                     .heightIn(max = 200.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .alpha(0.6f), // Thoda dhundhla taaki loader dikhe
+                                    .alpha(0.6f),
                                 contentScale = ContentScale.Crop
                             )
-
-                            // 2. 🔥 Aapka Favorite Square Loader (Center mein)
                             UniqueLoader()
                         }
                     } else {
-                        // Non-media file uploading (Doc/PDF etc)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             UniqueLoader(Modifier.size(24.dp))
                             Spacer(Modifier.width(8.dp))
@@ -342,31 +393,32 @@ fun MessageBubble(message: ChatMessage) {
                             )
                         }
                     }
-                }
+                } else if (message.type == "file" && message.fileUrl != null) {
 
-                // ==========================================
-                // CASE 2: FILE SENT / RECEIVED (Thumbnail + Play Icon)
-                // ==========================================
-                else if (message.type == "file" && message.fileUrl != null) {
-
-                    // Agar Image YA Video hai
-                    if (isImage || isVideo) { // 👈 Yahan bhi Video allow kiya
+                    if (isImage || isVideo) {
 
                         val settingsManager = remember { SettingsManager(context) }
                         val baseUrl = settingsManager.getBaseUrl().removeSuffix("/")
 
-                        // URL banao
                         val fullUrl = if (message.fileUrl.startsWith("http"))
                             message.fileUrl
                         else
                             baseUrl + message.fileUrl
 
-                        Box(contentAlignment = Alignment.Center) {
-                            // 1. Thumbnail Load karo
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.clickable {
+                                if (isVideo) {
+                                    onVideoClick(fullUrl)
+                                } else if (isImage) {
+                                    onImageClick(fullUrl)
+                                }
+                            }
+                        ) {
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(fullUrl)
-                                    .videoFrameMillis(2000) // 👈 Video ke 2nd second ka frame lega (better thumbnail)
+                                    .videoFrameMillis(2000)
                                     .crossfade(true)
                                     .build(),
                                 contentDescription = fileName,
@@ -377,10 +429,9 @@ fun MessageBubble(message: ChatMessage) {
                                 contentScale = ContentScale.Crop
                             )
 
-                            // 2. 🔥 Video hai toh PLAY icon dikhao
                             if (isVideo) {
                                 Icon(
-                                    imageVector = Icons.Default.PlayCircle, // Ensure icon import
+                                    imageVector = Icons.Default.PlayCircle,
                                     contentDescription = "Play",
                                     tint = Color.White.copy(alpha = 0.8f),
                                     modifier = Modifier.size(48.dp)
@@ -392,12 +443,10 @@ fun MessageBubble(message: ChatMessage) {
                         Spacer(Modifier.height(6.dp))
                     }
 
-                    // 📁 File Info Row
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // File Icon based on type
                         Icon(
                             imageVector = when {
                                 isImage -> Icons.Default.Image
@@ -427,7 +476,6 @@ fun MessageBubble(message: ChatMessage) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    // 🔥 Modern Action Button
                     Button(
                         onClick = {
                             try {
@@ -437,9 +485,16 @@ fun MessageBubble(message: ChatMessage) {
                                     message.fileUrl
                                 else
                                     baseUrl + message.fileUrl
-
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
-                                context.startActivity(intent)
+                                
+                                // 👈 YE LOGIC UPDATE HUA
+                                if (isVideo) {
+                                    onVideoClick(finalUrl)
+                                } else if (isImage) {
+                                    onImageClick(finalUrl)
+                                } else {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                    context.startActivity(intent)
+                                }
                             } catch (e: Exception) {
                                 Log.e("Chat", "File open error", e)
                             }
@@ -465,7 +520,6 @@ fun MessageBubble(message: ChatMessage) {
                     }
 
                 } else {
-                    // 💬 TEXT MESSAGE (With Clickable Links)
                     val textColor = if (message.isSelf)
                         MaterialTheme.colorScheme.onPrimary
                     else
@@ -514,8 +568,7 @@ fun MessageBubble(message: ChatMessage) {
                         }
                     )
                 }
-
-                // 🕒 TIMESTAMP
+                
                 message.timestamp?.let {
                     Spacer(Modifier.height(4.dp))
                     Text(

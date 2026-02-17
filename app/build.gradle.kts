@@ -89,6 +89,11 @@ dependencies {
        //Ya fir ye wala (jo standard hai):
        implementation("com.mesibo.api:webrtc:1.0.5")
 
+       // Video Player (Media3 ExoPlayer)
+       implementation("androidx.media3:media3-exoplayer:1.2.0")
+       implementation("androidx.media3:media3-ui:1.2.0")
+       implementation("androidx.media3:media3-common:1.2.0")
+
         // ... (बाकी libs.androidx.core.ktx, etc.)
     val room_version = "2.6.1"
     // Room Libraries
