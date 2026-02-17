@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.isSystemInDarkTheme
+import android.os.Build
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,15 +68,25 @@ fun ChatScreen(
     // Set Status Bar Color
     val view = LocalView.current
     val isDark = isSystemInDarkTheme()
-    val statusBarColor = MaterialTheme.colorScheme.background
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val primaryDarkColor = Color(0xFF512DA8) // Dark Purple (Aapka theme color)
 
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as android.app.Activity).window
-            window.statusBarColor = statusBarColor.toArgb()
-            // Agar Dark mode hai (isDark = true) -> toh LightStatusBars = false (White Icons)
-            // Agar Light mode hai (isDark = false) -> toh LightStatusBars = true (Black Icons)
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
+            val insetsController = WindowCompat.getInsetsController(window, view)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                window.statusBarColor = backgroundColor.toArgb()
+                insetsController.isAppearanceLightStatusBars = !isDark
+            } else {
+                     if (!isDark) {
+                      window.statusBarColor = Color.Black.toArgb()
+                } else {
+                    window.statusBarColor = backgroundColor.toArgb()
+                }
+
+            }
         }
     }
 

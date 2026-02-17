@@ -47,8 +47,7 @@ fun ShareScreen(
     val myUsername = remember { settingsManager.getUsername() ?: "" }
 
     val primaryGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF673AB7), Color(0xFF9575CD))
-    )
+        colors = listOf(Color(0xFF673AB7), Color(0xFF9575CD), Color(0xFFF8BBD0)))
 
     // Get filenames for URIs
     val filesInfo = remember(sharedUris) {

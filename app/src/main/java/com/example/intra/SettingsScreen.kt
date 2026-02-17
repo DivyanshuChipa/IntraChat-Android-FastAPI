@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.isSystemInDarkTheme
+import android.os.Build
 
 // ==========================================
 // 🔹 ENUM FOR SECTION MANAGEMENT
@@ -190,15 +191,35 @@ fun SettingsScreen(
     // Set Status Bar Color
     val view = LocalView.current
     val isDark = isSystemInDarkTheme()
-    val statusBarColor = MaterialTheme.colorScheme.background
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val primaryDarkColor = Color(0xFF512DA8) // Dark Purple (Aapka theme color)
 
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as android.app.Activity).window
-            window.statusBarColor = statusBarColor.toArgb()
-            // Agar Dark mode hai (isDark = true) -> toh LightStatusBars = false (White Icons)
-            // Agar Light mode hai (isDark = false) -> toh LightStatusBars = true (Black Icons)
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
+            val insetsController = WindowCompat.getInsetsController(window, view)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                // ✅ CASE 1: Modern Android (6.0+)
+                // Sab kuch waisa hi chalega jaisa abhi F62 me chal raha hai
+                window.statusBarColor = backgroundColor.toArgb()
+                insetsController.isAppearanceLightStatusBars = !isDark
+            } else {
+                // ⚠️ CASE 2: Old Android (Lollipop 5.0/5.1)
+                // Yahan hum icons Black nahi kar sakte.
+                // Isliye agar User Light mode mein hai, toh Status Bar ko Dark Color de do
+                // taaki White icons saaf dikhein.
+
+                if (!isDark) {
+                    // Light Mode me bhi Status bar Dark rakho (Black ya Dark Purple)
+                    window.statusBarColor = Color.Black.toArgb() // Ya primaryDarkColor.toArgb() use kar sakte ho
+                } else {
+                    // Dark mode me toh waise hi Dark hai
+                    window.statusBarColor = backgroundColor.toArgb()
+                }
+                // Lollipop pe ye flag kaam nahi karta, isliye ise ignore karo
+                // insetsController.isAppearanceLightStatusBars = false
+            }
         }
     }
 
