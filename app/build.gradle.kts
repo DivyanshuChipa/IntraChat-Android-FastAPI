@@ -68,7 +68,10 @@ dependencies {
     // 🔥 YE ADD KARO: Video Thumbnails ke liye (Version same hona chahiye)
     implementation("io.coil-kt:coil-video:2.4.0")
 
-
+    // Video Player (Media3 ExoPlayer)
+    implementation("androidx.media3:media3-exoplayer:1.2.0")
+    implementation("androidx.media3:media3-ui:1.2.0")
+    implementation("androidx.media3:media3-common:1.2.0")
 
         // Networking (Retrofit for POST /upload, OkHttp for WebSocket)
         implementation("com.squareup.okhttp3:okhttp:4.11.0") // तुमने यह जोड़ दिया है, इसे रहने दें।

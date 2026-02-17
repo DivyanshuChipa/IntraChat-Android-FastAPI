@@ -41,6 +41,7 @@ import java.util.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.ui.draw.rotate
@@ -64,6 +65,7 @@ fun ChatScreen(
     onStartCall: () -> Unit,
 ) {
     val listState = rememberLazyListState()
+    var videoUrlToPlay by remember { mutableStateOf<String?>(null) }
 
     // Set Status Bar Color
     val view = LocalView.current
@@ -116,6 +118,13 @@ fun ChatScreen(
             delay(100)
             listState.animateScrollToItem(viewModel.messages.size) // Scroll to typing indicator
         }
+    }
+
+    if (videoUrlToPlay != null) {
+        VideoPlayerDialog(
+            videoUrl = videoUrlToPlay!!,
+            onDismiss = { videoUrlToPlay = null }
+        )
     }
 
     Scaffold(
@@ -175,7 +184,7 @@ fun ChatScreen(
                 )
             ) {
                 items(viewModel.messages) { msg ->
-                    MessageBubble(msg)
+                    MessageBubble(msg, onVideoClick = { url -> videoUrlToPlay = url })
                 }
 
                 // Typing Indicator inside the list
@@ -274,7 +283,10 @@ fun TypingIndicatorUI(name: String) {
 }
 
 @Composable
-fun MessageBubble(message: ChatMessage) {
+fun MessageBubble(
+    message: ChatMessage,
+    onVideoClick: (String) -> Unit = {}
+) {
     val context = LocalContext.current
 
     Row(
@@ -361,7 +373,14 @@ fun MessageBubble(message: ChatMessage) {
                         else
                             baseUrl + message.fileUrl
 
-                        Box(contentAlignment = Alignment.Center) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.clickable {
+                                if (isVideo) {
+                                    onVideoClick(fullUrl)
+                                }
+                            }
+                        ) {
                             // 1. Thumbnail Load karo
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
@@ -438,8 +457,12 @@ fun MessageBubble(message: ChatMessage) {
                                 else
                                     baseUrl + message.fileUrl
 
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
-                                context.startActivity(intent)
+                                if (isVideo) {
+                                    onVideoClick(finalUrl)
+                                } else {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                    context.startActivity(intent)
+                                }
                             } catch (e: Exception) {
                                 Log.e("Chat", "File open error", e)
                             }
