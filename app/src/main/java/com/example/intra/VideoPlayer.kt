@@ -1,8 +1,10 @@
 package com.example.intra
 
+import android.app.Activity
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Environment
 import android.view.ViewGroup
@@ -50,6 +52,7 @@ fun VideoPlayerDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
 
     // Player State
     var isPlaying by remember { mutableStateOf(true) }
@@ -58,6 +61,7 @@ fun VideoPlayerDialog(
     var isControlsVisible by remember { mutableStateOf(true) }
     var isBuffering by remember { mutableStateOf(true) }
     var isDragging by remember { mutableStateOf(false) }
+    var isLandscape by remember { mutableStateOf(false) }
 
     // Seek Animation State
     var showForwardAnim by remember { mutableStateOf(false) }
@@ -88,9 +92,17 @@ fun VideoPlayerDialog(
             }
         }
         exoPlayer.addListener(listener)
+
+        // Save original orientation
+        val originalOrientation = activity?.requestedOrientation
+
         onDispose {
             exoPlayer.removeListener(listener)
             exoPlayer.release()
+            // Reset orientation
+            if (originalOrientation != null) {
+                activity.requestedOrientation = originalOrientation
+            }
         }
     }
 
@@ -220,6 +232,23 @@ fun VideoPlayerDialog(
                         }
 
                         Row {
+                            // Rotate Button
+                            IconButton(
+                                onClick = {
+                                    if (isLandscape) {
+                                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                        isLandscape = false
+                                    } else {
+                                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                        isLandscape = true
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.ScreenRotation, "Rotate", tint = Color.White)
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             IconButton(onClick = { shareVideoLink(context, videoUrl) }) {
                                 Icon(Icons.Default.Share, "Share", tint = Color.White)
                             }
