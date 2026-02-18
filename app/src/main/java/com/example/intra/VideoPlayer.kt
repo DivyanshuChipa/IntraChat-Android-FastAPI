@@ -265,12 +265,12 @@ fun VideoPlayerDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = formatTime(currentPosition),
+                                text = formatVideoTime(currentPosition),
                                 color = Color.White,
                                 fontSize = 12.sp
                             )
                             Text(
-                                text = formatTime(duration),
+                                text = formatVideoTime(duration),
                                 color = Color.White,
                                 fontSize = 12.sp
                             )
@@ -339,7 +339,7 @@ fun SeekAnimationOverlay(
 }
 
 // Helper: Format Time (mm:ss)
-fun formatTime(ms: Long): String {
+fun formatVideoTime(ms: Long): String {
     val totalSeconds = ms / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
