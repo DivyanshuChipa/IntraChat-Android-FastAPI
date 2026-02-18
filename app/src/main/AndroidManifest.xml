@@ -44,6 +44,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="intra"
+            android:configChanges="keyboardHidden|orientation|screenSize"
             android:theme="@style/Theme.Intra">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
