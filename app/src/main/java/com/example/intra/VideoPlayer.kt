@@ -63,6 +63,9 @@ fun VideoPlayerDialog(
     var isDragging by remember { mutableStateOf(false) }
     var isLandscape by remember { mutableStateOf(false) }
 
+    // Resize Mode State: FIT -> ZOOM -> FILL -> FIT
+    var resizeMode by remember { mutableStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+
     // Seek Animation State
     var showForwardAnim by remember { mutableStateOf(false) }
     var showRewindAnim by remember { mutableStateOf(false) }
@@ -147,9 +150,12 @@ fun VideoPlayerDialog(
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
                         useController = false // Custom controls
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        this.resizeMode = resizeMode
                         keepScreenOn = true
                     }
+                },
+                update = { view ->
+                    view.resizeMode = resizeMode
                 },
                 modifier = Modifier
                     .fillMaxSize()
@@ -166,7 +172,7 @@ fun VideoPlayerDialog(
                                     exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(duration))
                                     showForwardAnim = true
                                 } else {
-                                    // Center double tap (Toggle Play/Pause or Zoom? Let's just toggle Play)
+                                    // Center double tap (Toggle Play/Pause)
                                      if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
                                 }
                             },
@@ -232,6 +238,26 @@ fun VideoPlayerDialog(
                         }
 
                         Row {
+                            // Resize Toggle Button
+                            IconButton(
+                                onClick = {
+                                    resizeMode = when (resizeMode) {
+                                        AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                        else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                    }
+                                    Toast.makeText(context, when(resizeMode) {
+                                        AspectRatioFrameLayout.RESIZE_MODE_FIT -> "Fit to Screen"
+                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> "Zoom to Fill"
+                                        else -> "Stretch to Fill"
+                                    }, Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Icon(Icons.Default.AspectRatio, "Resize", tint = Color.White)
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             // Rotate Button
                             IconButton(
                                 onClick = {
