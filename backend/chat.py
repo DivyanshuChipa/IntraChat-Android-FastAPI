@@ -1,6 +1,7 @@
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime, timezone, timedelta
+from lumir.engine import lumir_engine  # 👈 YE ADD KARO
 from users import get_all_users, is_user_approved  # 👈 Import is_user_approved
 from messages import (
     save_message, 
@@ -113,6 +114,50 @@ async def websocket_endpoint(ws: WebSocket, username: str):
 
                 receiver = parsed.get("receiver")
                 msg_type = parsed.get("type", "text")
+
+                final_raw = json.dumps(parsed)
+
+                # ==========================================
+                # 🤖 LUMIR REAL BOT LOGIC (Phase 2)
+                # ==========================================
+                if receiver == "Lumir":
+                    text_content = parsed.get("text", "")
+                    file_url = parsed.get("url")
+                    file_name = parsed.get("filename")
+
+                    # 1. User ka message DB mein save karo (Taaki history mein dikhe)
+                    save_message(
+                        text=text_content if msg_type != "file" else f"Shared File: {file_name}",
+                        sender=sender,
+                        receiver="Lumir",
+                        msg_type=msg_type,
+                        file_url=file_url,
+                        file_name=file_name
+                    )
+
+                    # 2. Lumir Engine se reply maango
+                    bot_response_text = lumir_engine.process(text=text_content, file_url=file_url)
+
+                    # 3. Lumir ka reply DB mein save karo
+                    save_message(
+                        text=bot_response_text,
+                        sender="Lumir",
+                        receiver=sender,
+                        msg_type="text"
+                    )
+
+                    # 4. Lumir ka reply user (Android) ko bhejo
+                    bot_reply = {
+                        "type": "text",
+                        "text": bot_response_text,
+                        "sender": "Lumir",
+                        "receiver": sender,
+                        "timestamp": int(datetime.now(IST).timestamp() * 1000)
+                    }
+                    await send_to_user(sender, json.dumps(bot_reply))
+
+                    # 🛑 Baki chat logic skip karo
+                    continue
                 
                 final_raw = json.dumps(parsed)
 

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.draw.clip
 import coil.request.CachePolicy
@@ -137,6 +138,21 @@ fun ContactListScreen(
                                 onClick = { onChatClick("Family Group") }
                             )
                         }
+                    }
+                    // ✅ STEP 2: LUMIR BOT ITEM (Yahan add karo)
+                    item {
+                        ContactItem(
+                            name = "Lumir",
+                            subtitle = "AI Assistant & Utilities",
+                            isTyping = false, // Abhi ke liye false
+                            icon = Icons.Default.SmartToy, // 🤖 SmartToy icon use karo (agar available ho, nahi to Person)
+                            iconTint = Color(0xFF1100FF), // Cyan/Neon Blue color
+                            isDark = isDark,
+                            profilePhotoUrl = null,
+                            unreadCount = 0,
+                            isActive = activeChatUser == "Lumir",
+                            onClick = { onChatClick("Lumir") }
+                        )
                     }
 
                     // USER LIST (Filtered)
