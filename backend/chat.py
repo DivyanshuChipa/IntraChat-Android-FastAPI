@@ -120,9 +120,8 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 # ==========================================
                 # 🤖 LUMIR REAL BOT LOGIC
                 # ==========================================
-                if receiver == "Lumir":
-                    if receiver == "Lumir":
-                    # 🛑 FIX: Ignore typing signals for Lumir
+            if receiver == "Lumir":
+                # 🛑 FIX: Ignore typing signals for Lumir
                     if msg_type == "typing":
                         continue
                     text_content = parsed.get("text", "")
