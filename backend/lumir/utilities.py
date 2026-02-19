@@ -12,6 +12,7 @@ def generate_passport_layout(image_url: str):
 
         # 2. Original image open karo
         with Image.open(file_path) as img:
+            img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
 
             # 3. Passport Size Target (413x531 pixels approx for 3.5x4.5 cm at 300dpi)
