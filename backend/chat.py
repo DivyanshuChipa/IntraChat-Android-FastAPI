@@ -118,45 +118,46 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 final_raw = json.dumps(parsed)
 
                 # ==========================================
-                # 🤖 LUMIR REAL BOT LOGIC (Phase 2)
+                # 🤖 LUMIR REAL BOT LOGIC
                 # ==========================================
                 if receiver == "Lumir":
+                    if receiver == "Lumir":
+                    # 🛑 FIX: Ignore typing signals for Lumir
+                    if msg_type == "typing":
+                        continue
                     text_content = parsed.get("text", "")
                     file_url = parsed.get("url")
                     file_name = parsed.get("filename")
 
-                    # 1. User ka message DB mein save karo (Taaki history mein dikhe)
+                    # 1. User ka message DB mein save karo
                     save_message(
                         text=text_content if msg_type != "file" else f"Shared File: {file_name}",
-                        sender=sender,
-                        receiver="Lumir",
-                        msg_type=msg_type,
-                        file_url=file_url,
-                        file_name=file_name
+                        sender=sender, receiver="Lumir", msg_type=msg_type,
+                        file_url=file_url, file_name=file_name
                     )
 
-                    # 2. Lumir Engine se reply maango
-                    bot_response_text = lumir_engine.process(text=text_content, file_url=file_url)
+                    # 2. Lumir Engine se reply maango (Ab ye dictionary aayegi)
+                    bot_res = lumir_engine.process(text=text_content, file_url=file_url)
 
                     # 3. Lumir ka reply DB mein save karo
                     save_message(
-                        text=bot_response_text,
-                        sender="Lumir",
-                        receiver=sender,
-                        msg_type="text"
+                        text=bot_res["text"], sender="Lumir", receiver=sender,
+                        msg_type=bot_res.get("type", "text"),
+                        file_url=bot_res.get("file_url"), file_name=bot_res.get("file_name")
                     )
 
                     # 4. Lumir ka reply user (Android) ko bhejo
                     bot_reply = {
-                        "type": "text",
-                        "text": bot_response_text,
+                        "type": bot_res.get("type", "text"),
+                        "text": bot_res["text"],
+                        "url": bot_res.get("file_url"),
+                        "filename": bot_res.get("file_name"),
                         "sender": "Lumir",
                         "receiver": sender,
                         "timestamp": int(datetime.now(IST).timestamp() * 1000)
                     }
                     await send_to_user(sender, json.dumps(bot_reply))
 
-                    # 🛑 Baki chat logic skip karo
                     continue
                 
                 final_raw = json.dumps(parsed)
