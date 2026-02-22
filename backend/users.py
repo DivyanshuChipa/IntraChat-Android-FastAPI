@@ -175,3 +175,36 @@ def update_user_photo(username, file_path):
     cursor.execute("UPDATE users SET profile_photo = ? WHERE username = ?", (file_path, username))
     conn.commit()
     conn.close()
+
+# --- AI Config Helpers ---
+def get_ai_config():
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    # Fetch existing AI configs
+    cursor.execute("SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url')")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # Default settings (Sister ke laptop ka option yahan URL mein future mein daal sakte ho)
+    config = {
+        "ai_enabled": False, 
+        "ai_model": "llama3:8b", 
+        "ollama_url": "http://localhost:11434"
+    }
+    
+    for key, value in rows:
+        if key == 'ai_enabled': 
+            config[key] = (value == "1")
+        else: 
+            config[key] = value
+            
+    return config
+
+def set_ai_config(enabled: bool, model: str, url: str):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_enabled', ?)", ("1" if enabled else "0",))
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_model', ?)", (model,))
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ollama_url', ?)", (url,))
+    conn.commit()
+    conn.close()

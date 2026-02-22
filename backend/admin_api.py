@@ -1,7 +1,7 @@
 # ===== File: admin_api.py =====
 from fastapi import APIRouter, Depends
 from server import verify_admin
-from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db
+from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config
 from messages import cleanup_old_messages
 from chat import connected_clients   # 👈 SOURCE OF TRUTH
 
@@ -59,4 +59,14 @@ def admin_cleanup(days: int, admin=Depends(verify_admin)):
         "deleted_messages": deleted,
         "message": f"Deleted {deleted} messages older than {days} days"
     }
+
+# ================= AI SETTINGS =================
+@router.get("/ai_settings")
+def admin_get_ai_settings(admin=Depends(verify_admin)):
+    return {"success": True, "config": get_ai_config()}
+
+@router.post("/ai_settings")
+def admin_set_ai_settings(enabled: bool, model: str, url: str, admin=Depends(verify_admin)):
+    set_ai_config(enabled, model, url)
+    return {"success": True, "message": "AI settings updated successfully!"}
 

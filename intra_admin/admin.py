@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
     QInputDialog, QLineEdit, QFrame, QHeaderView, QCheckBox, QDialog,
-    QDialogButtonBox, QFormLayout, QStackedWidget
+    QDialogButtonBox, QFormLayout, QStackedWidget, QComboBox # 👈 YE ADD KARO
 )
 from PySide6.QtGui import QPixmap, QFont, QIcon, QColor
 from PySide6.QtCore import Qt, QSize, QSettings, QTimer
@@ -159,14 +159,18 @@ class AdminWindow(QMainWindow):
         # Nav Buttons
         self.btn_users = self.create_nav_btn("👥 Users")
         self.btn_settings = self.create_nav_btn("⚙️ Settings")
+        self.btn_ai = self.create_nav_btn("🧠 AI & Bot")  # 👈 NAYA BUTTON
         self.btn_cleanup = self.create_nav_btn("🧹 Cleanup")
 
+        # Clicks ko map karo (Dhyan rakhna index change honge)
         self.btn_users.clicked.connect(lambda: self.switch_tab(0))
         self.btn_settings.clicked.connect(lambda: self.switch_tab(1))
-        self.btn_cleanup.clicked.connect(lambda: self.switch_tab(2))
+        self.btn_ai.clicked.connect(lambda: self.switch_tab(2))      # 👈 NAYA TAB INDEX 2
+        self.btn_cleanup.clicked.connect(lambda: self.switch_tab(3)) # 👈 CLEANUP AB 3 PAR HAI
 
         sidebar_layout.addWidget(self.btn_users)
         sidebar_layout.addWidget(self.btn_settings)
+        sidebar_layout.addWidget(self.btn_ai)        # 👈 SIDEBAR MEIN ADD KARO
         sidebar_layout.addWidget(self.btn_cleanup)
         sidebar_layout.addStretch()
 
@@ -176,11 +180,13 @@ class AdminWindow(QMainWindow):
         # Pages
         self.page_users = self.create_users_page()
         self.page_settings = self.create_settings_page()
+        self.page_ai = self.create_ai_page()          # 👈 NAYI PAGE CALL
         self.page_cleanup = self.create_cleanup_page()
 
         self.stack.addWidget(self.page_users)
         self.stack.addWidget(self.page_settings)
-        self.stack.addWidget(self.page_cleanup)
+        self.stack.addWidget(self.page_ai)             # 👈 STACK MEIN ADD (Index 2)
+        self.stack.addWidget(self.page_cleanup)        # 👈 Index 3
 
         # Add to main layout
         main_layout.addWidget(sidebar)
@@ -204,6 +210,7 @@ class AdminWindow(QMainWindow):
         # Reset styles
         self.btn_users.setProperty("active", "false")
         self.btn_settings.setProperty("active", "false")
+        self.btn_ai.setProperty("active", "false")      # 👈 NAYA RESET
         self.btn_cleanup.setProperty("active", "false")
 
         self.stack.setCurrentIndex(index)
@@ -219,12 +226,16 @@ class AdminWindow(QMainWindow):
         if index == 1:
             self.btn_settings.setProperty("active", "true")
             self.load_settings()
-        elif index == 2:
+        elif index == 2:                                # 👈 NAYA INDEX LOGIC
+            self.btn_ai.setProperty("active", "true")
+            self.load_ai_settings()
+        elif index == 3:                                # 👈 CLEANUP AB 3
             self.btn_cleanup.setProperty("active", "true")
 
-        # Update styling to reflect active property
+        # Update styling
         self.btn_users.setStyle(self.btn_users.style())
         self.btn_settings.setStyle(self.btn_settings.style())
+        self.btn_ai.setStyle(self.btn_ai.style())       # 👈 UPDATE STYLE
         self.btn_cleanup.setStyle(self.btn_cleanup.style())
 
     # ================= PAGE: USERS =================
@@ -484,6 +495,133 @@ class AdminWindow(QMainWindow):
         except Exception as e:
             self.settings_status.setText(f"❌ Error: {str(e)}")
             self.settings_status.setStyleSheet("color: #f38ba8;")
+
+
+    # ================= PAGE: AI SETTINGS =================
+    def create_ai_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        lbl = QLabel("AI & Lumir Bot Configuration")
+        lbl.setStyleSheet("font-size: 24px; font-weight: bold; color: #a6e3a1; margin-bottom: 10px;")
+
+        card = QFrame()
+        card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(30, 30, 30, 30)
+        card_layout.setSpacing(15)
+
+        # 1. Enable AI Toggle
+        self.chk_ai_enable = QCheckBox("Enable AI Engine (Local/Tailscale Ollama)")
+        self.chk_ai_enable.setCursor(Qt.PointingHandCursor)
+        self.chk_ai_enable.setStyleSheet("""
+            QCheckBox { font-size: 18px; color: #cdd6f4; font-weight: 500;} 
+            QCheckBox::indicator { width: 24px; height: 24px; border-radius: 6px; border: 2px solid #45475a; background-color: #313244;}
+            QCheckBox::indicator:checked { background-color: #cba6f7; border-color: #cba6f7;}
+        """)
+
+        desc = QLabel("When enabled, Lumir will fallback to AI for unrecognized commands. Requires Ollama running.")
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #9399b2; font-size: 14px; line-height: 1.5;")
+
+        # 2. Model & URL Selection
+        model_layout = QHBoxLayout()
+
+        # Model Dropdown
+        model_lbl = QLabel("Select Model:")
+        model_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #cdd6f4;")
+        self.model_dropdown = QComboBox()
+        self.model_dropdown.addItems(["llama3:8b", "mistral", "gemma", "deepseek-coder, llama2", "gemma3:270m"])
+        self.model_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
+        # Ollama URL Input (Tailscale Support)
+        url_lbl = QLabel("  Ollama URL:")
+        url_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #cdd6f4;")
+        self.url_input = QLineEdit()
+        self.url_input.setPlaceholderText("http://100.x.x.x:11434") # Tailscale example
+        self.url_input.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px; border: 1px solid #45475a;")
+
+        model_layout.addWidget(model_lbl)
+        model_layout.addWidget(self.model_dropdown)
+        model_layout.addWidget(url_lbl)
+        model_layout.addWidget(self.url_input, 1) # 1 adds stretch factor
+
+        # 3. Status Display
+        self.ai_status_lbl = QLabel("Status: Waiting...")
+        self.ai_status_lbl.setStyleSheet("font-weight: bold; font-size: 14px; color: #f9e2af;")
+        self.ai_status_lbl.setAlignment(Qt.AlignCenter)
+
+        # 4. Save Button
+        save_btn = QPushButton("💾 SAVE AI CONFIGURATION")
+        save_btn.setMinimumHeight(55)
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setStyleSheet("""
+            QPushButton { background-color: #a6e3a1; color: #11111b; font-size: 16px; font-weight: bold; border-radius: 8px;}
+            QPushButton:hover { background-color: #94e2d5; }
+        """)
+        save_btn.clicked.connect(self.save_ai_settings)
+
+        card_layout.addWidget(self.chk_ai_enable)
+        card_layout.addWidget(desc)
+        card_layout.addSpacing(15)
+        card_layout.addLayout(model_layout)
+        card_layout.addSpacing(15)
+        card_layout.addWidget(self.ai_status_lbl)
+        card_layout.addWidget(save_btn)
+
+        layout.addWidget(lbl)
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    def load_ai_settings(self):
+        try:
+            self.ai_status_lbl.setText("Status: ⏳ Fetching from server...")
+            self.ai_status_lbl.setStyleSheet("color: #f9e2af;")
+            res = requests.get(f"{self.server_url}/admin/ai_settings", headers=self.headers, timeout=3)
+            data = res.json()
+            if data.get("success"):
+                config = data.get("config", {})
+
+                # Checkbox ko update karo bina trigger kiye
+                self.chk_ai_enable.blockSignals(True)
+                self.chk_ai_enable.setChecked(config.get("ai_enabled", False))
+                self.chk_ai_enable.blockSignals(False)
+
+                self.model_dropdown.setCurrentText(config.get("ai_model", "gemma3:270m"))
+                self.url_input.setText(config.get("ollama_url", "http://localhost:11434"))
+
+                self.ai_status_lbl.setText("Status: ✅ Loaded Successfully")
+                self.ai_status_lbl.setStyleSheet("color: #a6e3a1;")
+        except Exception as e:
+            self.ai_status_lbl.setText(f"Status: ❌ Error: {str(e)}")
+            self.ai_status_lbl.setStyleSheet("color: #f38ba8;")
+
+    def save_ai_settings(self):
+        try:
+            self.ai_status_lbl.setText("Status: ⏳ Saving...")
+            self.ai_status_lbl.setStyleSheet("color: #89b4fa;")
+
+            enabled = self.chk_ai_enable.isChecked()
+            model = self.model_dropdown.currentText()
+            url = self.url_input.text().strip()
+
+            res = requests.post(
+                f"{self.server_url}/admin/ai_settings",
+                headers=self.headers,
+                params={"enabled": enabled, "model": model, "url": url},
+                timeout=3
+            )
+
+            if res.status_code == 200:
+                self.ai_status_lbl.setText("Status: ✅ Saved! Lumir is updated.")
+                self.ai_status_lbl.setStyleSheet("color: #a6e3a1;")
+            else:
+                raise Exception(f"Server returned {res.status_code}")
+        except Exception as e:
+            self.ai_status_lbl.setText(f"Status: ❌ Failed to save: {str(e)}")
+            self.ai_status_lbl.setStyleSheet("color: #f38ba8;")
 
     # ================= PAGE: CLEANUP =================
     def create_cleanup_page(self):
