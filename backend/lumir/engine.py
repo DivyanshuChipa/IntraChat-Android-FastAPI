@@ -20,7 +20,7 @@ class LumirEngine:
         if file_url:
             self.user_context[sender] = file_url
             if not text:
-                return {"type": "text", "text": "📸 Image received! Reply with `###passport###` to generate a 6-on-A6 layout, or ask me to analyze it (soon)."}
+                return {"type": "text", "text": "📸 Image received! Reply with `###passport###` to generate a 6-on-A6 layout,or for 9-onA6 ###passport9### and with date ###passportdate<dd/mm/yyyy>###.or combine the commands for combined result example ###passport9### ###passportdate<dd/mm/yyyy>### , or ask me to analyze it (soon)."}
 
         # 2. Basic Utility Commands
         if text in ["hi", "hello", "hey"]:
