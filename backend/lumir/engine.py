@@ -2,6 +2,7 @@ from .utilities import generate_passport_layout
 from .ai_engine import ask_ai
 import sys
 import os
+import re  # 👈 Upar imports ke sath add karna
 
 # To access users.py from the parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,12 +30,23 @@ class LumirEngine:
             return {"type": "text", "text": "🛠️ **Available Commands:**\n1. `###passport###` (Send an image first)\n2. Just chat with me! (If Admin has enabled AI mode)"}
 
         # 3. PASSPORT GENERATOR LOGIC
-        if "###passport###" in text:
+        if "###passport" in text:
             target_image = file_url or self.user_context.get(sender)
             if not target_image:
-                return {"type": "text", "text": "⚠️ No image found! Please send an image first, then type `###passport###`."}
+                return {"type": "text", "text": "⚠️ No image found! Please send an image first."}
 
-            res = generate_passport_layout(target_image)
+            # Detect 9 grid
+            grid_size = 9 if "###passport9###" in text else 6
+
+            # Detect Date using Regex (Reads whatever is inside < >)
+            date_text = None
+            date_match = re.search(r'###passportdate<(.*?)>###', text)
+            if date_match:
+                date_text = date_match.group(1).strip()
+
+            # Process the image
+            res = generate_passport_layout(target_image, grid_size=grid_size, date_text=date_text)
+
             if sender in self.user_context:
                 del self.user_context[sender]
 

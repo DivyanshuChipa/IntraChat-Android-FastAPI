@@ -532,7 +532,7 @@ class AdminWindow(QMainWindow):
         model_lbl = QLabel("Select Model:")
         model_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #cdd6f4;")
         self.model_dropdown = QComboBox()
-        self.model_dropdown.addItems(["llama3.2:3b", "mistral", "gemma", "deepseek-coder, llama2", "gemma3:270m"])
+        self.model_dropdown.addItems(["llama3.2:3b", "mistral", "gemma", "deepseek-coder", "gemma3:270m"])
         self.model_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
 
         # Ollama URL Input (Tailscale Support)
