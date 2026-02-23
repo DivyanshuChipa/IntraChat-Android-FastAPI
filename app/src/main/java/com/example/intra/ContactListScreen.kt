@@ -39,6 +39,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.ui.res.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +50,15 @@ fun ContactListScreen(
     onChatClick: (String) -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val settingsManager = remember { SettingsManager(context) }
+
+    // Refresh Lumir state whenever screen appears
+    var showLumir by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        showLumir = settingsManager.isShowLumirEnabled()
+    }
+
     val contactViewModel: ContactViewModel = viewModel()
     val contacts = contactViewModel.contacts
 
@@ -140,19 +150,22 @@ fun ContactListScreen(
                         }
                     }
                     // ✅ STEP 2: LUMIR BOT ITEM (Yahan add karo)
-                    item {
-                        ContactItem(
-                            name = "Lumir",
-                            subtitle = "AI Assistant & Utilities",
-                            isTyping = false, // Abhi ke liye false
-                            icon = Icons.Default.SmartToy, // 🤖 SmartToy icon use karo (agar available ho, nahi to Person)
-                            iconTint = Color(0xFF1100FF), // Cyan/Neon Blue color
-                            isDark = isDark,
-                            profilePhotoUrl = null,
-                            unreadCount = 0,
-                            isActive = activeChatUser == "Lumir",
-                            onClick = { onChatClick("Lumir") }
-                        )
+                    if (showLumir) { // 🤖 Check visibility setting
+                        item {
+                            ContactItem(
+                                name = "Lumir",
+                                subtitle = "AI Assistant & Utilities",
+                                isTyping = false, // Abhi ke liye false
+                                icon = Icons.Default.SmartToy, // Default fallback
+                                iconTint = Color(0xFF1100FF), // Cyan/Neon Blue color
+                                isDark = isDark,
+                                profilePhotoUrl = null,
+                                unreadCount = 0,
+                                isActive = activeChatUser == "Lumir",
+                                iconResourceId = R.drawable.lumir4, // 🤖 Use Custom Vector
+                                onClick = { onChatClick("Lumir") }
+                            )
+                        }
                     }
 
                     // USER LIST (Filtered)
@@ -204,6 +217,7 @@ fun ContactItem(
     profilePhotoUrl: String? = null,
     unreadCount: Int = 0,
     isActive: Boolean = false, // 🆕 STEP 6: Active chat indicator
+    iconResourceId: Int? = null, // 🆕 NEW: Optional Drawable Resource ID
     onClick: () -> Unit
 ) {
     val nameColor = if (isDark) Color.White else Color.Black
@@ -253,6 +267,14 @@ fun ContactItem(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
+                )
+            } else if (iconResourceId != null) {
+                // 🆕 Render Drawable (Lumir)
+                Icon(
+                    painter = painterResource(id = iconResourceId),
+                    contentDescription = null,
+                    tint = Color.Unspecified, // Keep original vector colors
+                    modifier = Modifier.fillMaxSize().padding(2.dp) // Slight padding if needed
                 )
             } else {
                 Icon(

@@ -16,6 +16,7 @@ class SettingsManager(context: Context) {
         const val KEY_SERVER_PORT = "server_port"
         const val KEY_MY_PHOTO = "my_profile_photo" // 🆕 NEW KEY
         const val KEY_BACKGROUND_SERVICE = "background_service_enabled" // ✅ NEW KEY
+        const val KEY_SHOW_LUMIR = "show_lumir_assistant" // 🤖 NEW KEY
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -81,5 +82,14 @@ class SettingsManager(context: Context) {
 
     fun setBackgroundService(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_BACKGROUND_SERVICE, enabled).apply()
+    }
+
+    // 🤖 LUMIR VISIBILITY
+    fun isShowLumirEnabled(): Boolean {
+        return prefs.getBoolean(KEY_SHOW_LUMIR, true) // Default ON
+    }
+
+    fun setShowLumir(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SHOW_LUMIR, enabled).apply()
     }
 }
