@@ -90,9 +90,16 @@ class LumirEngine:
                     chat_history = get_lumir_history(sender, limit=6)
 
                 # AI ko prompt, config, history, aur sender name bhejo
-                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender)
-                return {"type": "text", "text": ai_reply}
+                ai_reply = ask_ai(prompt=text, config=config, history=chat_history)
 
+                # 🛠️ THE FIX: Remove all newlines and make it a single safe line
+                safe_reply = ai_reply.replace("\n", " ").replace("\r", " ").strip()
+
+                # Agar multiple spaces ban gaye hain toh unhe single space kar do
+                #import re
+                safe_reply = re.sub(' +', ' ', safe_reply)
+
+                return {"type": "text", "text": safe_reply}
             else:
                 return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel to chat with me!"}
         except Exception as e:
