@@ -73,13 +73,18 @@ class LumirEngine:
             else:
                 return {"type": "text", "text": res["message"]}
 
-        # 🧠 4. THE AI FALLBACK (Llama3 integration)
-        # Agar koi command match nahi hui, toh AI se poocho!
+        # 🧠 4. THE AI FALLBACK (Llama 3.2 + Memory)
         try:
             config = get_ai_config()
             if config.get("ai_enabled"):
-                # Call Ollama
-                ai_reply = ask_ai(prompt=text, config=config)
+                
+                # 1. Database se pichli 6 messages ki memory uthao
+                from messages import get_lumir_history
+                # Halka sa trick: latest message db me save ho chuka hai, toh history me latest wale ko chod do
+                chat_history = get_lumir_history(sender, limit=6)
+                
+                # 2. Memory aur naya message AI ko bhejo
+                ai_reply = ask_ai(prompt=text, config=config, history=chat_history)
                 return {"type": "text", "text": ai_reply}
             else:
                 return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel to chat with me!"}

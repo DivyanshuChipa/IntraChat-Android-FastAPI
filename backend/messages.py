@@ -158,3 +158,29 @@ def cleanup_old_messages(days: int):
     conn.commit()
     conn.close()
     return deleted_count
+
+# ===== Add this at the end of messages.py =====
+def get_lumir_history(username: str, limit: int = 6):
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    # Get last N messages between this user and Lumir
+    cur.execute("""
+        SELECT sender, text FROM messages 
+        WHERE (sender = ? AND receiver = 'Lumir') 
+           OR (sender = 'Lumir' AND receiver = ?)
+        ORDER BY ts DESC LIMIT ?
+    """, (username, username, limit))
+    
+    rows = cur.fetchall()
+    conn.close()
+
+    # Ollama ko history ek specific format (role: user/assistant) me chahiye hoti hai
+    history = []
+    # Reverse the list so chronological order is maintained (oldest first, newest last)
+    for row in reversed(rows):
+        role = "assistant" if row["sender"] == "Lumir" else "user"
+        history.append({"role": role, "content": row["text"]})
+        
+    return history

@@ -1,35 +1,42 @@
 import requests
 
-def ask_ai(prompt: str, config: dict):
-    # Check if admin disabled AI
+def ask_ai(prompt: str, config: dict, history: list = None):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
 
     url = config.get("ollama_url", "http://localhost:11434")
     model = config.get("ai_model", "llama3:8b")
 
-    # 🧬 LUMIR'S PERSONALITY (System Prompt)
+    # 🧬 LUMIR'S PERSONALITY
     system_prompt = """You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
     You live inside the 'Intra' LAN messenger network. 
-    Your creator is a brilliant engineer known as 'H tech'. 
-    Always reply in a helpful and concise manner. 
-    If someone asks who you are, proudly introduce yourself as Lumir and mention Intra."""
+    Your creator is a brilliant engineer known Divya'. 
+    Always reply in a helpful and concise manner. Use previous chat context to give better answers."""
+
+    # Chat history format setup
+    messages = [{"role": "system", "content": system_prompt}]
+
+    # Purani baatein add karo
+    if history:
+        messages.extend(history)
+
+    # Naya message add karo
+    messages.append({"role": "user", "content": prompt})
 
     try:
-        # Request to Ollama
+        # ⚠️ Yahan humne /api/generate ki jagah /api/chat use kiya hai
         res = requests.post(
-            f"{url}/api/generate",
+            f"{url}/api/chat",
             json={
                 "model": model,
-                "prompt": prompt,
-                "system": system_prompt,  # 👈 YAHAN MAGIC HOTA HAI
+                "messages": messages, # Ab pura context ja raha hai
                 "stream": False
             },
-            timeout=40 # Heavy models take time to reply
+            timeout=40
         )
 
         if res.status_code == 200:
-            return res.json().get("response", "No response from AI.")
+            return res.json().get("message", {}).get("content", "No response from AI.")
         else:
             return f"⚠️ AI Error: Check if model '{model}' is installed on {url}."
 
