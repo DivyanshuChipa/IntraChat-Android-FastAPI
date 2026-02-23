@@ -73,22 +73,28 @@ class LumirEngine:
             else:
                 return {"type": "text", "text": res["message"]}
 
-        # 🧠 4. THE AI FALLBACK (Llama 3.2 + Memory)
+        # 🧠 4. THE AI FALLBACK (Smart Routing)
         try:
             config = get_ai_config()
             if config.get("ai_enabled"):
-                
-                # 1. Database se pichli 6 messages ki memory uthao
-                from messages import get_lumir_history
-                # Halka sa trick: latest message db me save ho chuka hai, toh history me latest wale ko chod do
-                chat_history = get_lumir_history(sender, limit=6)
-                
-                # 2. Memory aur naya message AI ko bhejo
+
+                # Model ka naam check karo
+                current_model = config.get("ai_model", "")
+
+                # 🛑 GEMMA 270M BYPASS LOGIC: Baby model ko history mat do
+                if current_model == "gemma3:270m":
+                    chat_history = []  # Empty memory
+                else:
+                    # ✅ BIG MODELS: Baki smart models ke liye history uthao
+                    from messages import get_lumir_history
+                    chat_history = get_lumir_history(sender, limit=6)
+
+                # AI ko prompt aur history bhejo (Gemma ke case mein history khali jayegi)
                 ai_reply = ask_ai(prompt=text, config=config, history=chat_history)
                 return {"type": "text", "text": ai_reply}
+
             else:
                 return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel to chat with me!"}
         except Exception as e:
             return {"type": "text", "text": f"⚠️ AI System Error: {str(e)}"}
-
 lumir_engine = LumirEngine()
