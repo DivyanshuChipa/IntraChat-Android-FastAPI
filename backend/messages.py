@@ -165,13 +165,15 @@ def get_lumir_history(username: str, limit: int = 6):
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # Get last N messages between this user and Lumir
+    # 🔥 STRICT FILTERING: Yahan check karo ki (sender = username AND receiver = 'Lumir')
+    # YA (sender = 'Lumir' AND receiver = username)
     cur.execute("""
         SELECT sender, text FROM messages 
         WHERE (sender = ? AND receiver = 'Lumir') 
            OR (sender = 'Lumir' AND receiver = ?)
         ORDER BY ts DESC LIMIT ?
     """, (username, username, limit))
+    # 👆 (username, username, limit) bhejna bohot zaroori hai
     
     rows = cur.fetchall()
     conn.close()

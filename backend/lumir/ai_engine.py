@@ -1,35 +1,41 @@
 import requests
+import json  # Debugging format ke liye
 
-def ask_ai(prompt: str, config: dict, history: list = None):
+def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
 
     url = config.get("ollama_url", "http://localhost:11434")
     model = config.get("ai_model", "llama3:8b")
 
-    # 🧬 LUMIR'S PERSONALITY
-    system_prompt = """You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
+    # 🧬 LUMIR'S UPGRADED PERSONALITY (Ab isko user ka naam bhi pata hai!)
+    system_prompt = f"""You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
     You live inside the 'Intra' LAN messenger network. 
-    Your creator is a brilliant engineer known Divya'. 
-    Always reply in a helpful and concise manner. Use previous chat context to give better answers."""
+    Your creator is a  engineer known as 'Divya'. 
+    Always reply in a helpful and concise manner. 
+    IMPORTANT: The user you are currently chatting with is named '{sender}'. Address them by their name naturally in conversation."""
 
     # Chat history format setup
     messages = [{"role": "system", "content": system_prompt}]
 
-    # Purani baatein add karo
     if history:
         messages.extend(history)
 
-    # Naya message add karo
     messages.append({"role": "user", "content": prompt})
 
+    # 🛠️ DEBUGGING: Terminal mein check karne ke liye ki AI ko kya bheja jaa raha hai
+    print("\n" + "="*50)
+    print(f"🤖 [LUMIR DEBUG] SENDING TO OLLAMA MODEL: {model}")
+    print(f"👤 USER: {sender}")
+    print(json.dumps(messages, indent=2))  # Ye terminal me saare 6 messages print karega!
+    print("="*50 + "\n")
+
     try:
-        # ⚠️ Yahan humne /api/generate ki jagah /api/chat use kiya hai
         res = requests.post(
             f"{url}/api/chat",
             json={
                 "model": model,
-                "messages": messages, # Ab pura context ja raha hai
+                "messages": messages,
                 "stream": False
             },
             timeout=40

@@ -89,8 +89,8 @@ class LumirEngine:
                     from messages import get_lumir_history
                     chat_history = get_lumir_history(sender, limit=6)
 
-                # AI ko prompt aur history bhejo (Gemma ke case mein history khali jayegi)
-                ai_reply = ask_ai(prompt=text, config=config, history=chat_history)
+                # AI ko prompt, config, history, aur sender name bhejo
+                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender)
                 return {"type": "text", "text": ai_reply}
 
             else:
