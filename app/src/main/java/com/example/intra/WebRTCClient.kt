@@ -56,21 +56,28 @@ class WebRTCClient(
         localAudioTrack = peerConnectionFactory?.createAudioTrack("audio_track_101", audioSource)
 
         // 5. Initial Audio Setup (Focus request kar lo, par routing call ke waqt karenge)
+        // 🔥 REMOVED: Audio Focus & Mode Setup moved to setupAudioForCall()
+        // val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        // audioManager.requestAudioFocus(...)
+        // audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+
+        Log.d("WebRTC", "✅ WebRTC Initialized")
+    }
+
+    // ----------------------------------------------------------------
+    // 🎧 AUDIO MANAGEMENT (The "Clean" Way)
+    // ----------------------------------------------------------------
+
+    private fun setupAudioForCall() {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager.requestAudioFocus(
             null,
             AudioManager.STREAM_VOICE_CALL,
             AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
         )
-        // Communication mode zaroori hai VoIP ke liye
         audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-
-        Log.d("WebRTC", "✅ WebRTC Initialized & Audio Focus Requested")
+        Log.d("WebRTC", "📞 Audio Focus Requested & Mode set to IN_COMMUNICATION")
     }
-
-    // ----------------------------------------------------------------
-    // 🎧 AUDIO MANAGEMENT (The "Clean" Way)
-    // ----------------------------------------------------------------
 
     // Yeh function call start hone par audio set karega
     // Aur jab user toggle karega tab use hoga.
@@ -130,6 +137,9 @@ class WebRTCClient(
     fun startCall(targetUsername: String) {
         currentTarget = targetUsername
 
+        // 🔥 STEP 0: Set Audio Mode for Call (Fix for J2 Camera & Earpiece Issue)
+        setupAudioForCall()
+
         // 🔥 STEP 1: Default Speaker ON karo (Safety for J2)
         setAudioOutput(true)
 
@@ -166,6 +176,9 @@ class WebRTCClient(
 
     fun answerCall(targetUsername: String, offerSdp: String) {
         currentTarget = targetUsername
+
+        // 🔥 STEP 0: Set Audio Mode for Call (Fix for J2 Camera & Earpiece Issue)
+        setupAudioForCall()
 
         // 🔥 STEP 1: Default Speaker ON karo Answer karte waqt bhi
         setAudioOutput(true)
