@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [ChatMessageEntity::class], version = 3, exportSchema = false) // 👈 Yahan 1 se 2
+@Database(entities = [ChatMessageEntity::class], version = 4, exportSchema = false) // 👈 Yahan 3 se 4
 abstract class ChatDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
 
@@ -25,6 +25,16 @@ abstract class ChatDatabase : RoomDatabase() {
             }
         }
 
+        // 🆕 MIGRATION 3 -> 4: Add options column
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add new column for options (TEXT because we store JSON string)
+                database.execSQL(
+                    "ALTER TABLE messages ADD COLUMN options TEXT DEFAULT NULL"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): ChatDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -32,7 +42,7 @@ abstract class ChatDatabase : RoomDatabase() {
                     ChatDatabase::class.java,
                     "chat_db"
                 )
-                    .addMigrations(MIGRATION_2_3) // 👈 Add migration here
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4) // 👈 Add migration here
                     .fallbackToDestructiveMigration() // 👈 Yeh line add karo
                     .build()
 
