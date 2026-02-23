@@ -38,7 +38,7 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
                 "messages": messages,
                 "stream": False
             },
-            timeout=40
+            timeout=100
         )
 
         if res.status_code == 200:
