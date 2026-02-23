@@ -20,7 +20,17 @@ class LumirEngine:
         if file_url:
             self.user_context[sender] = file_url
             if not text:
-                return {"type": "text", "text": "📸 Image received! Reply with `###passport###` to generate a 6-on-A6 layout,or for 9-onA6 ###passport9### and with date ###passportdate<dd/mm/yyyy>###.or combine the commands for combined result example ###passport9### ###passportdate<dd/mm/yyyy>### , or ask me to analyze it (soon)."}
+                # 🛠️ NAYA LOGIC: Text ki jagah options array bhej rahe hain
+                return {
+                    "type": "utility_options",
+                    "text": "📸 Image received! What would you like to do?",
+                    "options": [
+                        "🛂 Passport A6 (6 Photos)",
+                        "🛂 Passport A6 (9 Photos)",
+                        "📄 Extract Text (OCR)",
+                        "📅 Passport + Date"
+                    ]
+                }
 
         # 2. Basic Utility Commands
         if text in ["hi", "hello", "hey"]:
