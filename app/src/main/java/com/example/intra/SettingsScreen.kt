@@ -159,6 +159,9 @@ fun SettingsScreen(
     // 🔥 BACKGROUND SERVICE STATE
     var isBackgroundEnabled by remember { mutableStateOf(settingsManager.isBackgroundServiceEnabled()) }
 
+    // 🤖 LUMIR STATE
+    var isLumirEnabled by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
+
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -365,6 +368,32 @@ fun SettingsScreen(
                                 // Stop Service
                                 context.stopService(serviceIntent)
                             }
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 🤖 LUMIR TOGGLE
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Show Lumir AI", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Enable the AI assistant in your chat list.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isLumirEnabled,
+                        onCheckedChange = { enabled ->
+                            isLumirEnabled = enabled
+                            settingsManager.setShowLumir(enabled)
                         }
                     )
                 }
