@@ -1,5 +1,6 @@
 import os
 import time
+import pytesseract
 from PIL import Image, ImageOps, ImageDraw, ImageFont
 
 def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str = None):
@@ -81,3 +82,31 @@ def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str 
 
     except Exception as e:
         return {"success": False, "message": f"Error processing image: {str(e)}"}
+
+def extract_text_from_image(image_url: str):
+    try:
+        # Path theek karo
+        file_path = image_url.lstrip("/")
+        
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "File not found on server."}
+
+        # Original image open karo
+        with Image.open(file_path) as img:
+            # Phone ki tedi photo ko seedha karo
+            img = ImageOps.exif_transpose(img)
+            
+            # Tesseract se text extract karo
+            extracted_text = pytesseract.image_to_string(img)
+            
+            # Agar image mein text nahi mila
+            if not extracted_text.strip():
+                return {"success": False, "message": "⚠️ I couldn't find any readable text in this image."}
+                
+            return {
+                "success": True, 
+                "text": extracted_text.strip()
+            }
+
+    except Exception as e:
+        return {"success": False, "message": f"OCR Error: {str(e)}"}

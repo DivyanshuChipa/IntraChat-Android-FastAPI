@@ -1,8 +1,8 @@
-from .utilities import generate_passport_layout
+from .utilities import generate_passport_layout, extract_text_from_image
 from .ai_engine import ask_ai
 import sys
 import os
-import re  # 👈 Upar imports ke sath add karna
+import re
 
 # To access users.py from the parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,6 +52,24 @@ class LumirEngine:
 
             if res["success"]:
                 return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
+
+        # 📝 3.5 OCR LOGIC
+        if "###ocr###" in text:
+            target_image = file_url or self.user_context.get(sender)
+            if not target_image:
+                return {"type": "text", "text": "⚠️ No image found! Please send an image first, then type `###ocr###`."}
+            
+            # Extract text
+            res = extract_text_from_image(target_image)
+            
+            # Memory clear karo
+            if sender in self.user_context:
+                del self.user_context[sender]
+                
+            if res["success"]:
+                return {"type": "text", "text": f"📄 **Extracted Text:**\n\n{res['text']}"}
             else:
                 return {"type": "text", "text": res["message"]}
 
