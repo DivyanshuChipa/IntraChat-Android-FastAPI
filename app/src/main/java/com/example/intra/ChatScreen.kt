@@ -605,6 +605,7 @@ fun MessageBubble(
                                     "📅 Passport + Date" -> {
                                         showDatePicker()
                                     }
+                                    "🗜️ Compress Image" -> onOptionSelected("###compress###")
                                     else -> {
                                         // Do nothing for unknown options as per request, or handle appropriately
                                     }
