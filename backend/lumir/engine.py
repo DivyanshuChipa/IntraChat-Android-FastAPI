@@ -118,6 +118,11 @@ class LumirEngine:
                     from messages import get_lumir_history
                     chat_history = get_lumir_history(sender, limit=6)
 
+                    # 🛑 FIX: Remove current prompt from history if it appears
+                    # Since we save the message BEFORE processing, history might include it
+                    if chat_history and chat_history[-1]["role"] == "user" and chat_history[-1]["content"].lower().strip() == text.lower().strip():
+                        chat_history.pop()
+
                 # AI ko prompt, config, history, aur sender name bhejo
                 ai_reply = ask_ai(prompt=text, config=config, history=chat_history)
 
