@@ -111,40 +111,65 @@ def extract_text_from_image(image_url: str):
     except Exception as e:
         return {"success": False, "message": f"OCR Error: {str(e)}"}
 
-def compress_image(image_url: str):
+import io
+
+def compress_image_to_target(image_url: str, target_kb: int):
     try:
         file_path = image_url.lstrip("/")
         if not os.path.exists(file_path):
             return {"success": False, "message": "File not found on server."}
 
-        # Original size calculate karo
         orig_size = os.path.getsize(file_path)
-
-        # Naya file name aur path banao
         base, ext = os.path.splitext(file_path)
-        new_file_path = f"{base}_compressed.jpg" # Compressed ko hamesha JPG banayenge
+        new_file_path = f"{base}_compressed_{target_kb}kb.jpg"
         new_file_url = f"/{new_file_path}"
 
+        target_bytes = target_kb * 1024
+
         with Image.open(file_path) as img:
-            # Agar image PNG (transparent) hai, toh usko RGB mein convert karo taaki JPG ban sake
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
 
-            # Dimensions ko limit karo (Agar 4K photo hai toh use normal HD ke aas paas le aao)
+            # Initial optimization
             img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
 
-            # Compress karke save karo (quality=50 normally 2MB ko 200KB bana deta hai)
-            img.save(new_file_path, "JPEG", quality=50, optimize=True)
+            quality = 95
+            temp_buffer = io.BytesIO()
+
+            # 🔄 MAGIC LOOP: Quality dreere dreere kam karo
+            while quality > 10:
+                temp_buffer.seek(0)
+                temp_buffer.truncate(0)
+                img.save(temp_buffer, format="JPEG", quality=quality, optimize=True)
+
+                if temp_buffer.tell() <= target_bytes:
+                    break # Size mil gaya, loop roko!
+                quality -= 5
+
+            # Agar quality 10 par bhi size bada hai, toh dimensions chhote karo
+            if temp_buffer.tell() > target_bytes:
+                scale = 0.9
+                while temp_buffer.tell() > target_bytes and scale > 0.3:
+                    new_size = (int(img.width * scale), int(img.height * scale))
+                    resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+                    temp_buffer.seek(0)
+                    temp_buffer.truncate(0)
+                    resized_img.save(temp_buffer, format="JPEG", quality=15, optimize=True)
+                    scale -= 0.1
+
+            # Final file save
+            with open(new_file_path, "wb") as f:
+                f.write(temp_buffer.getvalue())
 
         new_size = os.path.getsize(new_file_path)
 
-        # Size ko KB/MB mein format karne ka chhota function
-        def format_size(size):
-            return f"{size/1024/1024:.2f} MB" if size > 1024*1024 else f"{size/1024:.0f} KB"
+        def format_size(s):
+            return f"{s/1024/1024:.2f} MB" if s > 1024*1024 else f"{s/1024:.0f} KB"
 
         message = (
-            f"🗜️ **Image Compressed Successfully!**\n\n"
-            f"📉 Original Size: {format_size(orig_size)}\n"
+            f"🗜️ **Target Achieved! (Limit: {target_kb} KB)**\n\n"
+            f"📉 Original: {format_size(orig_size)}\n"
             f"⚡ New Size: {format_size(new_size)}"
         )
 

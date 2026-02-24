@@ -347,6 +347,10 @@ fun MessageBubble(
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
+    // Variables for Dialog Box
+    var showCompressDialog by remember { mutableStateOf(false) }
+    var targetKbInput by remember { mutableStateOf("") }
+
     // 🗓️ Date Picker logic
     val showDatePicker = {
         DatePickerDialog(
@@ -360,6 +364,35 @@ fun MessageBubble(
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         ).show()
+    }
+
+    // 🗜️ Compress Image Dialog Box
+    if (showCompressDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showCompressDialog = false },
+            title = { Text("Compress Image") },
+            text = {
+                OutlinedTextField(
+                    value = targetKbInput,
+                    onValueChange = { targetKbInput = it },
+                    label = { Text("Target Size (in KB)") },
+                    placeholder = { Text("e.g. 60") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (targetKbInput.isNotEmpty()) {
+                        // Backend ko format bhej do -> ###compress<60>###
+                        onOptionSelected("###compress<${targetKbInput}>###")
+                        showCompressDialog = false
+                    }
+                }) { Text("Compress") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCompressDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 
     Row(
@@ -605,7 +638,9 @@ fun MessageBubble(
                                     "📅 Passport + Date" -> {
                                         showDatePicker()
                                     }
-                                    "🗜️ Compress Image" -> onOptionSelected("###compress###")
+                                    "🗜️ Compress Image" -> {
+                                        showCompressDialog = true // Button dabne par dialog dikhao
+                                    }
                                     else -> {
                                         // Do nothing for unknown options as per request, or handle appropriately
                                     }
