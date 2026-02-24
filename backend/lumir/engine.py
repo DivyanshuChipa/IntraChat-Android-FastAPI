@@ -40,20 +40,25 @@ class LumirEngine:
         if text == "/help" or text == "/hrlp":
             return {"type": "text", "text": "🛠️ **Available Commands:**\n1. `###passport###` (Send an image first)\n2. Just chat with me! (If Admin has enabled AI mode)"}
 
-        # 🗜️ 3.6 COMPRESS IMAGE LOGIC
-        if "###compress###" in text:
+        # 🗜️ 3.6 SMART COMPRESS IMAGE LOGIC
+        # Regex to find commands like ###compress<60>###
+        import re
+        compress_match = re.search(r'###compress<(\d+)>###', text)
+
+        if compress_match:
+            target_kb = int(compress_match.group(1))
             target_image = file_url or self.user_context.get(sender)
+
             if not target_image:
                 return {"type": "text", "text": "⚠️ No image found to compress! Please send an image first."}
 
-            from .utilities import compress_image
-            res = compress_image(target_image)
+            from .utilities import compress_image_to_target
+            res = compress_image_to_target(target_image, target_kb)
 
             if sender in self.user_context:
                 del self.user_context[sender]
 
             if res["success"]:
-                # Dhyan rahe, hum yahan type: "file" bhej rahe hain taaki neeche image aur download button aaye
                 return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
             else:
                 return {"type": "text", "text": res["message"]}
