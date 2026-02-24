@@ -16,5 +16,6 @@ data class ChatMessageEntity(
     val sender: String,      // ✅ Default value mat do
     val receiver: String,    // ✅ Default value mat do
     // 🆕 NEW FIELD: Read Status Tracking
-    val isRead: Boolean = false  // Default: unread
+    val isRead: Boolean = false,  // Default: unread
+    val options: String? = null // Stored as JSON string
 )

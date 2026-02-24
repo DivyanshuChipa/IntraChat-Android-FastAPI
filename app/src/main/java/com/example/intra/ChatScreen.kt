@@ -89,6 +89,11 @@ import coil.request.videoFrameMillis
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.Calendar
+import android.app.DatePickerDialog
+import android.widget.DatePicker
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.OutlinedButton
 import kotlinx.coroutines.delay
 
 
@@ -233,7 +238,8 @@ fun ChatScreen(
                     MessageBubble(
                         message = msg,
                         onVideoClick = { url -> videoUrlToPlay = url },
-                        onImageClick = { url -> imageUrlToView = url }
+                        onImageClick = { url -> imageUrlToView = url },
+                        onOptionSelected = { cmd -> viewModel.sendOptionCommand(receiverName, cmd) }
                     )
                 }
 
@@ -335,9 +341,26 @@ fun TypingIndicatorUI(name: String) {
 fun MessageBubble(
     message: ChatMessage,
     onVideoClick: (String) -> Unit = {},
-    onImageClick: (String) -> Unit = {} // 👈 YE ADD HUA
+    onImageClick: (String) -> Unit = {}, // 👈 YE ADD HUA
+    onOptionSelected: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+
+    // 🗓️ Date Picker logic
+    val showDatePicker = {
+        DatePickerDialog(
+            context,
+            { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
+                val formattedDate = String.format(Locale.US, "%02d/%02d/%04d", dayOfMonth, month + 1, year)
+                val finalCommand = "###passport9### ###passportdate<$formattedDate>###"
+                onOptionSelected(finalCommand)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
 
     Row(
         modifier = Modifier
@@ -567,6 +590,34 @@ fun MessageBubble(
                                 }
                         }
                     )
+                }
+
+                // 🔘 Options Buttons loop
+                if (message.type == "utility_options" && message.options != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    message.options.forEach { optionText ->
+                        OutlinedButton(
+                            onClick = {
+                                when (optionText) {
+                                    "🛂 Passport A6 (6 Photos)" -> onOptionSelected("###passport###")
+                                    "🛂 Passport A6 (9 Photos)" -> onOptionSelected("###passport9###")
+                                    "📄 Extract Text (OCR)" -> onOptionSelected("###ocr###")
+                                    "📅 Passport + Date" -> {
+                                        showDatePicker()
+                                    }
+                                    "🗜️ Compress Image" -> onOptionSelected("###compress###")
+                                    else -> {
+                                        // Do nothing for unknown options as per request, or handle appropriately
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = if(message.isSelf) Color.White else MaterialTheme.colorScheme.onSurfaceVariant),
+                            border = BorderStroke(1.dp, if(message.isSelf) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.5f))
+                        ) {
+                            Text(text = optionText)
+                        }
+                    }
                 }
                 
                 message.timestamp?.let {

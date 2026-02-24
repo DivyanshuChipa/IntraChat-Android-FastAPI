@@ -28,7 +28,8 @@ class LumirEngine:
                         "🛂 Passport A6 (6 Photos)",
                         "🛂 Passport A6 (9 Photos)",
                         "📄 Extract Text (OCR)",
-                        "📅 Passport + Date"
+                        "📅 Passport + Date",
+                        "🗜️ Compress Image"
                     ]
                 }
 
@@ -38,6 +39,24 @@ class LumirEngine:
 
         if text == "/help" or text == "/hrlp":
             return {"type": "text", "text": "🛠️ **Available Commands:**\n1. `###passport###` (Send an image first)\n2. Just chat with me! (If Admin has enabled AI mode)"}
+
+        # 🗜️ 3.6 COMPRESS IMAGE LOGIC
+        if "###compress###" in text:
+            target_image = file_url or self.user_context.get(sender)
+            if not target_image:
+                return {"type": "text", "text": "⚠️ No image found to compress! Please send an image first."}
+
+            from .utilities import compress_image
+            res = compress_image(target_image)
+
+            if sender in self.user_context:
+                del self.user_context[sender]
+
+            if res["success"]:
+                # Dhyan rahe, hum yahan type: "file" bhej rahe hain taaki neeche image aur download button aaye
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
 
         # 3. PASSPORT GENERATOR LOGIC
         if "###passport" in text:
@@ -98,6 +117,11 @@ class LumirEngine:
                     # ✅ BIG MODELS: Baki smart models ke liye history uthao
                     from messages import get_lumir_history
                     chat_history = get_lumir_history(sender, limit=6)
+
+                    # 🛑 FIX: Remove current prompt from history if it appears
+                    # Since we save the message BEFORE processing, history might include it
+                    if chat_history and chat_history[-1]["role"] == "user" and chat_history[-1]["content"].lower().strip() == text.lower().strip():
+                        chat_history.pop()
 
                 # AI ko prompt, config, history, aur sender name bhejo
                 ai_reply = ask_ai(prompt=text, config=config, history=chat_history)

@@ -27,7 +27,8 @@ data class ChatMessage(
     val fileName: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val isLoading: Boolean = false,
-    val localUri: String? = null
+    val localUri: String? = null,
+    val options: List<String>? = null
 )
 
 class ChatViewModel(
@@ -167,6 +168,30 @@ class ChatViewModel(
 
         WsManager.send(json.toString())
 
+        viewModelScope.launch {
+            _contactUpdateEvent.emit(receiver)
+        }
+    }
+
+    fun sendOptionCommand(receiver: String, command: String) {
+        val ts = System.currentTimeMillis()
+        val json = JSONObject().apply {
+            put("type", "text")
+            put("sender", currentUsername)
+            put("receiver", receiver)
+            put("text", command)
+            put("timestamp", ts)
+        }
+
+        val msg = ChatMessage(
+            text = command,
+            isSelf = true,
+            timestamp = ts
+        )
+
+        messages.add(msg)
+        saveToDb(msg, currentUsername, receiver, isRead = true)
+        WsManager.send(json.toString())
         viewModelScope.launch {
             _contactUpdateEvent.emit(receiver)
         }
@@ -374,10 +399,21 @@ class ChatViewModel(
                     timestamp = ts
                 )
             } else {
+                // Parse options if available
+                val optionsList = mutableListOf<String>()
+                val optionsJson = json.optJSONArray("options")
+                if (optionsJson != null) {
+                    for (i in 0 until optionsJson.length()) {
+                        optionsList.add(optionsJson.getString(i))
+                    }
+                }
+
                 ChatMessage(
                     text = json.optString("text"),
                     isSelf = isSelf,
-                    timestamp = ts
+                    timestamp = ts,
+                    type = type, // Pass the type (e.g. utility_options)
+                    options = if (optionsList.isNotEmpty()) optionsList else null
                 )
             }
 
@@ -419,6 +455,11 @@ class ChatViewModel(
         isRead: Boolean = false // 🔥 NEW PARAMETER
     ) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Convert options list to JSON String for storage
+            val optionsJson = if (msg.options != null) {
+                org.json.JSONArray(msg.options).toString()
+            } else null
+
             chatDao.insertMessage(
                 ChatMessageEntity(
                     text = msg.text,
@@ -430,7 +471,8 @@ class ChatViewModel(
                     sender = sender,
                     receiver = receiver,
                     timestamp = msg.timestamp,
-                    isRead = isRead  // 🔥 NEW FIELD
+                    isRead = isRead,  // 🔥 NEW FIELD
+                    options = optionsJson
                 )
             )
         }
@@ -444,14 +486,28 @@ class ChatViewModel(
                 chatDao.getMessagesForUser(user, currentUsername)
             }
 
-            val ui = stored.map {
+            val ui = stored.map { entity ->
+                // Parse options from JSON String
+                val optionsList = mutableListOf<String>()
+                if (entity.options != null) {
+                    try {
+                        val jsonArr = org.json.JSONArray(entity.options)
+                        for (i in 0 until jsonArr.length()) {
+                            optionsList.add(jsonArr.getString(i))
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing options", e)
+                    }
+                }
+
                 ChatMessage(
-                    text = it.text,
-                    isSelf = it.sender == currentUsername,
-                    type = it.type,
-                    fileUrl = it.fileUrl,
-                    fileName = it.fileName,
-                    timestamp = it.timestamp
+                    text = entity.text,
+                    isSelf = entity.sender == currentUsername,
+                    type = entity.type,
+                    fileUrl = entity.fileUrl,
+                    fileName = entity.fileName,
+                    timestamp = entity.timestamp,
+                    options = if (optionsList.isNotEmpty()) optionsList else null
                 )
             }
 

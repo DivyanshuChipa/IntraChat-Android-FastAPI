@@ -110,3 +110,50 @@ def extract_text_from_image(image_url: str):
 
     except Exception as e:
         return {"success": False, "message": f"OCR Error: {str(e)}"}
+
+def compress_image(image_url: str):
+    try:
+        file_path = image_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "File not found on server."}
+
+        # Original size calculate karo
+        orig_size = os.path.getsize(file_path)
+
+        # Naya file name aur path banao
+        base, ext = os.path.splitext(file_path)
+        new_file_path = f"{base}_compressed.jpg" # Compressed ko hamesha JPG banayenge
+        new_file_url = f"/{new_file_path}"
+
+        with Image.open(file_path) as img:
+            # Agar image PNG (transparent) hai, toh usko RGB mein convert karo taaki JPG ban sake
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+
+            # Dimensions ko limit karo (Agar 4K photo hai toh use normal HD ke aas paas le aao)
+            img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
+
+            # Compress karke save karo (quality=50 normally 2MB ko 200KB bana deta hai)
+            img.save(new_file_path, "JPEG", quality=50, optimize=True)
+
+        new_size = os.path.getsize(new_file_path)
+
+        # Size ko KB/MB mein format karne ka chhota function
+        def format_size(size):
+            return f"{size/1024/1024:.2f} MB" if size > 1024*1024 else f"{size/1024:.0f} KB"
+
+        message = (
+            f"🗜️ **Image Compressed Successfully!**\n\n"
+            f"📉 Original Size: {format_size(orig_size)}\n"
+            f"⚡ New Size: {format_size(new_size)}"
+        )
+
+        return {
+            "success": True,
+            "message": message,
+            "file_url": new_file_url,
+            "file_name": os.path.basename(new_file_path)
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ Compression Error: {str(e)}"}

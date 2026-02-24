@@ -162,6 +162,11 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                         "receiver": sender,
                         "timestamp": int(datetime.now(IST).timestamp() * 1000)
                     }
+
+                    # 🪄 THE FIX: Agar engine ne option buttons bheje hain, toh JSON mein add karo!
+                    if "options" in bot_res:
+                        bot_reply["options"] = bot_res["options"]
+
                     await send_to_user(sender, json.dumps(bot_reply))
 
                     # 🛑 Baki chat logic skip karo (Forwarding ya group logic nahi chalega)
