@@ -184,6 +184,7 @@ def compress_image_to_target(image_url: str, target_kb: int):
         return {"success": False, "message": f"⚠️ Compression Error: {str(e)}"}
 
 def convert_images_to_pdf(image_urls: list):
+    images_to_close = []
     try:
         if not image_urls:
             return {"success": False, "message": "No images found to convert."}
@@ -199,25 +200,31 @@ def convert_images_to_pdf(image_urls: list):
         new_file_path = f"{base}_multipage.pdf" if len(image_urls) > 1 else f"{base}_converted.pdf"
         new_file_url = f"/{new_file_path}"
 
-        image_list = []
+        pdf_images = []
 
         # Pehli image ko open karo
         first_img = Image.open(first_file_path)
+        images_to_close.append(first_img)
         if first_img.mode in ("RGBA", "P"):
             first_img = first_img.convert("RGB")
+            images_to_close.append(first_img)
+
+        pdf_images.append(first_img)
 
         # Baki saari images ko open karke list mein daalo
         for url in image_urls[1:]:
             path = url.lstrip("/")
             if os.path.exists(path):
                 img = Image.open(path)
+                images_to_close.append(img)
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
-                image_list.append(img)
+                    images_to_close.append(img)
+                pdf_images.append(img)
 
         # 🪄 MAGIC: PIL ka append_images feature sari photos ko ek PDF mein jod dega
-        if image_list:
-            first_img.save(new_file_path, "PDF", resolution=100.0, save_all=True, append_images=image_list)
+        if len(pdf_images) > 1:
+            first_img.save(new_file_path, "PDF", resolution=100.0, save_all=True, append_images=pdf_images[1:])
         else:
             first_img.save(new_file_path, "PDF", resolution=100.0)
 
@@ -232,3 +239,9 @@ def convert_images_to_pdf(image_urls: list):
 
     except Exception as e:
         return {"success": False, "message": f"⚠️ PDF Conversion Error: {str(e)}"}
+    finally:
+        for img in images_to_close:
+            try:
+                img.close()
+            except Exception:
+                pass
