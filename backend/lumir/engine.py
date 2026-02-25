@@ -154,7 +154,7 @@ class LumirEngine:
                         chat_history.pop()
 
                 # AI ko prompt, config, history, aur sender name bhejo
-                ai_reply = ask_ai(prompt=text, config=config, history=chat_history)
+                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender)
 
                 # 🛠️ THE FIX: Remove all newlines and make it a single safe line
                 safe_reply = ai_reply.replace("\n", " ").replace("\r", " ").strip()
