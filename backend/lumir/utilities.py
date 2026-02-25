@@ -183,26 +183,45 @@ def compress_image_to_target(image_url: str, target_kb: int):
     except Exception as e:
         return {"success": False, "message": f"⚠️ Compression Error: {str(e)}"}
 
-def convert_image_to_pdf(image_url: str):
+def convert_images_to_pdf(image_urls: list):
     try:
-        file_path = image_url.lstrip("/")
-        if not os.path.exists(file_path):
+        if not image_urls:
+            return {"success": False, "message": "No images found to convert."}
+
+        # Pehli image uthao base name banane ke liye
+        first_file_path = image_urls[0].lstrip("/")
+        if not os.path.exists(first_file_path):
             return {"success": False, "message": "File not found on server."}
 
-        # Naya file name aur path banao (.pdf extension ke sath)
-        base, ext = os.path.splitext(file_path)
-        new_file_path = f"{base}_converted.pdf"
+        base, ext = os.path.splitext(first_file_path)
+
+        # Agar 1 se zyada photos hain toh naam mein 'multipage' lagayenge
+        new_file_path = f"{base}_multipage.pdf" if len(image_urls) > 1 else f"{base}_converted.pdf"
         new_file_url = f"/{new_file_path}"
 
-        with Image.open(file_path) as img:
-            # PDF doesn't support transparency, so convert to RGB
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
+        image_list = []
 
-            # Save strictly as PDF
-            img.save(new_file_path, "PDF", resolution=100.0)
+        # Pehli image ko open karo
+        first_img = Image.open(first_file_path)
+        if first_img.mode in ("RGBA", "P"):
+            first_img = first_img.convert("RGB")
 
-        message = "📄 **Image successfully converted to PDF!**"
+        # Baki saari images ko open karke list mein daalo
+        for url in image_urls[1:]:
+            path = url.lstrip("/")
+            if os.path.exists(path):
+                img = Image.open(path)
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                image_list.append(img)
+
+        # 🪄 MAGIC: PIL ka append_images feature sari photos ko ek PDF mein jod dega
+        if image_list:
+            first_img.save(new_file_path, "PDF", resolution=100.0, save_all=True, append_images=image_list)
+        else:
+            first_img.save(new_file_path, "PDF", resolution=100.0)
+
+        message = f"📄 **Successfully converted {len(image_urls)} image(s) to PDF!**"
 
         return {
             "success": True,

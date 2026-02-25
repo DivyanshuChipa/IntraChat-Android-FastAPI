@@ -16,14 +16,18 @@ class LumirEngine:
     def process(self, text: str, file_url: str = None, sender: str = "Unknown"):
         text = text.lower().strip()
 
-        # 📸 1. Image Memory Handling
+        # 📸 1. Image Memory Handling (Upgraded to List)
         if file_url:
-            self.user_context[sender] = file_url
+            if sender not in self.user_context:
+                self.user_context[sender] = [] # Memory ko list bana diya
+
+            self.user_context[sender].append(file_url) # Nayi photo list mein add karo
+            img_count = len(self.user_context[sender])
+
             if not text:
-                # 🛠️ NAYA LOGIC: Text ki jagah options array bhej rahe hain
                 return {
                     "type": "utility_options",
-                    "text": "📸 Image received! What would you like to do?",
+                    "text": f"📸 {img_count} Image(s) received! Add more photos or choose an option:",
                     "options": [
                         "🛂 Passport A6 (6 Photos)",
                         "🛂 Passport A6 (9 Photos)",
@@ -48,7 +52,7 @@ class LumirEngine:
 
         if compress_match:
             target_kb = int(compress_match.group(1))
-            target_image = file_url or self.user_context.get(sender)
+            target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
 
             if not target_image:
                 return {"type": "text", "text": "⚠️ No image found to compress! Please send an image first."}
@@ -64,16 +68,18 @@ class LumirEngine:
             else:
                 return {"type": "text", "text": res["message"]}
         
-        # 📄 3.7 IMAGE TO PDF LOGIC
+        # 📄 3.7 MULTI-IMAGE TO PDF LOGIC
         if "###topdf###" in text:
-            target_image = file_url or self.user_context.get(sender)
-            if not target_image:
-                return {"type": "text", "text": "⚠️ No image found! Please send an image first."}
+            # Pura ka pura array uthao
+            image_urls = self.user_context.get(sender, [])
             
-            from .utilities import convert_image_to_pdf
-            res = convert_image_to_pdf(target_image)
+            if not image_urls:
+                return {"type": "text", "text": "⚠️ No images found! Please send at least one image first."}
             
-            # Clear bot memory
+            from .utilities import convert_images_to_pdf
+            res = convert_images_to_pdf(image_urls) # Array bhej diya
+
+            # 🧹 PDF banne ke baad memory saaf kar do taaki agli baar zero se shuru ho
             if sender in self.user_context:
                 del self.user_context[sender]
 
@@ -84,7 +90,7 @@ class LumirEngine:
 
         # 3. PASSPORT GENERATOR LOGIC
         if "###passport" in text:
-            target_image = file_url or self.user_context.get(sender)
+            target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
             if not target_image:
                 return {"type": "text", "text": "⚠️ No image found! Please send an image first."}
 
@@ -110,7 +116,7 @@ class LumirEngine:
 
         # 📝 3.5 OCR LOGIC
         if "###ocr###" in text:
-            target_image = file_url or self.user_context.get(sender)
+            target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
             if not target_image:
                 return {"type": "text", "text": "⚠️ No image found! Please send an image first, then type `###ocr###`."}
             
