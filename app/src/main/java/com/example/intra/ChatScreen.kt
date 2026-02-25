@@ -641,6 +641,7 @@ fun MessageBubble(
                                     "🗜️ Compress Image" -> {
                                         showCompressDialog = true // Button dabne par dialog dikhao
                                     }
+                                    "📄 Convert to PDF" -> onOptionSelected("###topdf###")
                                     else -> {
                                         // Do nothing for unknown options as per request, or handle appropriately
                                     }

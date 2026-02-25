@@ -29,7 +29,8 @@ class LumirEngine:
                         "🛂 Passport A6 (9 Photos)",
                         "📄 Extract Text (OCR)",
                         "📅 Passport + Date",
-                        "🗜️ Compress Image"
+                        "🗜️ Compress Image",
+                        "📄 Convert to PDF"
                     ]
                 }
 
@@ -55,6 +56,24 @@ class LumirEngine:
             from .utilities import compress_image_to_target
             res = compress_image_to_target(target_image, target_kb)
 
+            if sender in self.user_context:
+                del self.user_context[sender]
+
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
+        
+        # 📄 3.7 IMAGE TO PDF LOGIC
+        if "###topdf###" in text:
+            target_image = file_url or self.user_context.get(sender)
+            if not target_image:
+                return {"type": "text", "text": "⚠️ No image found! Please send an image first."}
+            
+            from .utilities import convert_image_to_pdf
+            res = convert_image_to_pdf(target_image)
+            
+            # Clear bot memory
             if sender in self.user_context:
                 del self.user_context[sender]
 

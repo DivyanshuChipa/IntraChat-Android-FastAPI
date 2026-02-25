@@ -182,3 +182,34 @@ def compress_image_to_target(image_url: str, target_kb: int):
 
     except Exception as e:
         return {"success": False, "message": f"⚠️ Compression Error: {str(e)}"}
+
+def convert_image_to_pdf(image_url: str):
+    try:
+        file_path = image_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "File not found on server."}
+
+        # Naya file name aur path banao (.pdf extension ke sath)
+        base, ext = os.path.splitext(file_path)
+        new_file_path = f"{base}_converted.pdf"
+        new_file_url = f"/{new_file_path}"
+
+        with Image.open(file_path) as img:
+            # PDF doesn't support transparency, so convert to RGB
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+
+            # Save strictly as PDF
+            img.save(new_file_path, "PDF", resolution=100.0)
+
+        message = "📄 **Image successfully converted to PDF!**"
+
+        return {
+            "success": True,
+            "message": message,
+            "file_url": new_file_url,
+            "file_name": os.path.basename(new_file_path)
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ PDF Conversion Error: {str(e)}"}
