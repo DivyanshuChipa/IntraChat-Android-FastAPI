@@ -280,6 +280,12 @@ function addUserToList(user) {
   div.onclick = () => selectUser(user.username);
 
   let imgUrl = user.profile_photo || "https://via.placeholder.com/40";
+
+  // 🔥 LUMIR AVATAR OVERRIDE
+  if (user.username === "Lumir") {
+      imgUrl = "/assets/lumir5.svg";
+  }
+
   userAvatars[user.username] = imgUrl;
 
   div.innerHTML = `
@@ -345,7 +351,8 @@ async function loadHistory() {
         m.sender,
         m.text || "📎 Shared File: " + (m.fileName || "file"),
         m.sender === myUsername ? "sent" : "received",
-        m.fileUrl
+        m.fileUrl,
+        null, false, null, "", m.options
       );
     });
   } catch (e) {
@@ -392,7 +399,8 @@ function connectWS() {
           displayMessage(
             msg.sender,
             msg.text || msg.message || "",
-            msg.sender === myUsername ? "sent" : "received"
+            msg.sender === myUsername ? "sent" : "received",
+            null, null, false, null, "", msg.options
           );
         }
         break;
@@ -409,7 +417,8 @@ function connectWS() {
             msg.sender,
             msg.text || "📎 Shared File: " + (msg.filename || "received"),
             msg.sender === myUsername ? "sent" : "received",
-            msg.url
+            msg.url,
+            null, false, null, "", msg.options
           );
         }
         break;
@@ -583,7 +592,7 @@ async function sendFile() {
 /***********************
  * DISPLAY MESSAGE
  ***********************/
-function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoading = false, videoThumbnail = null, mimeType = "") {
+function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoading = false, videoThumbnail = null, mimeType = "", options = null) {
   const row = document.createElement("div");
   row.className = `msg-row ${type}`;
   if (msgId) row.id = msgId;
@@ -643,11 +652,77 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
 
   bubble.innerHTML = content;
 
+  // 🔥 RENDER OPTIONS
+  if (options && Array.isArray(options) && options.length > 0) {
+      const optionsContainer = document.createElement("div");
+      optionsContainer.className = "msg-options";
+
+      options.forEach(opt => {
+          const btn = document.createElement("button");
+          btn.className = "option-btn";
+          btn.innerText = opt;
+          btn.onclick = () => handleOptionClick(opt);
+          optionsContainer.appendChild(btn);
+      });
+
+      bubble.appendChild(optionsContainer);
+  }
+
   row.appendChild(bubble);
   document.getElementById("messages").appendChild(row);
 
   document.getElementById("messages").scrollTop =
     document.getElementById("messages").scrollHeight;
+}
+
+function handleOptionClick(option) {
+    if (!ws) return;
+
+    let command = option; // Default: send the button text
+
+    if (option === "Compress Image") {
+        const size = prompt("Enter target size in KB (e.g. 500):");
+        if (!size) return;
+        command = `###compress<${size}>###`;
+    } else if (option === "Passport + Date") {
+        // Create hidden date input
+        const dateInput = document.createElement("input");
+        dateInput.type = "date";
+        dateInput.style.display = "none";
+        document.body.appendChild(dateInput);
+
+        dateInput.onchange = () => {
+            const val = dateInput.value; // yyyy-mm-dd
+            if (val) {
+                const [y, m, d] = val.split("-");
+                const formatted = `${d}/${m}/${y}`;
+                const finalCmd = `###passport9### ###passportdate<${formatted}>###`;
+                sendText(finalCmd);
+            }
+            dateInput.remove();
+        };
+
+        // Trigger picker
+        if (dateInput.showPicker) {
+            dateInput.showPicker();
+        } else {
+            dateInput.click(); // Fallback
+        }
+        return; // Early return to wait for input
+    }
+
+    sendText(command);
+}
+
+function sendText(text) {
+    if (!text || !ws) return;
+    const payload = {
+        type: "text",
+        receiver: currentReceiver,
+        text: text
+    };
+    ws.send(JSON.stringify(payload));
+    displayMessage(myUsername, text, "sent");
 }
 
 /***********************
