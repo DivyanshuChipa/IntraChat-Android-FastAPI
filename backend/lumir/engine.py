@@ -67,15 +67,15 @@ class LumirEngine:
                 return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
             else:
                 return {"type": "text", "text": res["message"]}
-        
+
         # 📄 3.7 MULTI-IMAGE TO PDF LOGIC
         if "###topdf###" in text:
             # Pura ka pura array uthao
             image_urls = self.user_context.get(sender, [])
-            
+
             if not image_urls:
                 return {"type": "text", "text": "⚠️ No images found! Please send at least one image first."}
-            
+
             from .utilities import convert_images_to_pdf
             res = convert_images_to_pdf(image_urls) # Array bhej diya
 
@@ -119,14 +119,14 @@ class LumirEngine:
             target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
             if not target_image:
                 return {"type": "text", "text": "⚠️ No image found! Please send an image first, then type `###ocr###`."}
-            
+
             # Extract text
             res = extract_text_from_image(target_image)
-            
+
             # Memory clear karo
             if sender in self.user_context:
                 del self.user_context[sender]
-                
+
             if res["success"]:
                 return {"type": "text", "text": f"📄 **Extracted Text:**\n\n{res['text']}"}
             else:
