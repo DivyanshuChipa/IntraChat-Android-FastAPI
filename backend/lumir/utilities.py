@@ -2,6 +2,7 @@ import os
 import time
 import pytesseract
 from PIL import Image, ImageOps, ImageDraw, ImageFont
+from PyPDF2 import PdfMerger
 
 def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str = None):
     try:
@@ -245,3 +246,76 @@ def convert_images_to_pdf(image_urls: list):
                 img.close()
             except Exception:
                 pass
+
+def merge_multiple_pdfs(file_urls: list):
+    merger = PdfMerger()
+    files_to_close = []  # Codex ka lesson: Files ko track karo taaki close kar sakein
+
+    try:
+        if not file_urls:
+            return {"success": False, "message": "No files found to merge."}
+
+        # Sirf .pdf files ko filter karo (agar galti se photo bhej di ho)
+        valid_pdfs = [url for url in file_urls if url.lower().endswith('.pdf')]
+
+        if len(valid_pdfs) < 2:
+            return {"success": False, "message": "⚠️ Please send at least 2 PDF files to merge."}
+
+        # Security: Designated uploads directory (Project root for now, or specific uploads/)
+        # Assuming current working directory is the base
+        base_dir = os.path.abspath(os.getcwd())
+
+        # Pehli PDF ka naam uthao base name ke liye
+        first_pdf_rel = valid_pdfs[0].lstrip("/")
+        base, ext = os.path.splitext(first_pdf_rel)
+        new_file_path = f"{base}_merged.pdf"
+
+        # Verify output path security
+        abs_new_file_path = os.path.abspath(new_file_path)
+        if not abs_new_file_path.startswith(base_dir):
+             return {"success": False, "message": "⚠️ Security Error: Output path traversal detected."}
+
+        new_file_url = f"/{new_file_path}"
+
+        for url in valid_pdfs:
+            # Canonicalize path
+            rel_path = url.lstrip("/")
+            abs_path = os.path.abspath(rel_path)
+
+            # Verify file is within base directory
+            if not abs_path.startswith(base_dir):
+                return {"success": False, "message": f"⚠️ Security Error: Path traversal detected for {rel_path}."}
+
+            if os.path.exists(abs_path) and os.path.isfile(abs_path):
+                # PDF ko 'rb' (read binary) mode mein open karo
+                f = open(abs_path, 'rb')
+                files_to_close.append(f)
+                merger.append(f)
+            else:
+                # Codex ka lesson: Agar file missing hai toh turant error do
+                return {"success": False, "message": f"⚠️ Error: PDF file missing or deleted ({rel_path})."}
+
+        # Merged PDF ko save karo
+        with open(abs_new_file_path, "wb") as f_out:
+            merger.write(f_out)
+
+        message = f"🔗 **Successfully merged {len(valid_pdfs)} PDFs into a single file!**"
+
+        return {
+            "success": True,
+            "message": message,
+            "file_url": new_file_url,
+            "file_name": os.path.basename(new_file_path)
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ PDF Merge Error: {str(e)}"}
+
+    finally:
+        # 🧹 Jhadoo-Pocha: Saari open files ko close karo taaki server crash na ho
+        for f in files_to_close:
+            try:
+                f.close()
+            except Exception:
+                pass
+        merger.close()
