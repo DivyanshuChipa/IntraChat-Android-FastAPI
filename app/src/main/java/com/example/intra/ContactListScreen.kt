@@ -162,7 +162,7 @@ fun ContactListScreen(
                                 profilePhotoUrl = null,
                                 unreadCount = 0,
                                 isActive = activeChatUser == "Lumir",
-                                iconResourceId = R.drawable.lumir4, // 🤖 Use Custom Vector
+                                iconResourceId = R.drawable.lumir5, // 🤖 Use Custom Vector
                                 onClick = { onChatClick("Lumir") }
                             )
                         }

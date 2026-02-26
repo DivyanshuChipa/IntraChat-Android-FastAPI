@@ -642,6 +642,7 @@ fun MessageBubble(
                                         showCompressDialog = true // Button dabne par dialog dikhao
                                     }
                                     "📄 Convert to PDF" -> onOptionSelected("###topdf###")
+                                    "🔗 Merge PDFs" -> onOptionSelected("###mergepdfs###")
                                     else -> {
                                         // Do nothing for unknown options as per request, or handle appropriately
                                     }
