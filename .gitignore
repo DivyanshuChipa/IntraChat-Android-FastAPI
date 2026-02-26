@@ -27,7 +27,6 @@ __pycache__/
 backend/uploads/
 
 # Virtual environments
-intra/
 venv/
 .env
 .venv
