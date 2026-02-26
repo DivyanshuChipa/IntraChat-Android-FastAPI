@@ -76,11 +76,11 @@ class LumirEngine:
             from .utilities import merge_multiple_pdfs
             res = merge_multiple_pdfs(file_urls)
 
-            # 🧹 Kaam hone ke baad memory clear kar do
-            if sender in self.user_context:
-                del self.user_context[sender]
-
             if res["success"]:
+                # 🧹 Kaam hone ke baad memory clear kar do
+                if sender in self.user_context:
+                    del self.user_context[sender]
+
                 return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
             else:
                 return {"type": "text", "text": res["message"]}
