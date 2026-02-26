@@ -16,25 +16,26 @@ class LumirEngine:
     def process(self, text: str, file_url: str = None, sender: str = "Unknown"):
         text = text.lower().strip()
 
-        # 📸 1. Image Memory Handling (Upgraded to List)
+        # 📁 1. File/Image Memory Handling
         if file_url:
             if sender not in self.user_context:
-                self.user_context[sender] = [] # Memory ko list bana diya
+                self.user_context[sender] = []
 
-            self.user_context[sender].append(file_url) # Nayi photo list mein add karo
-            img_count = len(self.user_context[sender])
+            self.user_context[sender].append(file_url)
+            file_count = len(self.user_context[sender])
 
             if not text:
                 return {
                     "type": "utility_options",
-                    "text": f"📸 {img_count} Image(s) received! Add more photos or choose an option:",
+                    "text": f"📁 {file_count} File(s) received! Add more or choose an option:",
                     "options": [
                         "🛂 Passport A6 (6 Photos)",
                         "🛂 Passport A6 (9 Photos)",
                         "📄 Extract Text (OCR)",
                         "📅 Passport + Date",
                         "🗜️ Compress Image",
-                        "📄 Convert to PDF"
+                        "📄 Convert to PDF",
+                        "🔗 Merge PDFs"  # 👈 NAYA BUTTON
                     ]
                 }
 
@@ -60,6 +61,22 @@ class LumirEngine:
             from .utilities import compress_image_to_target
             res = compress_image_to_target(target_image, target_kb)
 
+            if sender in self.user_context:
+                del self.user_context[sender]
+
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
+
+        # 🔗 3.8 MERGE PDFs LOGIC
+        if "###mergepdfs###" in text:
+            file_urls = self.user_context.get(sender, [])
+
+            from .utilities import merge_multiple_pdfs
+            res = merge_multiple_pdfs(file_urls)
+
+            # 🧹 Kaam hone ke baad memory clear kar do
             if sender in self.user_context:
                 del self.user_context[sender]
 
