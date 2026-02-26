@@ -3,6 +3,7 @@ import time
 import pytesseract
 from PIL import Image, ImageOps, ImageDraw, ImageFont
 from PyPDF2 import PdfMerger, PdfReader
+import subprocess
 
 def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str = None):
     try:
@@ -364,3 +365,50 @@ def extract_text_from_pdf(file_url: str):
 
     except Exception as e:
         return {"success": False, "message": f"⚠️ Extraction Error: {str(e)}"}
+
+def compress_pdf(file_url: str):
+    try:
+        file_path = file_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "⚠️ File not found on server."}
+
+        base, ext = os.path.splitext(file_path)
+        new_file_path = f"{base}_compressed.pdf"
+        new_file_url = f"/{new_file_path}"
+
+        orig_size = os.path.getsize(file_path)
+
+        # 🪄 MAGIC: Linux Ghostscript command for PDF compression
+        # PDFSETTINGS=/ebook gives a great balance of size and readability for notes
+        gs_cmd = [
+            "gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4",
+            "-dPDFSETTINGS=/ebook", "-dNOPAUSE", "-dQUIET", "-dBATCH",
+            f"-sOutputFile={new_file_path}", file_path
+        ]
+
+        # Process ko run karo
+        subprocess.run(gs_cmd, check=True)
+
+        if not os.path.exists(new_file_path):
+            return {"success": False, "message": "⚠️ Compression failed."}
+
+        new_size = os.path.getsize(new_file_path)
+
+        def format_size(s):
+            return f"{s/1024/1024:.2f} MB" if s > 1024*1024 else f"{s/1024:.0f} KB"
+
+        message = (
+            f"🗜️ **PDF Compressed Successfully!**\n\n"
+            f"📉 Original: {format_size(orig_size)}\n"
+            f"⚡ New Size: {format_size(new_size)}"
+        )
+
+        return {
+            "success": True,
+            "message": message,
+            "file_url": new_file_url,
+            "file_name": os.path.basename(new_file_path)
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ PDF Compression Error: {str(e)}"}

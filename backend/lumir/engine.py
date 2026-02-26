@@ -36,7 +36,8 @@ class LumirEngine:
                         "🗜️ Compress Image",
                         "📄 Convert to PDF",
                         "🔗 Merge PDFs",
-                        "📄 Extract PDF Text"  # 👈 YE NAYA BUTTON
+                        "📄 Extract PDF Text",  # 👈 YE NAYA BUTTON
+                        "🗜️ Compress PDF"  # 👈 AAKHIRI NAYA BUTTON
                     ]
                 }
 
@@ -116,6 +117,24 @@ class LumirEngine:
             res = convert_images_to_pdf(image_urls) # Array bhej diya
 
             # 🧹 PDF banne ke baad memory saaf kar do taaki agli baar zero se shuru ho
+            if sender in self.user_context:
+                del self.user_context[sender]
+
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
+        # 🗜️ 3.10 COMPRESS PDF LOGIC
+        if "###compresspdf###" in text:
+            file_urls = self.user_context.get(sender, [])
+            if not file_urls:
+                return {"type": "text", "text": "⚠️ No file found! Please send a PDF first."}
+
+            target_pdf = file_urls[-1]
+
+            from .utilities import compress_pdf
+            res = compress_pdf(target_pdf)
+
             if sender in self.user_context:
                 del self.user_context[sender]
 
