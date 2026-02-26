@@ -35,7 +35,8 @@ class LumirEngine:
                         "📅 Passport + Date",
                         "🗜️ Compress Image",
                         "📄 Convert to PDF",
-                        "🔗 Merge PDFs"  # 👈 NAYA BUTTON
+                        "🔗 Merge PDFs",
+                        "📄 Extract PDF Text"  # 👈 YE NAYA BUTTON
                     ]
                 }
 
@@ -81,6 +82,24 @@ class LumirEngine:
                 if sender in self.user_context:
                     del self.user_context[sender]
 
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
+        # 📄 3.9 EXTRACT PDF TEXT LOGIC
+        if "###pdf2text###" in text:
+            file_urls = self.user_context.get(sender, [])
+            if not file_urls:
+                return {"type": "text", "text": "⚠️ No file found! Please send a PDF first."}
+
+            target_pdf = file_urls[-1] # List ki aakhiri PDF uthao
+
+            from .utilities import extract_text_from_pdf
+            res = extract_text_from_pdf(target_pdf)
+
+            if sender in self.user_context:
+                del self.user_context[sender]
+
+            if res["success"]:
                 return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
             else:
                 return {"type": "text", "text": res["message"]}

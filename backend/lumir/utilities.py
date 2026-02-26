@@ -2,7 +2,7 @@ import os
 import time
 import pytesseract
 from PIL import Image, ImageOps, ImageDraw, ImageFont
-from PyPDF2 import PdfMerger
+from PyPDF2 import PdfMerger, PdfReader
 
 def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str = None):
     try:
@@ -319,3 +319,48 @@ def merge_multiple_pdfs(file_urls: list):
             except Exception:
                 pass
         merger.close()
+
+def extract_text_from_pdf(file_url: str):
+    try:
+        file_path = file_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "⚠️ File not found on server."}
+
+        reader = PdfReader(file_path)
+        extracted_text = ""
+        
+        # Har page se text nikalo
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                extracted_text += text + "\n\n"
+        
+        # Agar PDF image-based (scanned) hai jisme text nahi hai
+        if not extracted_text.strip():
+            return {"success": False, "message": "⚠️ No readable text found! (This PDF might contain only scanned images)."}
+
+        # Text ko .txt file mein save karo
+        base, ext = os.path.splitext(file_path)
+        new_file_path = f"{base}_extracted.txt"
+        new_file_url = f"/{new_file_path}"
+        
+        with open(new_file_path, "w", encoding="utf-8") as f:
+            f.write(extracted_text)
+        
+        # Chat mein dikhane ke liye ek chhota sa preview
+        preview_text = extracted_text[:150].replace("\n", " ") + "..." if len(extracted_text) > 150 else extracted_text
+
+        message = (
+            f"📄 **Text Extracted Successfully!**\n\n"
+            f"**Preview:** _{preview_text}_"
+        )
+
+        return {
+            "success": True,
+            "message": message,
+            "file_url": new_file_url,
+            "file_name": os.path.basename(new_file_path)
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ Extraction Error: {str(e)}"}
