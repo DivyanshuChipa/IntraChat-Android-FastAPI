@@ -143,7 +143,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     bot_res = lumir_engine.process(text=text_content, file_url=file_url, sender=sender)
 
                     # 3. Lumir ka reply DB mein save karo
-                    save_message(
+                    msg_id = save_message(
                         text=bot_res.get("text", ""),
                         sender="Lumir",
                         receiver=sender,
@@ -151,6 +151,10 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                         file_url=bot_res.get("file_url"),
                         file_name=bot_res.get("file_name")
                     )
+
+                    # 3.5 Create Delivery Entry (Mark as pending initially)
+                    # This ensures if the WS is dead, it stays 0 and gets fetched on reconnect
+                    create_delivery_entries(msg_id, [sender])
 
                     # 4. Lumir ka reply user (Android) ko bhejo
                     bot_reply = {
@@ -167,7 +171,11 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     if "options" in bot_res:
                         bot_reply["options"] = bot_res["options"]
 
-                    await send_to_user(sender, json.dumps(bot_reply))
+                    sent_success = await send_to_user(sender, json.dumps(bot_reply))
+
+                    # If sent successfully, mark as delivered
+                    if sent_success:
+                        mark_message_delivered_for_user(msg_id, sender)
 
                     # 🛑 Baki chat logic skip karo (Forwarding ya group logic nahi chalega)
                     continue
