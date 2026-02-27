@@ -461,3 +461,103 @@ def extract_audio_from_video(file_url: str):
         return {"success": False, "message": "⚠️ FFmpeg Error: Make sure ffmpeg is installed."}
     except Exception as e:
         return {"success": False, "message": f"⚠️ Extraction Error: {str(e)}"}
+
+# 1. COMPRESS VIDEO (With CRF & Format)
+def compress_video(file_url: str, crf: int = 28, fmt: str = "mp4"):
+    try:
+        file_path = file_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "⚠️ Video not found."}
+
+        base, ext = os.path.splitext(file_path)
+        new_file_path = f"{base}_compressed.{fmt}"
+        new_file_url = f"/{new_file_path}"
+
+        # Tank (i3 processor) ke liye veryfast preset
+        ffmpeg_cmd = [
+            "ffmpeg", "-i", file_path,
+            "-vcodec", "libx264", "-crf", str(crf),
+            "-preset", "veryfast", "-c:a", "aac",
+            new_file_path, "-y"
+        ]
+
+        subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
+
+        if not os.path.exists(new_file_path):
+            return {"success": False, "message": "⚠️ Compression failed."}
+
+        orig_size = os.path.getsize(file_path)
+        new_size = os.path.getsize(new_file_path)
+
+        def format_size(s):
+            return f"{s/1024/1024:.2f} MB" if s > 1024*1024 else f"{s/1024:.0f} KB"
+
+        message = (f"🗜️ **Video Compressed Successfully!**\n\n"
+                   f"⚙️ Setting: CRF {crf}, Format: .{fmt.upper()}\n"
+                   f"📉 Original: {format_size(orig_size)}\n"
+                   f"⚡ New Size: {format_size(new_size)}")
+
+        return {"success": True, "message": message, "file_url": new_file_url, "file_name": os.path.basename(new_file_path)}
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ Error: {str(e)}"}
+
+
+# 2. ROTATE VIDEO
+def rotate_video(file_url: str, rotation_type: str):
+    try:
+        file_path = file_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "⚠️ Video not found."}
+
+        base, ext = os.path.splitext(file_path)
+        new_file_path = f"{base}_rotated{ext}"
+        new_file_url = f"/{new_file_path}"
+
+        # Map rotation type to FFmpeg filters
+        filters = {
+            "90_cw": "transpose=1",           # 90 Clockwise
+            "90_ccw": "transpose=2",          # 90 Counter-Clockwise
+            "180": "transpose=1,transpose=1", # 180 degrees
+            "hflip": "hflip"                  # Horizontal Flip
+        }
+
+        vf_param = filters.get(rotation_type, "transpose=1")
+
+        ffmpeg_cmd = [
+            "ffmpeg", "-i", file_path,
+            "-vf", vf_param, "-c:a", "copy",
+            new_file_path, "-y"
+        ]
+
+        subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
+
+        return {"success": True, "message": "🔄 **Video Rotated Successfully!**", "file_url": new_file_url, "file_name": os.path.basename(new_file_path)}
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ Error: {str(e)}"}
+
+
+# 3. CONVERT TO MP4
+def convert_to_mp4(file_url: str):
+    try:
+        file_path = file_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "⚠️ Video not found."}
+
+        base, ext = os.path.splitext(file_path)
+        if ext.lower() == ".mp4":
+            return {"success": False, "message": "⚠️ File is already an MP4!"}
+
+        new_file_path = f"{base}_converted.mp4"
+        new_file_url = f"/{new_file_path}"
+
+        ffmpeg_cmd = [
+            "ffmpeg", "-i", file_path,
+            "-c:v", "libx264", "-preset", "veryfast",
+            "-c:a", "aac", new_file_path, "-y"
+        ]
+
+        subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
+
+        return {"success": True, "message": "🎞️ **Video Converted to MP4!**", "file_url": new_file_url, "file_name": os.path.basename(new_file_path)}
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ Error: {str(e)}"}

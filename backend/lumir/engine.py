@@ -189,6 +189,52 @@ class LumirEngine:
             else:
                 return {"type": "text", "text": res["message"]}
 
+        # 🗜️ 3.12 COMPRESS VIDEO LOGIC (With dynamic parameters)
+        if text.startswith("###compressvideo:"):
+            file_urls = self.user_context.get(sender, [])
+            if not file_urls:
+                return {"type": "text", "text": "⚠️ No file found!"}
+
+            # Extract CRF and Format from command string
+            parts = text.replace("###", "").split(":")
+            crf_val = int(parts[1]) if len(parts) > 1 else 28
+            fmt_val = parts[2] if len(parts) > 2 else "mp4"
+
+            from .utilities import compress_video
+            res = compress_video(file_urls[-1], crf_val, fmt_val)
+
+            if sender in self.user_context: del self.user_context[sender]
+            if res["success"]: return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else: return {"type": "text", "text": res["message"]}
+
+        # 🔄 3.13 ROTATE VIDEO LOGIC
+        if text.startswith("###rotatevideo:"):
+            file_urls = self.user_context.get(sender, [])
+            if not file_urls:
+                return {"type": "text", "text": "⚠️ No file found!"}
+
+            rot_type = text.replace("###", "").split(":")[1]
+
+            from .utilities import rotate_video
+            res = rotate_video(file_urls[-1], rot_type)
+
+            if sender in self.user_context: del self.user_context[sender]
+            if res["success"]: return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else: return {"type": "text", "text": res["message"]}
+
+        # 🎞️ 3.14 CONVERT TO MP4 LOGIC
+        if "###convertmp4###" in text:
+            file_urls = self.user_context.get(sender, [])
+            if not file_urls:
+                return {"type": "text", "text": "⚠️ No file found!"}
+
+            from .utilities import convert_to_mp4
+            res = convert_to_mp4(file_urls[-1])
+
+            if sender in self.user_context: del self.user_context[sender]
+            if res["success"]: return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else: return {"type": "text", "text": res["message"]}
+
         # 3. PASSPORT GENERATOR LOGIC
         if "###passport" in text:
             target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
