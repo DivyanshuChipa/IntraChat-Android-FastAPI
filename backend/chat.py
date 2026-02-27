@@ -22,6 +22,50 @@ SIGNAL_TYPES = {
     "webrtc_offer", "webrtc_answer", "ice_candidate"
 }
 
+# 🚀 BACKGROUND WORKER: Processes Lumir requests without blocking the WebSocket loop
+async def handle_lumir_processing(text_content, file_url, file_name, sender):
+    try:
+        # 1. Process heavy task in a separate thread to prevent event loop blocking
+        bot_res = await asyncio.to_thread(lumir_engine.process, text=text_content, file_url=file_url, sender=sender)
+
+        # 2. Save Lumir's response to DB
+        msg_id = save_message(
+            text=bot_res.get("text", ""),
+            sender="Lumir",
+            receiver=sender,
+            msg_type=bot_res.get("type", "text"),
+            file_url=bot_res.get("file_url"),
+            file_name=bot_res.get("file_name")
+        )
+
+        # 3. Create Delivery Entry (Mark as 0 pending initially)
+        # This ensures if the user disconnects, the message is saved and fetched later
+        create_delivery_entries(msg_id, [sender])
+
+        # 4. Prepare message payload for client
+        bot_reply = {
+            "type": bot_res.get("type", "text"),
+            "text": bot_res.get("text", ""),
+            "url": bot_res.get("file_url"),
+            "filename": bot_res.get("file_name"),
+            "sender": "Lumir",
+            "receiver": sender,
+            "timestamp": int(datetime.now(IST).timestamp() * 1000)
+        }
+
+        if "options" in bot_res:
+            bot_reply["options"] = bot_res["options"]
+
+        # 5. Attempt to send message via WebSocket
+        sent_success = await send_to_user(sender, json.dumps(bot_reply))
+
+        # 6. If sent successfully, mark as delivered (1)
+        if sent_success:
+            mark_message_delivered_for_user(msg_id, sender)
+
+    except Exception as e:
+        print(f"❌ Background Lumir Task Error: {e}")
+
 async def send_to_user(username: str, message: str, exclude_ws: WebSocket = None):
     """
     Send message to all devices of a user
@@ -130,7 +174,7 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     file_url = parsed.get("url")
                     file_name = parsed.get("filename")
 
-                    # 1. User ka message DB mein save karo (History ke liye)
+                    # 1. User ka command turant DB mein save karo (History ke liye)
                     save_message(
                         text=text_content if msg_type != "file" else f"Shared File: {file_name}",
                         sender=sender,
@@ -140,46 +184,11 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                         file_name=file_name
                     )
 
-                    # 2. Lumir Engine se reply maango (ye dictionary dega)
-                    # Use asyncio.to_thread to prevent blocking the event loop during heavy tasks like video compression
-                    bot_res = await asyncio.to_thread(lumir_engine.process, text=text_content, file_url=file_url, sender=sender)
+                    # 🔥 THE ULTIMATE MAGIC: Fire and Forget Task!
+                    # Ye line server ko free kar degi, aur processing background mein hogi.
+                    asyncio.create_task(handle_lumir_processing(text_content, file_url, file_name, sender))
 
-                    # 3. Lumir ka reply DB mein save karo
-                    msg_id = save_message(
-                        text=bot_res.get("text", ""),
-                        sender="Lumir",
-                        receiver=sender,
-                        msg_type=bot_res.get("type", "text"),
-                        file_url=bot_res.get("file_url"),
-                        file_name=bot_res.get("file_name")
-                    )
-
-                    # 3.5 Create Delivery Entry (Mark as pending initially)
-                    # This ensures if the WS is dead, it stays 0 and gets fetched on reconnect
-                    create_delivery_entries(msg_id, [sender])
-
-                    # 4. Lumir ka reply user (Android) ko bhejo
-                    bot_reply = {
-                        "type": bot_res.get("type", "text"),
-                        "text": bot_res.get("text", ""),
-                        "url": bot_res.get("file_url"),
-                        "filename": bot_res.get("file_name"),
-                        "sender": "Lumir",
-                        "receiver": sender,
-                        "timestamp": int(datetime.now(IST).timestamp() * 1000)
-                    }
-
-                    # 🪄 THE FIX: Agar engine ne option buttons bheje hain, toh JSON mein add karo!
-                    if "options" in bot_res:
-                        bot_reply["options"] = bot_res["options"]
-
-                    sent_success = await send_to_user(sender, json.dumps(bot_reply))
-
-                    # If sent successfully, mark as delivered
-                    if sent_success:
-                        mark_message_delivered_for_user(msg_id, sender)
-
-                    # 🛑 Baki chat logic skip karo (Forwarding ya group logic nahi chalega)
+                    # Baki chat logic skip karo (Forwarding ya group logic nahi chalega)
                     continue
 
                 # ==========================================
