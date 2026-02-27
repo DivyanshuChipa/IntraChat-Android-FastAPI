@@ -171,7 +171,7 @@ fun ChatScreen(
             onDismiss = { videoUrlToPlay = null }
         )
     }
-    
+
     // 👈 YE CODE ADD HUA:
     if (imageUrlToView != null) {
         ImageViewerDialog(
@@ -560,7 +560,7 @@ fun MessageBubble(
                 } else if (message.type == "file" && message.fileUrl != null) {
 
                     if (message.text.isNotEmpty()) {
-                         Text(
+                        Text(
                             text = message.text,
                             color = if (message.isSelf)
                                 MaterialTheme.colorScheme.onPrimary
@@ -660,7 +660,7 @@ fun MessageBubble(
                                     message.fileUrl
                                 else
                                     baseUrl + message.fileUrl
-                                
+
                                 // 👈 YE LOGIC UPDATE HUA
                                 if (isVideo) {
                                     onVideoClick(finalUrl)
@@ -786,7 +786,7 @@ fun MessageBubble(
                         }
                     }
                 }
-                
+
                 message.timestamp?.let {
                     Spacer(Modifier.height(4.dp))
                     Text(
