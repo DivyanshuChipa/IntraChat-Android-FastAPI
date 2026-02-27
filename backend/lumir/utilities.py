@@ -412,3 +412,52 @@ def compress_pdf(file_url: str):
 
     except Exception as e:
         return {"success": False, "message": f"⚠️ PDF Compression Error: {str(e)}"}
+
+def extract_audio_from_video(file_url: str):
+    try:
+        file_path = file_url.lstrip("/")
+        if not os.path.exists(file_path):
+            return {"success": False, "message": "⚠️ Video file not found on server."}
+
+        # Nayi MP3 file ka naam banao
+        base, ext = os.path.splitext(file_path)
+        new_file_path = f"{base}_audio.mp3"
+        new_file_url = f"/{new_file_path}"
+
+        # 🪄 MAGIC: FFmpeg command for audio extraction
+        # -vn means 'No Video', -q:a 0 means 'Best Audio Quality'
+        ffmpeg_cmd = [
+            "ffmpeg", "-i", file_path,
+            "-vn", "-q:a", "0", "-map", "a",
+            new_file_path, "-y" # -y to overwrite if exists
+        ]
+
+        # FFmpeg ko run karo
+        subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
+
+        if not os.path.exists(new_file_path):
+            return {"success": False, "message": "⚠️ Audio extraction failed."}
+
+        orig_size = os.path.getsize(file_path)
+        new_size = os.path.getsize(new_file_path)
+
+        def format_size(s):
+            return f"{s/1024/1024:.2f} MB" if s > 1024*1024 else f"{s/1024:.0f} KB"
+
+        message = (
+            f"🎵 **Audio Extracted Successfully!**\n\n"
+            f"🎬 Video Size: {format_size(orig_size)}\n"
+            f"🎧 MP3 Size: {format_size(new_size)}"
+        )
+
+        return {
+            "success": True,
+            "message": message,
+            "file_url": new_file_url,
+            "file_name": os.path.basename(new_file_path)
+        }
+
+    except subprocess.CalledProcessError as e:
+        return {"success": False, "message": "⚠️ FFmpeg Error: Make sure ffmpeg is installed."}
+    except Exception as e:
+        return {"success": False, "message": f"⚠️ Extraction Error: {str(e)}"}

@@ -16,7 +16,7 @@ class LumirEngine:
     def process(self, text: str, file_url: str = None, sender: str = "Unknown"):
         text = text.lower().strip()
 
-        # 📁 1. File/Image Memory Handling
+        # 📁 1. Smart File/Image Memory Handling
         if file_url:
             if sender not in self.user_context:
                 self.user_context[sender] = []
@@ -25,21 +25,48 @@ class LumirEngine:
             file_count = len(self.user_context[sender])
 
             if not text:
-                return {
-                    "type": "utility_options",
-                    "text": f"📁 {file_count} File(s) received! Add more or choose an option:",
-                    "options": [
-                        "🛂 Passport A6 (6 Photos)",
-                        "🛂 Passport A6 (9 Photos)",
-                        "📄 Extract Text (OCR)",
-                        "📅 Passport + Date",
-                        "🗜️ Compress Image",
-                        "📄 Convert to PDF",
-                        "🔗 Merge PDFs",
-                        "📄 Extract PDF Text",  # 👈 YE NAYA BUTTON
-                        "🗜️ Compress PDF"  # 👈 AAKHIRI NAYA BUTTON
-                    ]
-                }
+                # File ka extension nikalte hain (jaise 'mp4', 'jpg', 'pdf')
+                ext = file_url.split('.')[-1].lower()
+
+                # 🎬 VIDEO OPTIONS
+                if ext in ['mp4', 'mkv', 'avi', 'mov', '3gp']:
+                    return {
+                        "type": "utility_options",
+                        "text": f"🎬 {file_count} Video(s) received! Choose a video tool:",
+                        "options": [
+                            "🎵 Extract Audio (MP3)",
+                            "🗜️ Compress Video",
+                            "🔄 Rotate Video",
+                            "🎞️ Convert to MP4"
+                        ]
+                    }
+
+                # 📄 PDF OPTIONS
+                elif ext in ['pdf']:
+                    return {
+                        "type": "utility_options",
+                        "text": f"📄 {file_count} PDF(s) received! Choose a document tool:",
+                        "options": [
+                            "📄 Extract PDF Text",
+                            "🔗 Merge PDFs",
+                            "🗜️ Compress PDF"
+                        ]
+                    }
+
+                # 📸 IMAGE OPTIONS (Default)
+                else:
+                    return {
+                        "type": "utility_options",
+                        "text": f"📸 {file_count} Image(s) received! Choose an image tool:",
+                        "options": [
+                            "🛂 Passport A6 (6 Photos)",
+                            "🛂 Passport A6 (9 Photos)",
+                            "📄 Extract Text (OCR)",
+                            "📅 Passport + Date",
+                            "🗜️ Compress Image",
+                            "📄 Convert to PDF"
+                        ]
+                    }
 
         # 2. Basic Utility Commands
         if text in ["hi", "hello", "hey"]:
@@ -134,6 +161,25 @@ class LumirEngine:
 
             from .utilities import compress_pdf
             res = compress_pdf(target_pdf)
+
+            if sender in self.user_context:
+                del self.user_context[sender]
+
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
+
+        # 🎵 3.11 EXTRACT AUDIO (MP3) LOGIC
+        if "###extractaudio###" in text:
+            file_urls = self.user_context.get(sender, [])
+            if not file_urls:
+                return {"type": "text", "text": "⚠️ No file found! Please send a video first."}
+
+            target_video = file_urls[-1]
+
+            from .utilities import extract_audio_from_video
+            res = extract_audio_from_video(target_video)
 
             if sender in self.user_context:
                 del self.user_context[sender]

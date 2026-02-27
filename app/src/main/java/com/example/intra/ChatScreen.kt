@@ -645,6 +645,11 @@ fun MessageBubble(
                                     "🔗 Merge PDFs" -> onOptionSelected("###mergepdfs###")
                                     "📄 Extract PDF Text" -> onOptionSelected("###pdf2text###")
                                     "🗜️ Compress PDF" -> onOptionSelected("###compresspdf###")
+                                    // Video Tools
+                                    "🎵 Extract Audio (MP3)" -> onOptionSelected("###extractaudio###")
+                                    "🗜️ Compress Video" -> onOptionSelected("###compressvideo###")
+                                    "🔄 Rotate Video" -> onOptionSelected("###rotatevideo###")
+                                    "🎞️ Convert to MP4" -> onOptionSelected("###convertmp4###")
                                     else -> {
                                         // Do nothing for unknown options as per request, or handle appropriately
                                     }
