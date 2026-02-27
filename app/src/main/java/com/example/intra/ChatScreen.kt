@@ -94,6 +94,9 @@ import android.app.DatePickerDialog
 import android.widget.DatePicker
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import kotlinx.coroutines.delay
 
 
@@ -351,6 +354,14 @@ fun MessageBubble(
     var showCompressDialog by remember { mutableStateOf(false) }
     var targetKbInput by remember { mutableStateOf("") }
 
+    // Variables for Video Dialogs
+    var showVideoCompressDialog by remember { mutableStateOf(false) }
+    var crfValue by remember { mutableStateOf(28f) }
+    var videoFormat by remember { mutableStateOf("mp4") }
+
+    var showRotateDialog by remember { mutableStateOf(false) }
+    var rotationType by remember { mutableStateOf("90_cw") }
+
     // 🗓️ Date Picker logic
     val showDatePicker = {
         DatePickerDialog(
@@ -391,6 +402,103 @@ fun MessageBubble(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showCompressDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // 🗜️ Compress Video Dialog Box
+    if (showVideoCompressDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showVideoCompressDialog = false },
+            title = { Text("Compress Video") },
+            text = {
+                Column {
+                    Text(text = "Quality (CRF): ${crfValue.toInt()}", style = MaterialTheme.typography.bodyLarge)
+                    Slider(
+                        value = crfValue,
+                        onValueChange = { crfValue = it },
+                        valueRange = 0f..51f,
+                        steps = 50
+                    )
+                    Text(
+                        text = "Lower = Better Quality / Larger Size\nHigher = Lower Quality / Smaller Size\n(23-28 is optimal)",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = "Output Format:", style = MaterialTheme.typography.bodyLarge)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = (videoFormat == "mp4"),
+                            onClick = { videoFormat = "mp4" }
+                        )
+                        Text(
+                            text = "MP4",
+                            modifier = Modifier.clickable { videoFormat = "mp4" }
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        RadioButton(
+                            selected = (videoFormat == "mkv"),
+                            onClick = { videoFormat = "mkv" }
+                        )
+                        Text(
+                            text = "MKV",
+                            modifier = Modifier.clickable { videoFormat = "mkv" }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    onOptionSelected("###compressvideo:${crfValue.toInt()}:${videoFormat}###")
+                    showVideoCompressDialog = false
+                }) { Text("Compress") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showVideoCompressDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // 🔄 Rotate Video Dialog Box
+    if (showRotateDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showRotateDialog = false },
+            title = { Text("Rotate Video") },
+            text = {
+                Column {
+                    val options = listOf(
+                        "90° Clockwise" to "90_cw",
+                        "90° Counter-Clockwise" to "90_ccw",
+                        "180° / Flip" to "180",
+                        "Horizontal Flip" to "hflip"
+                    )
+                    options.forEach { (label, value) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { rotationType = value }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            RadioButton(
+                                selected = (rotationType == value),
+                                onClick = { rotationType = value }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    onOptionSelected("###rotatevideo:${rotationType}###")
+                    showRotateDialog = false
+                }) { Text("Rotate") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showRotateDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -647,8 +755,12 @@ fun MessageBubble(
                                     "🗜️ Compress PDF" -> onOptionSelected("###compresspdf###")
                                     // Video Tools
                                     "🎵 Extract Audio (MP3)" -> onOptionSelected("###extractaudio###")
-                                    "🗜️ Compress Video" -> onOptionSelected("###compressvideo###")
-                                    "🔄 Rotate Video" -> onOptionSelected("###rotatevideo###")
+                                    "🗜️ Compress Video" -> {
+                                        showVideoCompressDialog = true
+                                    }
+                                    "🔄 Rotate Video" -> {
+                                        showRotateDialog = true
+                                    }
                                     "🎞️ Convert to MP4" -> onOptionSelected("###convertmp4###")
                                     else -> {
                                         // Do nothing for unknown options as per request, or handle appropriately
