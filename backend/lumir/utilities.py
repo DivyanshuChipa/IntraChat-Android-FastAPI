@@ -429,6 +429,7 @@ def extract_audio_from_video(file_url: str):
         ffmpeg_cmd = [
             "ffmpeg", "-i", file_path,
             "-vn", "-q:a", "0", "-map", "a",
+            "-threads", "2", # 👈 YE LINE ZAROORI HAI
             new_file_path, "-y" # -y to overwrite if exists
         ]
 
@@ -473,11 +474,12 @@ def compress_video(file_url: str, crf: int = 28, fmt: str = "mp4"):
         new_file_path = f"{base}_compressed.{fmt}"
         new_file_url = f"/{new_file_path}"
 
-        # Tank (i3 processor) ke liye veryfast preset
+        # Tank (i3 processor) ko saans lene ka mauka do
         ffmpeg_cmd = [
             "ffmpeg", "-i", file_path,
             "-vcodec", "libx264", "-crf", str(crf),
             "-preset", "veryfast", "-c:a", "aac",
+            "-threads", "2", # 👈 YE LINE ZAROORI HAI
             new_file_path, "-y"
         ]
 
@@ -526,6 +528,7 @@ def rotate_video(file_url: str, rotation_type: str):
         ffmpeg_cmd = [
             "ffmpeg", "-i", file_path,
             "-vf", vf_param, "-c:a", "copy",
+            "-threads", "2", # 👈 YE LINE ZAROORI HAI
             new_file_path, "-y"
         ]
 
@@ -553,7 +556,9 @@ def convert_to_mp4(file_url: str):
         ffmpeg_cmd = [
             "ffmpeg", "-i", file_path,
             "-c:v", "libx264", "-preset", "veryfast",
-            "-c:a", "aac", new_file_path, "-y"
+            "-c:a", "aac",
+            "-threads", "2", # 👈 YE LINE ZAROORI HAI
+            new_file_path, "-y"
         ]
 
         subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
