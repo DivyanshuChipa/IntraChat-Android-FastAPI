@@ -559,6 +559,17 @@ fun MessageBubble(
                     }
                 } else if (message.type == "file" && message.fileUrl != null) {
 
+                    if (message.text.isNotEmpty()) {
+                         Text(
+                            text = message.text,
+                            color = if (message.isSelf)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
                     if (isImage || isVideo) {
 
                         val settingsManager = remember { SettingsManager(context) }
