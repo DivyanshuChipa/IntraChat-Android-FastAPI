@@ -1,4 +1,5 @@
 import json
+import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime, timezone, timedelta
 from lumir.engine import lumir_engine  # 👈 YE ADD KARO
@@ -140,7 +141,8 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     )
 
                     # 2. Lumir Engine se reply maango (ye dictionary dega)
-                    bot_res = lumir_engine.process(text=text_content, file_url=file_url, sender=sender)
+                    # Use asyncio.to_thread to prevent blocking the event loop during heavy tasks like video compression
+                    bot_res = await asyncio.to_thread(lumir_engine.process, text=text_content, file_url=file_url, sender=sender)
 
                     # 3. Lumir ka reply DB mein save karo
                     msg_id = save_message(
