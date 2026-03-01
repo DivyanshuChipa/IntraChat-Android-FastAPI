@@ -174,6 +174,9 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     text_content = parsed.get("text", "")
                     file_url = parsed.get("url")
                     file_name = parsed.get("filename")
+                    # 🧠 RAPHAEL MEMORY FEED: Lumir ko file milte hi seedha uske Vector DB mein daal do!
+                    if file_url and file_name:
+                        asyncio.create_task(asyncio.to_thread(save_media_to_memory, sender, file_url, file_name, text_content or "User uploaded file"))
 
                     # 1. User ka command turant DB mein save karo (History ke liye)
                     save_message(
