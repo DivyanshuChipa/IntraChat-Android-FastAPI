@@ -3,6 +3,7 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime, timezone, timedelta
 from lumir.engine import lumir_engine  # 👈 YE ADD KARO
+from lumir.memory import save_media_to_memory  # 👈 YE NAYI LINE ADD KARO
 from users import get_all_users, is_user_approved  # 👈 Import is_user_approved
 from messages import (
     save_message, 
@@ -218,6 +219,11 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 
                 if msg_type == "file":
                     text_content = f"Shared File: {file_name}"
+                    # 🧠 RAPHAEL MEMORY FEED: File aate hi dimaag mein save kar lo!
+                    if file_url and file_name:
+                        # Hum thread use kar rahe hain taaki server freeze na ho
+                        import asyncio
+                        asyncio.to_thread(save_media_to_memory, sender, file_url, file_name, text_content)
 
                 # Save to DB
                 msg_id = save_message(
