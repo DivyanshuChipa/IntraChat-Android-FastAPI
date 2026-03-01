@@ -222,7 +222,6 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                     # 🧠 RAPHAEL MEMORY FEED: File aate hi dimaag mein save kar lo!
                     if file_url and file_name:
                         # Hum thread use kar rahe hain taaki server freeze na ho
-                        import asyncio
                         asyncio.to_thread(save_media_to_memory, sender, file_url, file_name, text_content)
 
                 # Save to DB

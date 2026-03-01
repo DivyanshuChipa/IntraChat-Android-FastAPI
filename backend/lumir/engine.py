@@ -15,6 +15,45 @@ class LumirEngine:
 
     def process(self, text: str, file_url: str = None, sender: str = "Unknown"):
         text = text.lower().strip()
+        # ==========================================
+        # 🧠 RAPHAEL'S AGENT ROUTER (Vector DB Search)
+        # ==========================================
+        # Agar user ne nai file nahi bheji, par wo purani file ki baat kar raha hai
+        trigger_words = ["recent", "last", "purana", "purani", "pichli", "pichla", "pehle"]
+        media_words = ["pic", "photo", "image", "video", "file", "pdf", "document"]
+
+        if not file_url and any(tw in text for tw in trigger_words) and any(mw in text for mw in media_words):
+            # 1. Pata karo user kaunsa utility chalana chahta hai
+            target_command = None
+            if "ocr" in text or "read" in text:
+                target_command = "###ocr###"
+            elif "compress" in text or "chota" in text:
+                target_command = "###compress<50>###"  # Default auto-compress size
+            elif "passport" in text:
+                target_command = "###passport###"
+            elif "audio" in text or "mp3" in text:
+                target_command = "###extractaudio###"
+
+            if target_command:
+                try:
+                    from .memory import find_media_in_memory
+                    print(f"🧠 [RAPHAEL AGENT] Triggered! Searching DB for '{text}' to execute '{target_command}'")
+
+                    db_match = find_media_in_memory(sender, text)
+
+                    if db_match and "file_url" in db_match:
+                        # 🪄 MAGIC: File ChromaDB se nikal kar RAM (current context) mein daal do!
+                        if sender not in self.user_context:
+                            self.user_context[sender] = []
+                        self.user_context[sender].append(db_match["file_url"])
+
+                        # User ki natural language ko system command se HACK/Replace kar do!
+                        text = target_command
+                        print(f"✨ [RAPHAEL AGENT] Success! Hijacked text to '{text}' using file {db_match['file_url']}")
+                    else:
+                        return {"type": "text", "text": "🤷‍♀️ Sorry, mujhe tumhari purani file yaad nahi aa rahi. Kya tum us photo ko wapas bhej sakte ho?"}
+                except Exception as e:
+                    print(f"❌ Raphael Router Error: {e}")
 
         # 📁 1. Smart File/Image Memory Handling
         if file_url:
