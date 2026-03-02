@@ -11,7 +11,7 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
 
     # 👁️ VISION OVERRIDE: Agar image hai, toh vision model ko hi main model bana do!
     if image_path:
-        main_model = config.get("ai_vision_model", "gemma:27b-cloud")
+        main_model = config.get("ai_vision_model", "gemma3:27b-cloud")
     else:
         main_model = config.get("ai_model", "gpt-oss:20b-cloud")
 
@@ -80,8 +80,16 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
     except Exception as e:
         print(f"⚠️ [LUMIR FALLBACK ALERT] Main model '{main_model}' failed: {e}. Shifting to '{fallback_model}'...")
         try:
+            # 🛑 SAFETY NET: Baby model (Fallback) text-only hota hai.
+            # Agar image payload mein hai, toh usko delete kar do warna baby crash ho jayega!
+            for msg in messages:
+                if "images" in msg:
+                    del msg["images"]
+                    msg["content"] += "\n[System: The user sent an image, but the main Vision AI is offline. Tell the user you cannot see the image right now.]"
+
             reply = make_request(fallback_model, is_fallback=True)
             return f"*(Fallback Mode)*\n\n{reply}"
+
         except requests.exceptions.ConnectionError:
             return f"🔌 AI Connection Error: Could not reach Ollama at {url}. Is it running?"
         except Exception as fallback_e:
