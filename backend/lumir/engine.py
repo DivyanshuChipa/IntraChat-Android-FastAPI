@@ -381,4 +381,8 @@ class LumirEngine:
                 return {"type": "text", "text": safe_reply}
             else:
                 return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel to chat with me!"}
+            # 👇 YE 3 LINES MISSING THI! INKO ADD KARO 👇
+        except Exception as e:
+            print(f"❌ AI Router Error: {e}")
+            return {"type": "text", "text": f"⚠️ AI System Error: {str(e)}"}
 lumir_engine = LumirEngine()
