@@ -18,40 +18,72 @@ class LumirEngine:
         # ==========================================
         # 🧠 RAPHAEL'S AGENT ROUTER (Vector DB Search)
         # ==========================================
-        # Agar user ne nai file nahi bheji, par wo purani file ki baat kar raha hai
-        trigger_words = ["recent", "last", "purana", "purani", "pichli", "pichla", "pehle"]
+        trigger_words = ["recent", "last", "purana", "purani", "pichli", "pichla", "pehle", "is", "isko", "ise", "usko"]
         media_words = ["pic", "photo", "image", "video", "file", "pdf", "document"]
 
-        if not file_url and any(tw in text for tw in trigger_words) and any(mw in text for mw in media_words):
-            # 1. Pata karo user kaunsa utility chalana chahta hai
+        # Thoda broad checking taaki natural language pakad sake
+        if not file_url and (any(tw in text for tw in trigger_words) or any(mw in text for mw in media_words)):
+
             target_command = None
-            if "ocr" in text or "read" in text:
+
+            # 1. OCR (Text Extractor)
+            if "ocr" in text or "text nikal" in text or "read" in text:
                 target_command = "###ocr###"
-            elif "compress" in text or "chota" in text:
-                target_command = "###compress<50>###"  # Default auto-compress size
+
+            # 2. PASSPORT MAKER
             elif "passport" in text:
-                target_command = "###passport###"
-            elif "audio" in text or "mp3" in text:
+                if "9" in text:
+                    target_command = "###passport9###"
+                else:
+                    target_command = "###passport###"
+
+            # 3. EXTRACT AUDIO (MP3)
+            elif "audio" in text or "mp3" in text or "gaana" in text:
                 target_command = "###extractaudio###"
 
+            # 4. COMPRESS (Smart Size Detection 🗜️)
+            elif "compress" in text or "size kam" in text or "chota" in text:
+
+                # Check karo agar user ne size bola hai (e.g., "60kb compress")
+                size_match = re.search(r'(\d+)\s*(kb|mb)?', text)
+                target_size = size_match.group(1) if size_match else "50" # Default 50kb
+
+                # Hum temporary flag banate hain, file milne ke baad exact command decide karenge
+                target_command = f"COMPRESS_PENDING_{target_size}"
+
+            # Agar koi valid command match hua
             if target_command:
                 try:
                     from .memory import find_media_in_memory
-                    print(f"🧠 [RAPHAEL AGENT] Triggered! Searching DB for '{text}' to execute '{target_command}'")
+                    print(f"🧠 [RAPHAEL AGENT] Triggered! Intent mapped to '{target_command}'")
 
+                    # Vector DB se purani file dhoondho
                     db_match = find_media_in_memory(sender, text)
 
                     if db_match and "file_url" in db_match:
-                        # 🪄 MAGIC: File ChromaDB se nikal kar RAM (current context) mein daal do!
+                        matched_file = db_match["file_url"]
+                        ext = matched_file.split('.')[-1].lower()
+
+                        # 🪄 SMART RESOLUTION: File ka type dekh kar command badlo!
+                        if target_command.startswith("COMPRESS_PENDING"):
+                            size = target_command.split("_")[-1]
+                            if ext in ['mp4', 'mkv', 'avi', 'mov']:
+                                target_command = "###compressvideo:28:mp4###" # Video compression
+                            elif ext == 'pdf':
+                                target_command = "###compresspdf###" # PDF compression
+                            else:
+                                target_command = f"###compress<{size}>###" # Image compression
+
+                        # 🪄 MAGIC: File ko temporary RAM mein load karo
                         if sender not in self.user_context:
                             self.user_context[sender] = []
-                        self.user_context[sender].append(db_match["file_url"])
+                        self.user_context[sender].append(matched_file)
 
-                        # User ki natural language ko system command se HACK/Replace kar do!
+                        # User ki chat ko system command se hijack kar do
                         text = target_command
-                        print(f"✨ [RAPHAEL AGENT] Success! Hijacked text to '{text}' using file {db_match['file_url']}")
+                        print(f"✨ [RAPHAEL AGENT] Success! Hijacked text to '{text}' using file {matched_file}")
                     else:
-                        return {"type": "text", "text": "🤷‍♀️ Sorry, mujhe tumhari purani file yaad nahi aa rahi. Kya tum us photo ko wapas bhej sakte ho?"}
+                        return {"type": "text", "text": "🤷‍♀️ Sorry, mujhe tumhari wo purani file DB mein nahi mili. Kya wapas bhej sakte ho?"}
                 except Exception as e:
                     print(f"❌ Raphael Router Error: {e}")
 
