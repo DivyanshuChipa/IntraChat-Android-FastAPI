@@ -9,11 +9,7 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
 
     url = config.get("ollama_url", "http://localhost:11434")
 
-    # 👁️ VISION OVERRIDE: Agar image hai, toh vision model ko hi main model bana do!
-    if image_path:
-        main_model = config.get("ai_vision_model", "gemma:27b-cloud")
-    else:
-        main_model = config.get("ai_model", "gpt-oss:20b-cloud")
+    main_model = config.get("ai_model", "gpt-oss:20b-cloud")
 
     fallback_model = config.get("ai_fallback", "gemma3:270m")
 
@@ -31,15 +27,21 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
     # 👁️ VISION LOGIC: Agar image aayi hai, toh use Base64 mein encode karke message mein jodo
     user_message = {"role": "user", "content": prompt}
 
+    has_usable_image = False
     if image_path and os.path.exists(image_path):
         try:
             with open(image_path, "rb") as img_file:
                 # Image ko text (Base64) mein convert karo
                 base64_string = base64.b64encode(img_file.read()).decode('utf-8')
                 user_message["images"] = [base64_string]
+                has_usable_image = True
                 print(f"👁️ [VISION] Image successfully attached for Ollama!")
         except Exception as e:
             print(f"❌ [VISION ERROR] Could not read image: {e}")
+
+    # 👁️ VISION OVERRIDE: Sirf tabhi vision model pe switch karo jab image actually attach hui ho
+    if has_usable_image:
+        main_model = config.get("ai_vision_model", "gemma:27b-cloud")
 
     messages.append(user_message)
 
