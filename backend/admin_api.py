@@ -70,10 +70,11 @@ def admin_set_ai_settings(
         enabled: bool,
         model: str,
         url: str,
+        vision: str = "gemma:27b-cloud",
         fallback: str = "gemma3:270m",
         smart_models: str = "gpt-oss:20b-cloud",
         admin=Depends(verify_admin)
 ):
-    set_ai_config(enabled, model, url, fallback, smart_models)
-    return {"success": True, "message": "AI settings updated successfully (with Fallback Engine)!"}
+    set_ai_config(enabled, model, url, vision, fallback, smart_models)
+    return {"success": True, "message": "AI settings updated successfully (with Vision and Fallback Engine)!"}
 

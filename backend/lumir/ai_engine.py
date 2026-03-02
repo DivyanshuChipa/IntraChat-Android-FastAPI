@@ -8,7 +8,13 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
         return "🤖 AI processing is currently disabled by the Admin."
 
     url = config.get("ollama_url", "http://localhost:11434")
-    main_model = config.get("ai_model", "gpt-oss:20b-cloud")
+
+    # 👁️ VISION OVERRIDE: Agar image hai, toh vision model ko hi main model bana do!
+    if image_path:
+        main_model = config.get("ai_vision_model", "gemma:27b-cloud")
+    else:
+        main_model = config.get("ai_model", "gpt-oss:20b-cloud")
+
     fallback_model = config.get("ai_fallback", "gemma3:270m")
 
     system_prompt = f"""You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
