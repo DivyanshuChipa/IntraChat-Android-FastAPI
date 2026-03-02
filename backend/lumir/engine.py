@@ -324,7 +324,7 @@ class LumirEngine:
                 vision_prompt = "Please analyze this image carefully. Describe what you see in detail, including objects, people, environment, and any written text."
 
                 # ask_ai ko call karo image_path ke sath! (History khali rakhenge taaki jaldi process ho)
-                from .ai_engine import ask_ai
+                #from .ai_engine import ask_ai
                 ai_reply = ask_ai(prompt=vision_prompt, config=config, history=[], sender=sender, image_path=local_path)
 
                 # Memory clear karo
@@ -434,7 +434,7 @@ class LumirEngine:
                 if target_image_path and sender in self.user_context:
                     del self.user_context[sender]
 
-                import re
+                #import re
                 safe_reply = ai_reply.replace("\n", "  ").strip()
                 safe_reply = re.sub(' +', ' ', safe_reply)
 
