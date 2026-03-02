@@ -761,6 +761,7 @@ fun MessageBubble(
                                         showCompressDialog = true // Button dabne par dialog dikhao
                                     }
                                     "📄 Convert to PDF" -> onOptionSelected("###topdf###")
+                                    "👁️ image analyze (Ai)" -> onOptionSelected("###analyzeimage###")
                                     "🔗 Merge PDFs" -> onOptionSelected("###mergepdfs###")
                                     "📄 Extract PDF Text" -> onOptionSelected("###pdf2text###")
                                     "🗜️ Compress PDF" -> onOptionSelected("###compresspdf###")
