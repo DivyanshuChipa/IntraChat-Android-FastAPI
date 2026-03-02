@@ -135,7 +135,8 @@ class LumirEngine:
                             "📄 Extract Text (OCR)",
                             "📅 Passport + Date",
                             "🗜️ Compress Image",
-                            "📄 Convert to PDF"
+                            "📄 Convert to PDF",
+                            "🧠 Analyze Image (AI)"
                         ]
                     }
 
@@ -306,6 +307,41 @@ class LumirEngine:
             if res["success"]: return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
             else: return {"type": "text", "text": res["message"]}
 
+        # 👁️ 3.15 AI VISION LOGIC (Button Click)
+        if "###analyzeimage###" in text:
+            target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
+            if not target_image:
+                return {"type": "text", "text": "⚠️ No image found! Please send an image first."}
+
+            try:
+                config = get_ai_config()
+                if not config.get("ai_enabled"):
+                    return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel."}
+
+                local_path = target_image.lstrip('/') # '/uploads/pic.jpg' -> 'uploads/pic.jpg'
+
+                # Hum AI ko khud ek background prompt bhejenge
+                vision_prompt = "Please analyze this image carefully. Describe what you see in detail, including objects, people, environment, and any written text."
+
+                # ask_ai ko call karo image_path ke sath! (History khali rakhenge taaki jaldi process ho)
+                from .ai_engine import ask_ai
+                ai_reply = ask_ai(prompt=vision_prompt, config=config, history=[], sender=sender, image_path=local_path)
+
+                # Memory clear karo
+                if sender in self.user_context:
+                    del self.user_context[sender]
+
+                # Format karke bhej do
+
+                safe_reply = ai_reply.replace("\n", "  ").strip()
+                safe_reply = re.sub(' +', ' ', safe_reply)
+
+                return {"type": "text", "text": f"👁️ **Gemma Vision Analysis:**\n\n{safe_reply}"}
+
+            except Exception as e:
+                print(f"❌ Vision Tool Error: {e}")
+                return {"type": "text", "text": f"⚠️ Vision AI Error: {str(e)}"}
+
         # 3. PASSPORT GENERATOR LOGIC
         if "###passport" in text:
             target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
@@ -356,32 +392,56 @@ class LumirEngine:
             if config.get("ai_enabled"):
                 current_model = config.get("ai_model", "")
 
-                # 🛑 DYNAMIC BABY LOCK (Check against Admin's Smart Model list)
-                smart_models_str = config.get("ai_smart_models", "gpt-oss:20b-cloud")
+                # 🛑 DYNAMIC BABY LOCK
+                smart_models_str = config.get("ai_smart_models", "gpt-oss:20b-cloud, gemma3:27b-cloud")
                 smart_models_list = [m.strip().lower() for m in smart_models_str.split(",")]
 
                 is_smart = current_model.lower() in smart_models_list
 
                 if not is_smart:
                     print("👶 Baby Model Detected! Disabling Long Term Memory.")
-                    chat_history = []  # Empty memory
+                    chat_history = []
                 else:
-                    # ✅ BIG MODELS: Inko History aur Vector DB do
                     from messages import get_lumir_history
                     chat_history = get_lumir_history(sender, limit=6)
                     if chat_history and chat_history[-1]["role"] == "user" and chat_history[-1]["content"].lower().strip() == text.lower().strip():
                         chat_history.pop()
 
-                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender)
+                # ==========================================
+                # 👁️ VISION CHECK LOGIC (The Sniper Eyes)
+                # ==========================================
+                target_image_path = None
+                image_trigger_words = ["dekh", "image", "photo", "pic", "kya hai", "analyze", "read", "isme", "vision"]
+
+                # Agar user ne abhi image bheji hai, YA context mein image hai aur trigger word use kiya hai
+                if sender in self.user_context and self.user_context[sender]:
+                    if file_url or any(tw in text for tw in image_trigger_words):
+                        last_file = self.user_context[sender][-1]
+
+                        # Check karo ki extension image ka hi ho
+                        if last_file.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                            # URL se local path nikalo (e.g. '/uploads/pic.jpg' -> 'uploads/pic.jpg')
+                            local_path = last_file.lstrip('/')
+                            if os.path.exists(local_path):
+                                target_image_path = local_path
+                                print(f"👁️ [ENGINE] Sending image to AI: {target_image_path}")
+
+                # AI ko prompt, config, history, sender name, aur AANKHEIN (image_path) bhejo
+                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender, image_path=target_image_path)
+
+                # 🧹 MEMORY CLEANUP: Image process hone ke baad context clear karo
+                # Taaki agli chat mein bina matlab wapas itni heavy Base64 image na jaye!
+                if target_image_path and sender in self.user_context:
+                    del self.user_context[sender]
 
                 import re
-                safe_reply = ai_reply.replace("\n", "  ").strip() # Double space diya taaki markdown toote na
+                safe_reply = ai_reply.replace("\n", "  ").strip()
                 safe_reply = re.sub(' +', ' ', safe_reply)
 
                 return {"type": "text", "text": safe_reply}
             else:
                 return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel to chat with me!"}
-            # 👇 YE 3 LINES MISSING THI! INKO ADD KARO 👇
+
         except Exception as e:
             print(f"❌ AI Router Error: {e}")
             return {"type": "text", "text": f"⚠️ AI System Error: {str(e)}"}

@@ -1,45 +1,56 @@
 import requests
-import json  # Debugging format ke liye
+import json
+import base64 # 👈 NAYA IMPORT AANKHON KE LIYE
+import os
 
-def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"):
+def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
 
     url = config.get("ollama_url", "http://localhost:11434")
-
-    # 🌟 NAYE MODELS YAHAN SE FETCH HONGE
     main_model = config.get("ai_model", "gpt-oss:20b-cloud")
     fallback_model = config.get("ai_fallback", "gemma3:270m")
 
-    # 🧬 LUMIR'S UPGRADED PERSONALITY
     system_prompt = f"""You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
     You live inside the 'Intra' LAN messenger network. 
-    Your creator is a engineer known as 'Divya'. 
+    Your creator is an engineer known as 'Divya'. 
     Always reply in a helpful and concise manner. 
     IMPORTANT: The user you are currently chatting with is named '{sender}'. Address them by their name naturally in conversation."""
 
-    # Chat history format setup
     messages = [{"role": "system", "content": system_prompt}]
 
     if history:
         messages.extend(history)
 
-    messages.append({"role": "user", "content": prompt})
+    # 👁️ VISION LOGIC: Agar image aayi hai, toh use Base64 mein encode karke message mein jodo
+    user_message = {"role": "user", "content": prompt}
 
-    # 🛠️ HELPER FUNCTION: Request bhejne aur Debug log print karne ke liye
+    if image_path and os.path.exists(image_path):
+        try:
+            with open(image_path, "rb") as img_file:
+                # Image ko text (Base64) mein convert karo
+                base64_string = base64.b64encode(img_file.read()).decode('utf-8')
+                user_message["images"] = [base64_string]
+                print(f"👁️ [VISION] Image successfully attached for Ollama!")
+        except Exception as e:
+            print(f"❌ [VISION ERROR] Could not read image: {e}")
+
+    messages.append(user_message)
+
     def make_request(target_model, is_fallback=False):
-        # Debugging: Terminal mein check karne ke liye ki AI ko kya bheja jaa raha hai
         print("\n" + "="*50)
         mode_text = "(FALLBACK MODE)" if is_fallback else "(MAIN MODE)"
         print(f"🤖 [LUMIR DEBUG] SENDING TO OLLAMA MODEL: {target_model} {mode_text}")
         print(f"👤 USER: {sender}")
 
-        # Payload sirf pehli baar print karo, fallback mein terminal spam na ho
+        # Base64 string bohot lambi hoti hai, isliye terminal pe spam na ho uske liye usko hata kar print karenge
         if not is_fallback:
-            print(json.dumps(messages, indent=2))
+            debug_messages = json.loads(json.dumps(messages)) # Deep copy
+            if "images" in debug_messages[-1]:
+                debug_messages[-1]["images"] = ["[BASE64_IMAGE_DATA_HIDDEN]"]
+            print(json.dumps(debug_messages, indent=2))
         print("="*50 + "\n")
 
-        # Request Bhejo
         res = requests.post(
             f"{url}/api/chat",
             json={
@@ -47,7 +58,7 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
                 "messages": messages,
                 "stream": False
             },
-            timeout=30 if not is_fallback else 100  # Main jaldi fail ho, Fallback pura time le!
+            timeout=15 if not is_fallback else 100
         )
 
         if res.status_code == 200:
@@ -56,22 +67,15 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
             raise Exception(f"HTTP Status {res.status_code}")
 
     # ==========================================
-    # 🔄 THE FALLBACK LOGIC (Main -> Fallback)
+    # 🔄 THE FALLBACK LOGIC
     # ==========================================
     try:
-        # 🟢 THE MAIN ATTEMPT (Badal/Cloud wala Model)
         return make_request(main_model, is_fallback=False)
-
     except Exception as e:
         print(f"⚠️ [LUMIR FALLBACK ALERT] Main model '{main_model}' failed: {e}. Shifting to '{fallback_model}'...")
-
         try:
-            # 🟠 THE FALLBACK ATTEMPT (Local Baby Model)
             reply = make_request(fallback_model, is_fallback=True)
-
-            # User ko batane ke liye ki ye baby model ka answer hai
             return f"*(Fallback Mode)*\n\n{reply}"
-
         except requests.exceptions.ConnectionError:
             return f"🔌 AI Connection Error: Could not reach Ollama at {url}. Is it running?"
         except Exception as fallback_e:
