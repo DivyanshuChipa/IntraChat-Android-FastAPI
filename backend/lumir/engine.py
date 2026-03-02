@@ -354,36 +354,31 @@ class LumirEngine:
         try:
             config = get_ai_config()
             if config.get("ai_enabled"):
-
-                # Model ka naam check karo
                 current_model = config.get("ai_model", "")
 
-                # 🛑 GEMMA 270M BYPASS LOGIC: Baby model ko history mat do
-                if current_model == "gemma3:270m":
+                # 🛑 DYNAMIC BABY LOCK (Check against Admin's Smart Model list)
+                smart_models_str = config.get("ai_smart_models", "gpt-oss:20b-cloud")
+                smart_models_list = [m.strip().lower() for m in smart_models_str.split(",")]
+
+                is_smart = current_model.lower() in smart_models_list
+
+                if not is_smart:
+                    print("👶 Baby Model Detected! Disabling Long Term Memory.")
                     chat_history = []  # Empty memory
                 else:
-                    # ✅ BIG MODELS: Baki smart models ke liye history uthao
+                    # ✅ BIG MODELS: Inko History aur Vector DB do
                     from messages import get_lumir_history
                     chat_history = get_lumir_history(sender, limit=6)
-
-                    # 🛑 FIX: Remove current prompt from history if it appears
-                    # Since we save the message BEFORE processing, history might include it
                     if chat_history and chat_history[-1]["role"] == "user" and chat_history[-1]["content"].lower().strip() == text.lower().strip():
                         chat_history.pop()
 
-                # AI ko prompt, config, history, aur sender name bhejo
                 ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender)
 
-                # 🛠️ THE FIX: Remove all newlines and make it a single safe line
-                safe_reply = ai_reply.replace("\n", " ").replace("\r", " ").strip()
-
-                # Agar multiple spaces ban gaye hain toh unhe single space kar do
-                #import re
+                import re
+                safe_reply = ai_reply.replace("\n", "  ").strip() # Double space diya taaki markdown toote na
                 safe_reply = re.sub(' +', ' ', safe_reply)
 
                 return {"type": "text", "text": safe_reply}
             else:
                 return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel to chat with me!"}
-        except Exception as e:
-            return {"type": "text", "text": f"⚠️ AI System Error: {str(e)}"}
 lumir_engine = LumirEngine()

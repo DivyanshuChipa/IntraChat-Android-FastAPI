@@ -180,31 +180,32 @@ def update_user_photo(username, file_path):
 def get_ai_config():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    # Fetch existing AI configs
-    cursor.execute("SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url')")
+    cursor.execute("SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_fallback', 'ai_smart_models')")
     rows = cursor.fetchall()
     conn.close()
-    
-    # Default settings (Sister ke laptop ka option yahan URL mein future mein daal sakte ho)
+
+    # 🌟 NEW DEFAULTS
     config = {
-        "ai_enabled": False, 
-        "ai_model": "llama3:8b", 
-        "ollama_url": "http://localhost:11434"
+        "ai_enabled": False,
+        "ai_model": "gpt-oss:20b-cloud",
+        "ollama_url": "http://localhost:11434",
+        "ai_fallback": "gemma3:270m",  # Naya Fallback Model
+        "ai_smart_models": "gpt-oss:20b-cloud, llama3:8b" # Inko Vector DB milega
     }
-    
+
     for key, value in rows:
-        if key == 'ai_enabled': 
-            config[key] = (value == "1")
-        else: 
-            config[key] = value
-            
+        if key == 'ai_enabled': config[key] = (value == "1")
+        else: config[key] = value
+
     return config
 
-def set_ai_config(enabled: bool, model: str, url: str):
+def set_ai_config(enabled: bool, model: str, url: str, fallback: str, smart_models: str):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_enabled', ?)", ("1" if enabled else "0",))
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_model', ?)", (model,))
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ollama_url', ?)", (url,))
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_fallback', ?)", (fallback,))
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_smart_models', ?)", (smart_models,))
     conn.commit()
     conn.close()

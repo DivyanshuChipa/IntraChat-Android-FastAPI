@@ -66,7 +66,14 @@ def admin_get_ai_settings(admin=Depends(verify_admin)):
     return {"success": True, "config": get_ai_config()}
 
 @router.post("/ai_settings")
-def admin_set_ai_settings(enabled: bool, model: str, url: str, admin=Depends(verify_admin)):
-    set_ai_config(enabled, model, url)
-    return {"success": True, "message": "AI settings updated successfully!"}
+def admin_set_ai_settings(
+        enabled: bool,
+        model: str,
+        url: str,
+        fallback: str = "gemma3:270m",
+        smart_models: str = "gpt-oss:20b-cloud",
+        admin=Depends(verify_admin)
+):
+    set_ai_config(enabled, model, url, fallback, smart_models)
+    return {"success": True, "message": "AI settings updated successfully (with Fallback Engine)!"}
 

@@ -508,120 +508,87 @@ class AdminWindow(QMainWindow):
 
         card = QFrame()
         card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
-        card_layout = QVBoxLayout(card)
+        card_layout = QFormLayout(card)
         card_layout.setContentsMargins(30, 30, 30, 30)
         card_layout.setSpacing(15)
 
         # 1. Enable AI Toggle
         self.chk_ai_enable = QCheckBox("Enable AI Engine (Local/Tailscale Ollama)")
-        self.chk_ai_enable.setCursor(Qt.PointingHandCursor)
-        self.chk_ai_enable.setStyleSheet("""
-            QCheckBox { font-size: 18px; color: #cdd6f4; font-weight: 500;} 
-            QCheckBox::indicator { width: 24px; height: 24px; border-radius: 6px; border: 2px solid #45475a; background-color: #313244;}
-            QCheckBox::indicator:checked { background-color: #cba6f7; border-color: #cba6f7;}
-        """)
+        self.chk_ai_enable.setStyleSheet("font-size: 16px; color: #cdd6f4;")
 
-        desc = QLabel("When enabled, Lumir will fallback to AI for unrecognized commands. Requires Ollama running.")
-        desc.setWordWrap(True)
-        desc.setStyleSheet("color: #9399b2; font-size: 14px; line-height: 1.5;")
-
-        # 2. Model & URL Selection
-        model_layout = QHBoxLayout()
-
-        # Model Dropdown
-        model_lbl = QLabel("Select Model:")
-        model_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #cdd6f4;")
+        # 2. Editable ComboBoxes
         self.model_dropdown = QComboBox()
-        self.model_dropdown.addItems(["llama3.2:3b", "mistral", "gemma","gpt-oss:20b-cloud", "deepseek-coder", "gemma3:270m"])
+        self.model_dropdown.setEditable(True) # 👈 MAGIC: Custom typing allowed
+        self.model_dropdown.addItems(["gpt-oss:20b-cloud", "llama3.2:3b", "gemma"])
         self.model_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
 
-        # Ollama URL Input (Tailscale Support)
-        url_lbl = QLabel("  Ollama URL:")
-        url_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #cdd6f4;")
+        self.fallback_dropdown = QComboBox()
+        self.fallback_dropdown.setEditable(True)
+        self.fallback_dropdown.addItems(["gemma3:270m", "llama3.2:1b"])
+        self.fallback_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
+        self.smart_models_input = QLineEdit()
+        self.smart_models_input.setPlaceholderText("gpt-oss:20b-cloud, llama3.2:3b")
+        self.smart_models_input.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("http://100.x.x.x:11434") # Tailscale example
-        self.url_input.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px; border: 1px solid #45475a;")
+        self.url_input.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
 
-        model_layout.addWidget(model_lbl)
-        model_layout.addWidget(self.model_dropdown)
-        model_layout.addWidget(url_lbl)
-        model_layout.addWidget(self.url_input, 1) # 1 adds stretch factor
+        card_layout.addRow("", self.chk_ai_enable)
+        card_layout.addRow("Ollama URL:", self.url_input)
+        card_layout.addRow("Main Model:", self.model_dropdown)
+        card_layout.addRow("Fallback Model:", self.fallback_dropdown)
+        card_layout.addRow("Smart Models (Comma Separated):", self.smart_models_input)
 
-        # 3. Status Display
         self.ai_status_lbl = QLabel("Status: Waiting...")
         self.ai_status_lbl.setStyleSheet("font-weight: bold; font-size: 14px; color: #f9e2af;")
         self.ai_status_lbl.setAlignment(Qt.AlignCenter)
 
-        # 4. Save Button
         save_btn = QPushButton("💾 SAVE AI CONFIGURATION")
         save_btn.setMinimumHeight(55)
-        save_btn.setCursor(Qt.PointingHandCursor)
-        save_btn.setStyleSheet("""
-            QPushButton { background-color: #a6e3a1; color: #11111b; font-size: 16px; font-weight: bold; border-radius: 8px;}
-            QPushButton:hover { background-color: #94e2d5; }
-        """)
+        save_btn.setStyleSheet("background-color: #a6e3a1; color: #11111b; font-size: 16px; font-weight: bold; border-radius: 8px;")
         save_btn.clicked.connect(self.save_ai_settings)
-
-        card_layout.addWidget(self.chk_ai_enable)
-        card_layout.addWidget(desc)
-        card_layout.addSpacing(15)
-        card_layout.addLayout(model_layout)
-        card_layout.addSpacing(15)
-        card_layout.addWidget(self.ai_status_lbl)
-        card_layout.addWidget(save_btn)
 
         layout.addWidget(lbl)
         layout.addWidget(card)
+        layout.addWidget(self.ai_status_lbl)
+        layout.addWidget(save_btn)
         layout.addStretch()
         return page
 
     def load_ai_settings(self):
         try:
-            self.ai_status_lbl.setText("Status: ⏳ Fetching from server...")
-            self.ai_status_lbl.setStyleSheet("color: #f9e2af;")
+            self.ai_status_lbl.setText("Status: ⏳ Fetching...")
             res = requests.get(f"{self.server_url}/admin/ai_settings", headers=self.headers, timeout=3)
             data = res.json()
             if data.get("success"):
                 config = data.get("config", {})
-
-                # Checkbox ko update karo bina trigger kiye
-                self.chk_ai_enable.blockSignals(True)
                 self.chk_ai_enable.setChecked(config.get("ai_enabled", False))
-                self.chk_ai_enable.blockSignals(False)
-
-                self.model_dropdown.setCurrentText(config.get("ai_model", "gemma3:270m"))
+                self.model_dropdown.setCurrentText(config.get("ai_model", "gpt-oss:20b-cloud"))
+                self.fallback_dropdown.setCurrentText(config.get("ai_fallback", "gemma3:270m"))
+                self.smart_models_input.setText(config.get("ai_smart_models", "gpt-oss:20b-cloud"))
                 self.url_input.setText(config.get("ollama_url", "http://localhost:11434"))
-
-                self.ai_status_lbl.setText("Status: ✅ Loaded Successfully")
-                self.ai_status_lbl.setStyleSheet("color: #a6e3a1;")
+                self.ai_status_lbl.setText("Status: ✅ Loaded")
         except Exception as e:
             self.ai_status_lbl.setText(f"Status: ❌ Error: {str(e)}")
-            self.ai_status_lbl.setStyleSheet("color: #f38ba8;")
 
     def save_ai_settings(self):
         try:
             self.ai_status_lbl.setText("Status: ⏳ Saving...")
-            self.ai_status_lbl.setStyleSheet("color: #89b4fa;")
-
-            enabled = self.chk_ai_enable.isChecked()
-            model = self.model_dropdown.currentText()
-            url = self.url_input.text().strip()
-
-            res = requests.post(
-                f"{self.server_url}/admin/ai_settings",
-                headers=self.headers,
-                params={"enabled": enabled, "model": model, "url": url},
-                timeout=3
-            )
-
+            params = {
+                "enabled": self.chk_ai_enable.isChecked(),
+                "model": self.model_dropdown.currentText(),
+                "url": self.url_input.text().strip(),
+                "fallback": self.fallback_dropdown.currentText().strip(),
+                "smart_models": self.smart_models_input.text().strip()
+            }
+            res = requests.post(f"{self.server_url}/admin/ai_settings", headers=self.headers, params=params, timeout=3)
             if res.status_code == 200:
-                self.ai_status_lbl.setText("Status: ✅ Saved! Lumir is updated.")
-                self.ai_status_lbl.setStyleSheet("color: #a6e3a1;")
+                self.ai_status_lbl.setText("Status: ✅ Saved!")
             else:
-                raise Exception(f"Server returned {res.status_code}")
+                raise Exception(f"Server error {res.status_code}")
         except Exception as e:
-            self.ai_status_lbl.setText(f"Status: ❌ Failed to save: {str(e)}")
-            self.ai_status_lbl.setStyleSheet("color: #f38ba8;")
+            self.ai_status_lbl.setText(f"Status: ❌ Failed: {str(e)}")
 
     # ================= PAGE: CLEANUP =================
     def create_cleanup_page(self):
