@@ -514,13 +514,41 @@ class AdminWindow(QMainWindow):
 
         # 1. Enable AI Toggle
         self.chk_ai_enable = QCheckBox("Enable AI Engine (Local/Tailscale Ollama)")
-        self.chk_ai_enable.setStyleSheet("font-size: 16px; color: #cdd6f4;")
+        self.chk_ai_enable.setTristate(False)
+        self.chk_ai_enable.setChecked(False)
+        self.chk_ai_enable.setCursor(Qt.PointingHandCursor)
+        self.chk_ai_enable.setStyleSheet("""
+            QCheckBox {
+                font-size: 18px;
+                color: #cdd6f4;
+                font-weight: 500;
+            }
+            QCheckBox::indicator {
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                border: 2px solid #45475a;
+                background-color: #313244;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #cba6f7;
+                border-color: #cba6f7;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #cba6f7;
+            }
+        """)
 
         # 2. Editable ComboBoxes
         self.model_dropdown = QComboBox()
         self.model_dropdown.setEditable(True) # 👈 MAGIC: Custom typing allowed
         self.model_dropdown.addItems(["gpt-oss:20b-cloud", "llama3.2:3b", "gemma"])
         self.model_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
+        self.vision_dropdown = QComboBox()
+        self.vision_dropdown.setEditable(True)
+        self.vision_dropdown.addItems(["gemma:27b-cloud", "llama3.2-vision:11b", "llava:13b"])
+        self.vision_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
 
         self.fallback_dropdown = QComboBox()
         self.fallback_dropdown.setEditable(True)
@@ -537,6 +565,7 @@ class AdminWindow(QMainWindow):
         card_layout.addRow("", self.chk_ai_enable)
         card_layout.addRow("Ollama URL:", self.url_input)
         card_layout.addRow("Main Model:", self.model_dropdown)
+        card_layout.addRow("Vision Model:", self.vision_dropdown)
         card_layout.addRow("Fallback Model:", self.fallback_dropdown)
         card_layout.addRow("Smart Models (Comma Separated):", self.smart_models_input)
 
@@ -565,6 +594,7 @@ class AdminWindow(QMainWindow):
                 config = data.get("config", {})
                 self.chk_ai_enable.setChecked(config.get("ai_enabled", False))
                 self.model_dropdown.setCurrentText(config.get("ai_model", "gpt-oss:20b-cloud"))
+                self.vision_dropdown.setCurrentText(config.get("ai_vision_model", "gemma:27b-cloud"))
                 self.fallback_dropdown.setCurrentText(config.get("ai_fallback", "gemma3:270m"))
                 self.smart_models_input.setText(config.get("ai_smart_models", "gpt-oss:20b-cloud"))
                 self.url_input.setText(config.get("ollama_url", "http://localhost:11434"))
@@ -578,6 +608,7 @@ class AdminWindow(QMainWindow):
             params = {
                 "enabled": self.chk_ai_enable.isChecked(),
                 "model": self.model_dropdown.currentText(),
+                "vision": self.vision_dropdown.currentText(),
                 "url": self.url_input.text().strip(),
                 "fallback": self.fallback_dropdown.currentText().strip(),
                 "smart_models": self.smart_models_input.text().strip()

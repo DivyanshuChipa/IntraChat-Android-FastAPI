@@ -180,7 +180,7 @@ def update_user_photo(username, file_path):
 def get_ai_config():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_fallback', 'ai_smart_models')")
+    cursor.execute("SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models')")
     rows = cursor.fetchall()
     conn.close()
 
@@ -189,6 +189,7 @@ def get_ai_config():
         "ai_enabled": False,
         "ai_model": "gpt-oss:20b-cloud",
         "ollama_url": "http://localhost:11434",
+        "ai_vision_model": "gemma:27b-cloud", # Naya Vision Model
         "ai_fallback": "gemma3:270m",  # Naya Fallback Model
         "ai_smart_models": "gpt-oss:20b-cloud, llama3:8b" # Inko Vector DB milega
     }
@@ -199,12 +200,13 @@ def get_ai_config():
 
     return config
 
-def set_ai_config(enabled: bool, model: str, url: str, fallback: str, smart_models: str):
+def set_ai_config(enabled: bool, model: str, url: str, vision_model: str, fallback: str, smart_models: str):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_enabled', ?)", ("1" if enabled else "0",))
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_model', ?)", (model,))
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ollama_url', ?)", (url,))
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_vision_model', ?)", (vision_model,))
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_fallback', ?)", (fallback,))
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_smart_models', ?)", (smart_models,))
     conn.commit()
