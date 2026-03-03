@@ -20,8 +20,9 @@ data class DriveFileItem(
     val path: String
 )
 
-class DriveViewModel(private val settingsManager: SettingsManager) : ViewModel() {
+class DriveViewModel : ViewModel() {
 
+    private val settingsManager = SettingsManager(MyApplication.instance)
     private val TAG = "DriveViewModel"
 
     // UI States

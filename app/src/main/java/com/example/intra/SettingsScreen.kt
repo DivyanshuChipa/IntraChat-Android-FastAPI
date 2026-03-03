@@ -162,6 +162,9 @@ fun SettingsScreen(
     // 🤖 LUMIR STATE
     var isLumirEnabled by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
 
+    // 📁 INTRA DRIVE STATE
+    var isIntraDriveEnabled by remember { mutableStateOf(settingsManager.isShowIntraDriveEnabled()) }
+
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -394,6 +397,32 @@ fun SettingsScreen(
                         onCheckedChange = { enabled ->
                             isLumirEnabled = enabled
                             settingsManager.setShowLumir(enabled)
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 📁 INTRA DRIVE TOGGLE
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Enable Intra Drive (NAS)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Show the network storage folder icon in the chat list.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isIntraDriveEnabled,
+                        onCheckedChange = { enabled ->
+                            isIntraDriveEnabled = enabled
+                            settingsManager.setShowIntraDrive(enabled)
                         }
                     )
                 }

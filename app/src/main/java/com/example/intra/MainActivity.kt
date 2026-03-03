@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
                         viewModel(factory = chatViewModelFactory)
                     val callViewModel: CallViewModel = viewModel()
                     val contactViewModel: ContactViewModel = viewModel()
+                    val driveViewModel: DriveViewModel = viewModel()
 
                     // Jab message aaye, contact list ko refresh karo
                     LaunchedEffect(chatViewModel) {
@@ -250,6 +251,7 @@ class MainActivity : ComponentActivity() {
                             
                             // 📁 NAYA: Drive Screen Navigation
                             showDrive -> DriveScreen(
+                                viewModel = driveViewModel,
                                 onBackClick = { showDrive = false },
                                 onUploadClick = {
                                     // Abhi ke liye bas log kar rahe hain, baad me launcher use karenge

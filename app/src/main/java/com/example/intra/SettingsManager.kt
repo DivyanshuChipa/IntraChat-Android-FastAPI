@@ -17,6 +17,7 @@ class SettingsManager(context: Context) {
         const val KEY_MY_PHOTO = "my_profile_photo" // 🆕 NEW KEY
         const val KEY_BACKGROUND_SERVICE = "background_service_enabled" // ✅ NEW KEY
         const val KEY_SHOW_LUMIR = "show_lumir_assistant" // 🤖 NEW KEY
+        const val KEY_SHOW_INTRA_DRIVE = "show_intra_drive_nas" // 📁 NEW KEY
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -91,5 +92,14 @@ class SettingsManager(context: Context) {
 
     fun setShowLumir(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_SHOW_LUMIR, enabled).apply()
+    }
+
+    // 📁 INTRA DRIVE VISIBILITY
+    fun isShowIntraDriveEnabled(): Boolean {
+        return prefs.getBoolean(KEY_SHOW_INTRA_DRIVE, true) // Default ON
+    }
+
+    fun setShowIntraDrive(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SHOW_INTRA_DRIVE, enabled).apply()
     }
 }

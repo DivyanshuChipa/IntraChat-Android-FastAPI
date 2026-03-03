@@ -57,8 +57,10 @@ fun ContactListScreen(
 
     // Refresh Lumir state whenever screen appears
     var showLumir by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
+    var showIntraDrive by remember { mutableStateOf(settingsManager.isShowIntraDriveEnabled()) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()
+        showIntraDrive = settingsManager.isShowIntraDriveEnabled()
     }
 
     val contactViewModel: ContactViewModel = viewModel()
@@ -98,8 +100,10 @@ fun ContactListScreen(
                 ),
                 actions = {
                     // 📁 NAYA: Intra Drive Button
-                    IconButton(onClick = onDriveClick) {
-                        Icon(Icons.Filled.Folder, contentDescription = "Intra Drive", tint = topBarTextColor)
+                    if (showIntraDrive) {
+                        IconButton(onClick = onDriveClick) {
+                            Icon(Icons.Filled.Folder, contentDescription = "Intra Drive", tint = topBarTextColor)
+                        }
                     }
                     
                     IconButton(onClick = onSettingsClick) {
