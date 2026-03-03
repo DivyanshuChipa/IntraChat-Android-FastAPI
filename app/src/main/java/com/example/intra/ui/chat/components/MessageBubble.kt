@@ -355,7 +355,7 @@ fun MessageBubble(
                                         showCompressDialog = true
                                     }
                                     "📄 Convert to PDF" -> onOptionSelected("###topdf###")
-                                    "👁️ image analyze (Ai)" -> onOptionSelected("###analyzeimage###")
+                                    "🧠 Analyze Image (AI)" -> onOptionSelected("###analyzeimage###")
                                     "🔗 Merge PDFs" -> onOptionSelected("###mergepdfs###")
                                     "📄 Extract PDF Text" -> onOptionSelected("###pdf2text###")
                                     "🗜️ Compress PDF" -> onOptionSelected("###compresspdf###")
