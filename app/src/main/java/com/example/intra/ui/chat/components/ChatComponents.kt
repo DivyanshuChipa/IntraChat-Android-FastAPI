@@ -3,9 +3,12 @@ package com.example.intra.ui.chat.components
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -42,21 +45,31 @@ fun MessageInputBar(
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left side icons
-        IconButton(onClick = onAttachClick) {
-            Icon(
-                imageVector = Icons.Filled.AttachFile,
-                contentDescription = "Attach",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        val hasText = viewModel.inputMessage.value.isNotBlank()
 
-        IconButton(onClick = onCameraClick) {
-            Icon(
-                imageVector = Icons.Filled.CameraAlt,
-                contentDescription = "Camera",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        // Left side icons (Hidden when typing)
+        AnimatedVisibility(
+            visible = !hasText,
+            enter = expandHorizontally(expandFrom = Alignment.End),
+            exit = shrinkHorizontally(shrinkTowards = Alignment.End)
+        ) {
+            Row {
+                IconButton(onClick = onAttachClick) {
+                    Icon(
+                        imageVector = Icons.Filled.AttachFile,
+                        contentDescription = "Attach",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(onClick = onCameraClick) {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = "Camera",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         // Input Field
@@ -83,7 +96,6 @@ fun MessageInputBar(
         )
 
         // Send Button
-        val hasText = viewModel.inputMessage.value.isNotBlank()
         IconButton(
             onClick = { viewModel.sendMessage(receiverName) },
             enabled = hasText
