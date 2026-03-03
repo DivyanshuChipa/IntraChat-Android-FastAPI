@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -294,9 +295,33 @@ fun MessageBubble(
                     else
                         MaterialTheme.colorScheme.onSurfaceVariant
 
+                    // 🛠️ NAYA: THE MARKDOWN PARSER LOGIC
+                    // Pehle kachre wale '*' ko ekdum clean bullet points '•' me badal do
+                    val formattedText = message.text
+                        .replace(" * ", "\n\n• ") // Beech wale bullets ko proper newline aur gap do
+                        .replace("\n* ", "\n• ")  // Normal line-break bullets
+                        .replaceFirst("^\\* ".toRegex(), "• ") // Agar message ki shuruat me bullet ho
+
                     val annotatedString = buildAnnotatedString {
-                        append(message.text)
-                        val matcher = Patterns.WEB_URL.matcher(message.text)
+                        // 1. **BOLD** TEXT PARSING (The Split Trick)
+                        // Text ko '**' ke hisaab se kaat do. Odd number wale tukde automatically bold honge!
+                        val boldParts = formattedText.split("**")
+
+                        boldParts.forEachIndexed { index, part ->
+                            val isBold = index % 2 != 0 // Agar index odd hai (1, 3, 5), toh wo bold hai
+
+                            if (isBold) {
+                                withStyle(style = SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) {
+                                    append(part)
+                                }
+                            } else {
+                                append(part)
+                            }
+                        }
+
+                        // 2. URL PARSING (Purana logic, par ab clean text par)
+                        val finalString = this.toAnnotatedString().text // Resulting text nikal lo
+                        val matcher = Patterns.WEB_URL.matcher(finalString)
                         while (matcher.find()) {
                             val start = matcher.start()
                             val end = matcher.end()
@@ -310,7 +335,7 @@ fun MessageBubble(
                             )
                             addStringAnnotation(
                                 tag = "URL",
-                                annotation = message.text.substring(start, end),
+                                annotation = finalString.substring(start, end),
                                 start = start,
                                 end = end
                             )
