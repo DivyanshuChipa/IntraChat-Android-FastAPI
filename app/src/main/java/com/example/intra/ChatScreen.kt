@@ -47,6 +47,7 @@ fun ChatScreen(
     viewModel: ChatViewModel,
     receiverName: String,
     onAttachClick: () -> Unit,
+    onCameraClick: () -> Unit,
     onBackClick: () -> Unit,
     onStartCall: () -> Unit,
 ) {
@@ -157,7 +158,8 @@ fun ChatScreen(
             MessageInputBar(
                 viewModel = viewModel,
                 receiverName = receiverName,
-                onAttachClick = onAttachClick
+                onAttachClick = onAttachClick,
+                onCameraClick = onCameraClick
             )
         }
     ) { padding ->

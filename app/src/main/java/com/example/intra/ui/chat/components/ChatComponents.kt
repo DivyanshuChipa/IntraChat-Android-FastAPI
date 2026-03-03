@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,24 +27,40 @@ import androidx.compose.ui.unit.sp
 import com.example.intra.ChatViewModel
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageInputBar(
     viewModel: ChatViewModel,
     receiverName: String,
-    onAttachClick: () -> Unit
+    onAttachClick: () -> Unit,
+    onCameraClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
+        // Left side icons
         IconButton(onClick = onAttachClick) {
-            Icon(Icons.Filled.AttachFile, contentDescription = "Attach")
+            Icon(
+                imageVector = Icons.Filled.AttachFile,
+                contentDescription = "Attach",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
-        OutlinedTextField(
+        IconButton(onClick = onCameraClick) {
+            Icon(
+                imageVector = Icons.Filled.CameraAlt,
+                contentDescription = "Camera",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Input Field
+        TextField(
             value = viewModel.inputMessage.value,
             onValueChange = {
                 if (it != viewModel.inputMessage.value) {
@@ -51,16 +68,31 @@ fun MessageInputBar(
                     if (it.isNotEmpty()) viewModel.sendTyping(receiverName)
                 }
             },
-            placeholder = { Text("Type something...") },
-            modifier = Modifier.weight(1f),
-            singleLine = true
+            placeholder = { Text("Message") },
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 4.dp),
+            singleLine = true,
+            shape = CircleShape,
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            )
         )
 
+        // Send Button
+        val hasText = viewModel.inputMessage.value.isNotBlank()
         IconButton(
             onClick = { viewModel.sendMessage(receiverName) },
-            enabled = viewModel.inputMessage.value.isNotBlank()
+            enabled = hasText
         ) {
-            Icon(Icons.Filled.Send, contentDescription = "Send")
+            Icon(
+                imageVector = Icons.Filled.Send,
+                contentDescription = "Send",
+                tint = if (hasText) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
         }
     }
 }

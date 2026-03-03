@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,19 @@ class MainActivity : ComponentActivity() {
 
     private var currentUploadViewModel: ChatViewModel? = null
     private var currentUploadReceiver: String? = null
+
+    private var cameraTempUri: Uri? = null
+
+    private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            cameraTempUri?.let { uri ->
+                val tempFile = uriToTempFile(this, uri)
+                if (tempFile != null && currentUploadReceiver != null) {
+                    currentUploadViewModel?.uploadMultipleFiles(listOf(tempFile), currentUploadReceiver!!)
+                }
+            }
+        }
+    }
 
     private val filePickerLauncher =
         registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
@@ -316,6 +330,20 @@ class MainActivity : ComponentActivity() {
                                     currentUploadViewModel = chatViewModel
                                     currentUploadReceiver = currentChatReceiver
                                     filePickerLauncher.launch("*/*")
+                                },
+
+                                onCameraClick = {
+                                    currentUploadViewModel = chatViewModel
+                                    currentUploadReceiver = currentChatReceiver
+                                    val tempFile = File(cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                                    cameraTempUri = FileProvider.getUriForFile(
+                                        this@MainActivity,
+                                        "${applicationContext.packageName}.fileprovider",
+                                        tempFile
+                                    )
+                                    cameraTempUri?.let { uri ->
+                                        takePictureLauncher.launch(uri)
+                                    }
                                 },
 
                                 onBackClick = {
