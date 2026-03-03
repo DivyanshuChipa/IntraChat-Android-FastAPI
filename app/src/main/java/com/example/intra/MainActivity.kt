@@ -87,10 +87,6 @@ class MainActivity : ComponentActivity() {
                     val callViewModel: CallViewModel = viewModel()
                     val contactViewModel: ContactViewModel = viewModel()
 
-                    // ===============================
-                    // 🆕 STEP 5E: EVENT LISTENER
-                    // ===============================
-
                     // Jab message aaye, contact list ko refresh karo
                     LaunchedEffect(chatViewModel) {
                         chatViewModel.contactUpdateEvent.collect { updatedUser ->
@@ -128,8 +124,6 @@ class MainActivity : ComponentActivity() {
                                 callViewModel.setIncomingOffer(MyApplication.AppState.pendingCallOffer!!)
                                 MyApplication.AppState.pendingCallOffer = null
                             }
-                            // Reset state after handling to avoid re-triggering on recomposition if not intended,
-                            // though LaunchedEffect handles it via keys. Resetting is safer.
                             incomingCallData.value = null to null
                         }
                     }
@@ -156,6 +150,7 @@ class MainActivity : ComponentActivity() {
                     val isAuthenticated by authViewModel.isAuthenticated
                     var showSettings by rememberSaveable { mutableStateOf(false) }
                     var showAbout by rememberSaveable { mutableStateOf(false) }
+                    var showDrive by rememberSaveable { mutableStateOf(false) } // 📁 NAYA: Drive state
                     var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
 
                     LaunchedEffect(callViewModel.isRinging.value) {
@@ -252,6 +247,15 @@ class MainActivity : ComponentActivity() {
                                 onBack = { showSettings = false },
                                 onNavigateToAbout = { showAbout = true }
                             )
+                            
+                            // 📁 NAYA: Drive Screen Navigation
+                            showDrive -> DriveScreen(
+                                onBackClick = { showDrive = false },
+                                onUploadClick = {
+                                    // Abhi ke liye bas log kar rahe hain, baad me launcher use karenge
+                                    Log.d("DRIVE", "Upload button clicked")
+                                }
+                            )
 
                             callViewModel.callState.value.status != CallStatus.IDLE -> {
                                 CallScreen(
@@ -344,9 +348,10 @@ class MainActivity : ComponentActivity() {
                             else -> ContactListScreen(
                                 username = chatViewModel.currentUsername,
                                 typingStatuses = chatViewModel.typingStatuses,
-                                activeChatUser = chatViewModel.activeChatUser, // 🆕 STEP 6: Pass active chat
+                                activeChatUser = chatViewModel.activeChatUser,
                                 onChatClick = { currentChatReceiver = it },
-                                onSettingsClick = { showSettings = true }
+                                onSettingsClick = { showSettings = true },
+                                onDriveClick = { showDrive = true } // 📁 NAYA: Drive Navigation set
                             )
                         }
                     }

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.draw.clip
@@ -48,7 +49,8 @@ fun ContactListScreen(
     typingStatuses: Map<String, Boolean>,
     activeChatUser: String? = null,
     onChatClick: (String) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onDriveClick: () -> Unit // 📁 NAYA: Drive click handler
 ) {
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
@@ -95,6 +97,11 @@ fun ContactListScreen(
                     containerColor = topBarColor
                 ),
                 actions = {
+                    // 📁 NAYA: Intra Drive Button
+                    IconButton(onClick = onDriveClick) {
+                        Icon(Icons.Filled.Folder, contentDescription = "Intra Drive", tint = topBarTextColor)
+                    }
+                    
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Filled.Settings, null, tint = topBarTextColor)
                     }
@@ -125,7 +132,9 @@ fun ContactListScreen(
             )
 
             // Pull to Refresh & List
-            PullToRefreshBox(
+            // Note: Keeping the original PullToRefreshBox usage if available in the project's dependencies
+            // If it causes errors, we might need to check the specific implementation or imports
+            androidx.compose.material3.pulltorefresh.PullToRefreshBox(
                 isRefreshing = contactViewModel.isRefreshing,
                 onRefresh = { contactViewModel.fetchContacts() },
                 modifier = Modifier.fillMaxSize()
