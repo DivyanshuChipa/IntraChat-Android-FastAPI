@@ -23,6 +23,14 @@
         <div id="settings-panel">
             <img id="my-avatar" src="https://via.placeholder.com/80" alt="Profile">
             <input type="file" id="photo-input" style="display:none" accept="image/*" onchange="uploadPhoto()">
+
+            <div class="settings-option">
+                <label class="switch-label">
+                    <span>Show Lumir AI Assistant</span>
+                    <input type="checkbox" id="lumir-toggle" onchange="toggleLumirVisibility()">
+                </label>
+            </div>
+
             <button onclick="document.getElementById('photo-input').click()">Change Photo</button>
             <button onclick="logout()">Logout</button>
             <button class="btn-delete" onclick="deleteAccount()">Delete Account</button>
