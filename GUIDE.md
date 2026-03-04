@@ -123,4 +123,26 @@ Start_Server.bat --background
 ```
 
 ---
+
+## 🛠️ Extra Tools (Important)
+
+Intra Backend kuch advanced features ke liye system tools use karta hai. Agar script inko auto-install nahi kar pati, toh aap manually install kar sakte hain:
+
+### 1. FFmpeg (Video Compression/Conversion)
+- **Windows:** `winget install Gyan.FFmpeg` ya [ffmpeg.org](https://ffmpeg.org/download.html) se download karein.
+- **Linux:** `sudo apt install ffmpeg`
+
+### 2. Tesseract OCR (Image to Text)
+- **Windows:** `winget install UB-Mannheim.TesseractOCR` ya [GitHub](https://github.com/UB-Mannheim/tesseract/wiki) se installer download karein.
+- **Linux:** `sudo apt install tesseract-ocr tesseract-ocr-hin` (Hindi support ke liye).
+
+### 3. Ghostscript (PDF Compression)
+- **Windows:** `winget install ArtifexSoftware.Ghostscript` ya [ghostscript.com](https://ghostscript.com/releases/gsdnld.html) se download karein.
+- **Linux:** `sudo apt install ghostscript`
+
+### 4. ChromaDB (AI Memory)
+- Ye `pip install -r requirements.txt` ke waqt install ho jayega.
+- **Windows Tip:** Agar error aaye "C++ Build Tools missing", toh [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) install karein aur "Desktop development with C++" select karein.
+
+---
 Made with ❤️ for Intra users (especially beginners).

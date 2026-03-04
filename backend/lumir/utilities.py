@@ -1,9 +1,24 @@
 import os
+import sys
 import time
 import pytesseract
 from PIL import Image, ImageOps, ImageDraw, ImageFont
 from PyPDF2 import PdfMerger, PdfReader
 import subprocess
+
+# --- Tesseract Path for Windows ---
+if sys.platform == "win32":
+    # Common installation paths for Tesseract on Windows
+    possible_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Users\%USERNAME%\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
+    ]
+    for path in possible_paths:
+        expanded_path = os.path.expandvars(path)
+        if os.path.exists(expanded_path):
+            pytesseract.pytesseract.tesseract_cmd = expanded_path
+            break
 
 def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str = None):
     try:
@@ -33,8 +48,12 @@ def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str 
 
                 draw = ImageDraw.Draw(new_img)
                 try:
-                    # Ubuntu me ye font usually hota hai
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+                    if sys.platform == "win32":
+                        # Windows common fonts
+                        font = ImageFont.truetype("arial.ttf", 24)
+                    else:
+                        # Ubuntu/Linux common fonts
+                        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
                 except:
                     font = ImageFont.load_default() # Fallback
 
