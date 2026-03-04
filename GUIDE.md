@@ -1,61 +1,126 @@
-# 🚀 Intra Backend - Setup Guide (Windows & Linux)
+# 🚀 Intra Backend - Beginner Guide (Windows + Linux)
 
-Bhai, ye guide unke liye hai jo backend server setup karna chahte hain. Isse aapka **Intra App** poore ghar ya office ke Wi-Fi (LAN) par kaam karega.
-
----
-
-## 🛠️ Sabse Pehle Kya Chahiye? (Pre-requisites)
-
-1. **Python 3.x:** Agar nahi hai, toh [python.org](https://www.python.org/downloads/) se download kar lo.
-2. **Wi-Fi/LAN:** Aapka mobile aur laptop same Wi-Fi par hona chahiye.
+Ye guide bilkul beginners ke liye hai. Isme aapko step-by-step milega:
+- virtual environment banega,
+- dependencies install hongi,
+- backend start hoga,
+- Linux me systemd service install/uninstall,
+- Windows me background me chalana + band karna.
 
 ---
 
-## 💻 Windows Setup (Sabse Aasaan)
+## 📦 Required cheezein
 
-Agar aap Windows computer use kar rahe hain:
-
-1.  Root folder mein **`Start_Server.bat`** file par **Double-Click** karo.
-2.  Ek kaali screen (Terminal) khulegi. Agar libraries missing hain, toh ye apne aap install kar degi.
-3.  Screen par ek IP address dikhega (Jaise: `192.168.1.10`). **Usko note kar lo!**
+1. **Python 3.x** installed ho (Windows ya Linux).
+2. Phone + computer **same Wi-Fi/LAN** pe hon.
+3. Repo ka folder open ho: `IntraChat-Android-FastAPI`.
 
 ---
 
-## 🐧 Linux Setup (Doston ke liye)
+## 🪟 Windows (easy mode)
 
-### Option A: Manual Start (Jab tak terminal khula hai)
-1.  Root folder mein Terminal kholo.
-2.  File ko execution permission do (Sirf pehli baar):
-    ```bash
-    chmod +x start_server.sh
-    ```
-3.  Server start karo:
-    ```bash
-    ./start_server.sh
-    ```
+### 1) Normal start
+Root folder me `Start_Server.bat` par double-click karo.
 
-### Option B: Systemctl Setup (Background Service)
-Agar aap chahte hain ki PC chalu hote hi server apne aap start ho jaye:
-1.  Terminal kholo aur chalao:
-    ```bash
-    sudo ./setup_systemd.sh
-    ```
-2.  Ab aapka server hamesha background mein chalta rahega.
+Ye script automatically karegi:
+- Python check,
+- `backend/venv` create (agar nahi hai),
+- `requirements.txt` se install/update,
+- server run.
 
----
+### 2) Background me start
+CMD me root folder khol ke run karo:
+```bat
+Start_Server.bat --background
+```
+Isse server ek minimized background window me start ho jayega.
 
-## 📱 Android App Me Kaise Connect Karein?
+### 3) Stop kaise karein
+- **Task Manager** open karo,
+- `python.exe` process dhundo (jo backend run kar raha ho),
+- **End Task** karo.
 
-1.  Apne phone mein **Intra App** open karein.
-2.  Login ya Connection screen par aapse **Server IP** pucha jayega.
-3.  Wahan wahi IP daalein jo computer ki screen par dikh raha hai (e.g., `192.168.1.10`).
-4.  **Connect** par click karein aur CHAT chalu! 🎉
+> Tip: Agar doubt ho, pehle app me connection check kar lo, phir wrong process mat kill karo.
 
 ---
 
-## ⚠️ Troubleshooting
-*   **Firewall:** Agar connection nahi ho raha, toh Port 8000 allow karein.
-*   **Same Wi-Fi:** Phone aur Laptop ek hi network par hona chahiye.
+## 🐧 Linux
+
+### Option A: Manual start (terminal based)
+
+```bash
+chmod +x start_server.sh
+./start_server.sh
+```
+
+Ye bhi Windows script jaisa hi kaam karta hai:
+- venv create,
+- dependencies install/update,
+- backend run.
+
+### Option B: systemd service (auto-start on boot)
+
+- `run_server.py` default me auto-reload on rakhta hai (dev easy ho jata hai).
+- systemd service ke liye script automatically `--no-reload` use karti hai (stable run ke liye).
+
+#### Install service
+```bash
+chmod +x setup_systemd.sh
+sudo ./setup_systemd.sh install
+```
+
+Useful commands:
+```bash
+sudo systemctl status intra_backend.service
+sudo systemctl restart intra_backend.service
+sudo journalctl -u intra_backend.service -f
+```
+
+#### Uninstall service (important)
+Agar service hatani ho:
+```bash
+sudo ./setup_systemd.sh uninstall
+```
+Ye command:
+- service stop karegi,
+- disable karegi,
+- service file remove karegi,
+- daemon reload karegi.
 
 ---
-**Made with ❤️ for Intra Users**
+
+## 📱 Android App me IP kaise daalein
+
+1. Backend run hone ke baad terminal me IP dikhega (example: `192.168.1.10`).
+2. Intra Android app open karo.
+3. Server IP field me woh IP enter karo.
+4. Connect karo.
+
+---
+
+## 🛠 Troubleshooting (common problems)
+
+- **Connection fail:** Firewall me port `8000` allow karo.
+- **Server nahi chal raha:** script dubara run karo aur errors check karo.
+- **pip issue:** internet on rakho, fir script rerun karo.
+- **Wrong IP:** ensure phone/computer same Wi-Fi pe ho.
+
+---
+
+## ✅ Quick command cheat sheet
+
+### Linux
+```bash
+./start_server.sh
+sudo ./setup_systemd.sh install
+sudo ./setup_systemd.sh uninstall
+```
+
+### Windows
+```bat
+Start_Server.bat
+Start_Server.bat --background
+```
+
+---
+Made with ❤️ for Intra users (especially beginners).

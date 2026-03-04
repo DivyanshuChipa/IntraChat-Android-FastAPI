@@ -1,36 +1,46 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# ANSI color codes
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${GREEN}=======================================${NC}"
-echo -e "${GREEN}   INTRA - BACKEND SERVER (LINUX)      ${NC}"
-echo -e "${GREEN}=======================================${NC}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$SCRIPT_DIR/backend"
+VENV_DIR="$BACKEND_DIR/venv"
 
-# Go to backend folder
-cd backend || { echo -e "${RED}❌ Error: backend folder not found!${NC}"; exit 1; }
+print_header() {
+  echo -e "${GREEN}=======================================${NC}"
+  echo -e "${GREEN}   INTRA - BACKEND SERVER (LINUX)      ${NC}"
+  echo -e "${GREEN}=======================================${NC}"
+}
 
-# 1. Check Python
-if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}❌ Error: Python3 is not installed.${NC}"
-    exit 1
+print_header
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo -e "${RED}❌ Error: Python3 is not installed.${NC}"
+  exit 1
 fi
 
-# 2. Setup Virtual Environment (venv)
-if [ ! -d "venv" ]; then
-    echo -e "${CYAN}📦 Creating Virtual Environment...${NC}"
-    python3 -m venv venv
+if [ ! -d "$BACKEND_DIR" ]; then
+  echo -e "${RED}❌ Error: backend folder not found at: $BACKEND_DIR${NC}"
+  exit 1
 fi
 
-# 3. Activate venv and Install Dependencies
-echo -e "${CYAN}🔄 Syncing dependencies...${NC}"
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+cd "$BACKEND_DIR"
 
-# 4. Run Server
+if [ ! -d "$VENV_DIR" ]; then
+  echo -e "${CYAN}📦 Creating virtual environment...${NC}"
+  python3 -m venv "$VENV_DIR"
+fi
+
+# shellcheck disable=SC1091
+source "$VENV_DIR/bin/activate"
+
+echo -e "${CYAN}🔄 Installing/updating dependencies...${NC}"
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+
 echo -e "${GREEN}🚀 Starting Intra Backend...${NC}"
-python3 run_server.py
+python run_server.py "$@"
