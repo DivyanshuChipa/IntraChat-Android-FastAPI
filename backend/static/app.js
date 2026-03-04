@@ -269,7 +269,7 @@ async function loadUsers() {
     // Family Group
     addUserToList({
       username: "Family Group",
-      profile_photo: null
+      profile_photo: "/assets/family_group.svg"
     });
 
     // Lumir AI (if enabled)
@@ -305,9 +305,11 @@ function addUserToList(user) {
 
   let imgUrl = user.profile_photo || "https://via.placeholder.com/40";
 
-  // 🔥 LUMIR AVATAR OVERRIDE
+  // 🔥 AVATAR OVERRIDES
   if (user.username === "Lumir") {
       imgUrl = "/assets/lumir5.svg";
+  } else if (user.username === "Family Group") {
+      imgUrl = "/assets/family_group.svg";
   }
 
   userAvatars[user.username] = imgUrl;
