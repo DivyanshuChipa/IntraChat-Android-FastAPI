@@ -54,9 +54,10 @@ chmod +x start_server.sh
 ```
 
 These scripts automatically:
-- create `backend/venv` if missing,
-- install/update dependencies from `backend/requirements.txt`,
-- start `backend/run_server.py`.
+- Check for and install external tools (**FFmpeg, Tesseract OCR, Ghostscript**)
+- Create `backend/venv` if missing
+- Install/update dependencies from `backend/requirements.txt`
+- Start `backend/run_server.py`
 
 ### 2) Linux systemd service (optional)
 
