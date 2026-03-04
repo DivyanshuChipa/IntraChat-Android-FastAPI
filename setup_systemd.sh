@@ -51,7 +51,7 @@ After=network.target
 Type=simple
 User=$RUN_USER
 WorkingDirectory=$BACKEND_DIR
-ExecStart=$BACKEND_DIR/venv/bin/python $BACKEND_DIR/run_server.py --host 0.0.0.0 --port 8000
+ExecStart=$BACKEND_DIR/venv/bin/python $BACKEND_DIR/run_server.py --host 0.0.0.0 --port 8000 --no-reload
 Restart=always
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1

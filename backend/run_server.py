@@ -18,7 +18,7 @@ def get_ip() -> str:
 
 
 def ensure_dependencies() -> None:
-    """Ensure runtime dependencies exist, install from requirements if needed."""
+    """Install requirements only when uvicorn is missing."""
     try:
         import uvicorn  # noqa: F401
     except ImportError:
@@ -33,8 +33,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
     parser.add_argument(
         "--reload",
+        dest="reload",
         action="store_true",
-        help="Enable auto-reload for development (do not use in production service)",
+        default=True,
+        help="Enable auto-reload (default: enabled)",
+    )
+    parser.add_argument(
+        "--no-reload",
+        dest="reload",
+        action="store_false",
+        help="Disable auto-reload (recommended for systemd/production)",
     )
     return parser.parse_args()
 

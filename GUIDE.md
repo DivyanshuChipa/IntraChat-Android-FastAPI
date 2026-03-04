@@ -60,6 +60,9 @@ Ye bhi Windows script jaisa hi kaam karta hai:
 
 ### Option B: systemd service (auto-start on boot)
 
+- `run_server.py` default me auto-reload on rakhta hai (dev easy ho jata hai).
+- systemd service ke liye script automatically `--no-reload` use karti hai (stable run ke liye).
+
 #### Install service
 ```bash
 chmod +x setup_systemd.sh
