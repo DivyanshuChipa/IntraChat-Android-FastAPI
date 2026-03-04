@@ -37,6 +37,46 @@ if errorlevel 1 (
 echo Python detected.
 echo.
 
+REM ===== External Tools Check (FFmpeg, Tesseract, Ghostscript) =====
+echo [1.5/5] Checking External Tools...
+
+winget --version >nul 2>&1
+if errorlevel 1 (
+    echo [!] winget not found. Please install FFmpeg, Tesseract, and Ghostscript manually.
+    goto :venv_start
+)
+
+where ffmpeg >nul 2>&1
+if errorlevel 1 (
+    echo [!] FFmpeg missing. Installing via winget...
+    winget install --id=Gyan.FFmpeg -e --silent --accept-source-agreements --accept-package-agreements
+    if errorlevel 0 echo [OK] FFmpeg installed. Please restart script if it fails later.
+) else (
+    echo [+] FFmpeg detected.
+)
+
+where tesseract >nul 2>&1
+if errorlevel 1 (
+    echo [!] Tesseract missing. Installing via winget...
+    winget install --id=UB-Mannheim.TesseractOCR -e --silent --accept-source-agreements --accept-package-agreements
+    if errorlevel 0 echo [OK] Tesseract installed.
+) else (
+    echo [+] Tesseract detected.
+)
+
+where gswin64c >nul 2>&1
+if errorlevel 1 (
+    echo [!] Ghostscript missing. Installing via winget...
+    winget install --id=ArtifexSoftware.Ghostscript -e --silent --accept-source-agreements --accept-package-agreements
+    if errorlevel 0 echo [OK] Ghostscript installed.
+) else (
+    echo [+] Ghostscript detected.
+)
+
+:venv_start
+
+echo.
+
 REM ===== Create virtual environment =====
 if not exist venv (
  echo [2/5] Creating virtual environment...

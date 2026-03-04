@@ -23,6 +23,26 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
+# Check for external tools
+MISSING_TOOLS=()
+for tool in ffmpeg tesseract gs; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    MISSING_TOOLS+=("$tool")
+  fi
+done
+
+if [ ${#MISSING_TOOLS[@]} -ne 0 ]; then
+  echo -e "${RED}⚠️  Missing system tools: ${MISSING_TOOLS[*]}${NC}"
+  echo -e "${CYAN}You can install them using:${NC}"
+  echo -e "sudo apt update && sudo apt install -y ffmpeg tesseract-ocr tesseract-ocr-hin ghostscript"
+  echo ""
+  read -p "Do you want to try installing them now? (y/n) " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    sudo apt update && sudo apt install -y ffmpeg tesseract-ocr tesseract-ocr-hin ghostscript
+  fi
+fi
+
 if [ ! -d "$BACKEND_DIR" ]; then
   echo -e "${RED}❌ Error: backend folder not found at: $BACKEND_DIR${NC}"
   exit 1
