@@ -1,5 +1,10 @@
 package com.example.intra.ui.chat.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -11,13 +16,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
@@ -32,35 +38,57 @@ fun MessageInputBar(
     receiverName: String,
     onAttachClick: () -> Unit
 ) {
+    val inputValue = viewModel.inputMessage.value
+    val hasText = inputValue.isNotBlank()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        IconButton(onClick = onAttachClick) {
-            Icon(Icons.Filled.AttachFile, contentDescription = "Attach")
+        AnimatedVisibility(
+            visible = !hasText,
+            enter = fadeIn(tween(220)) + slideInHorizontally(
+                animationSpec = tween(220),
+                initialOffsetX = { -it / 2 }
+            ),
+            exit = fadeOut(tween(180)) + slideOutHorizontally(
+                animationSpec = tween(180),
+                targetOffsetX = { -it / 2 }
+            )
+        ) {
+            IconButton(onClick = onAttachClick) {
+                Icon(Icons.Filled.AttachFile, contentDescription = "Attach")
+            }
         }
 
         OutlinedTextField(
-            value = viewModel.inputMessage.value,
+            value = inputValue,
             onValueChange = {
-                if (it != viewModel.inputMessage.value) {
+                if (it != inputValue) {
                     viewModel.inputMessage.value = it
                     if (it.isNotEmpty()) viewModel.sendTyping(receiverName)
                 }
             },
             placeholder = { Text("Type something...") },
-            modifier = Modifier.weight(1f),
-            singleLine = true
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(24.dp)),
+            singleLine = true,
+            shape = RoundedCornerShape(24.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+            )
         )
 
         IconButton(
             onClick = { viewModel.sendMessage(receiverName) },
-            enabled = viewModel.inputMessage.value.isNotBlank()
+            enabled = hasText
         ) {
-            Icon(Icons.Filled.Send, contentDescription = "Send")
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
         }
     }
 }
