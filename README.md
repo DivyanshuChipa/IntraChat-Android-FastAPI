@@ -22,193 +22,139 @@
 
 ## 📱 Overview
 
-**Intra** is a modern LAN-based messaging application designed for local network communication without internet dependency. It features a robust Android app, a web client, and a dedicated desktop administration tool.
+**Intra** is a modern LAN-based messaging application designed for local network communication without internet dependency. It includes:
 
-### ✨ Key Features
-
-- 🔐 **Secure Authentication** - JWT-based login/registration system
-- 💬 **Real-time Messaging** - WebSocket-powered instant communication
-- 📁 **File Sharing** - Share documents, images, and media files
-- 🤖 **Lumir AI Assistant** - Integrated AI for chat and utility tasks (Passport Layouts)
-- 👥 **Group Chat** - Broadcast messages to all users via "Family Group"
-- ⌨️ **Typing Indicators** - See when others are typing
-- 💾 **Offline Messages** - Receive messages when you reconnect
-- 🎨 **Modern UI** - Beautiful Material Design 3 interface (Android) & Clean Web UI
-- 🌙 **Dark/Light Mode** - Theme switching on all platforms
-- 📱 **Multi-Platform** - Android App + Web Client + Desktop Admin Tool
-- 🖼️ **Advanced Media** - Custom Video Player (Gestures) & Image Viewer (Zoom)
-- 🔗 **Share Intent** - Share files/text directly from other Android apps to Intra
+- Android app (Jetpack Compose)
+- FastAPI backend
+- Web client (`backend/static`)
+- Desktop admin utility
 
 ---
 
-## 🏗️ Architecture
+## 🚀 Quick Start (Current Project Workflow)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Intra Ecosystem                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │   Android    │    │  Web Client  │    │ Desktop Admin│   │
-│  │     App      │◄───┤  (Browser)   │◄───┤     Tool     │   │
-│  │  (Kotlin)    │    │ (HTML/CSS/JS)│    │  (PySide6)   │   │
-│  └──────────────┘    └──────────────┘    └──────────────┘   │
-│         │                    │                    │         │
-│         └────────────────────┼────────────────────┘         │
-│                              │                              │
-│                         WebSocket/HTTP                      │
-│                              │                              │
-│                    ┌─────────▼─────────┐                    │
-│                    │   FastAPI Server  │                    │
-│                    │     (Python)      │                    │
-│                    └─────────┬─────────┘                    │
-│                              │                              │
-│                    ┌─────────▼─────────┐                    │
-│                    │   SQLite DBs      │                    │
-│                    │ • Users           │                    │
-│                    │ • Messages        │                    │
-│                    │ • Files/Photos    │                    │
-│                    └───────────────────┘                    │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+### 1) Backend start (recommended scripts)
+
+> Run these from repo root (`IntraChat-Android-FastAPI`).
+
+#### Windows
+```bat
+Start_Server.bat
 ```
 
----
+Background mode:
+```bat
+Start_Server.bat --background
+```
 
-## 🚀 Quick Start & Installation
+#### Linux/macOS shell
+```bash
+chmod +x start_server.sh
+./start_server.sh
+```
 
-### 1️⃣ Server Setup (Required)
+These scripts automatically:
+- create `backend/venv` if missing,
+- install/update dependencies from `backend/requirements.txt`,
+- start `backend/run_server.py`.
 
-The backend server is written in Python and must run on a machine within your LAN.
+### 2) Linux systemd service (optional)
 
-**Requirements:**
-- Python 3.8 or higher
-- pip (Python package manager)
+Install and auto-start on boot:
+```bash
+chmod +x setup_systemd.sh
+sudo ./setup_systemd.sh install
+```
 
-**Installation:**
+Uninstall service:
+```bash
+sudo ./setup_systemd.sh uninstall
+```
+
+Useful checks:
+```bash
+sudo systemctl status intra_backend.service
+sudo journalctl -u intra_backend.service -f
+```
+
+### 3) Manual backend run (without helper scripts)
 
 ```bash
 cd backend
-pip install -r requirements.txt
+python3 -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m pip install -r requirements.txt
+python run_server.py
 ```
 
-**Start Server:**
+`run_server.py` supports:
+- `--host`
+- `--port`
+- `--reload` / `--no-reload`
 
-```bash
-# Development Mode
-uvicorn server:app --host 0.0.0.0 --port 8000 --reload
-```
+### 4) Connect clients
 
-### 2️⃣ Android App
-
-**Download the latest APK from Releases:**
-[![Download APK](https://img.shields.io/badge/Download-APK-3DDC84?style=for-the-badge&logo=android)](https://github.com/DivyanshuChipa/IntraChat-Android-FastAPI/releases)
-
-**Features:**
-- **Share Intent:** Share files from Gallery/File Manager directly to Intra.
-- **Custom Video Player:** Brightness/Volume gestures, Resize modes.
-- **Image Viewer:** Pinch-to-zoom, Pan, Swipe-to-dismiss.
-- **Background Service:** Reliable message delivery.
-
-### 3️⃣ Desktop Admin Panel (Beta)
-
-A powerful desktop tool to manage your Intra server. Available as a standalone executable (no Python required for end users).
-
-**Download:**
-- Check the **Releases** section for the `IntraAdmin.exe` (Windows) or binary.
-
-**Features:**
-- **User Management:** Approve/Block users, Reset Passwords.
-- **AI Configuration:** Enable/Disable Lumir, Set Ollama URL & Model.
-- **System Settings:** Toggle "Require Admin Approval" for new users.
-- **Database Cleanup:** Remove old messages.
+- Android and server machine should be on same Wi-Fi/LAN.
+- Start backend and note displayed local IP.
+- In app/client, set server as `http://<SERVER_IP>:8000`.
 
 ---
 
-## 🤖 Lumir AI Assistant
+## ✨ Features
 
-**Lumir** is Intra's built-in AI assistant, powered by local LLMs (Ollama) and custom logic.
-
-**Capabilities:**
-- **Chat:** Natural language conversation (requires Ollama running).
-- **Passport Photo Layout:**
-    - Send an image to Lumir.
-    - Reply `###passport###` for a 6-on-A6 layout.
-    - Reply `###passport9###` for a 9-on-A6 layout.
-    - Add date: `###passportdate<dd/mm/yyyy>###`.
+- 🔐 JWT Authentication
+- 💬 Real-time messaging (WebSocket)
+- 📁 File/media sharing
+- 🤖 Lumir AI assistant integration
+- 👥 Group chat support
+- ⌨️ Typing indicators
+- 💾 Offline message handling
+- 🌙 Dark/Light mode
+- 📱 Android + Web + Desktop tooling
 
 ---
 
 ## 🌐 Web Client
 
-Accessible at `http://YOUR_SERVER_IP:8000`
+Available from backend static host:
 
-- **Native Video Player:** Now supports playback without external dependencies.
-- **Cross-Platform:** Works on any modern browser.
+- `http://<SERVER_IP>:8000`
 
 ---
 
 ## 🗂️ Project Structure
 
 ```
-intra/
-├── backend/                    # Backend (FastAPI)
-│   ├── server.py              # Main application
-│   ├── lumir/                 # AI Assistant Logic
-│   │   ├── engine.py          # Command processing
-│   │   └── ai_engine.py       # Ollama Integration
-│   ├── chat.py                # WebSocket chat logic
-│   ├── static/                # Web Client (HTML/JS/CSS)
-│   └── ...
+IntraChat-Android-FastAPI/
+├── backend/                    # FastAPI backend + web static files
+│   ├── server.py              # Main ASGI app
+│   ├── run_server.py          # Starter script (IP print + uvicorn launch)
+│   ├── requirements.txt
+│   ├── static/                # Web client
+│   └── lumir/                 # AI logic
 │
-├── intra_admin/                # Desktop Admin Tool
-│   ├── admin.py               # PySide6 GUI Application
-│   └── ...
-│
-└── app/                        # Android App (Kotlin + Jetpack Compose)
-    ├── src/main/java/com/example/intra/
-    │   ├── MainActivity.kt    # Main Entry & Share Intent Handling
-    │   ├── VideoPlayer.kt     # Custom Video Player
-    │   ├── ImageViewer.kt     # Custom Image Viewer
-    │   └── ...
+├── app/                        # Android app source
+├── Start_Server.bat            # Windows starter
+├── start_server.sh             # Linux starter
+├── setup_systemd.sh            # Linux systemd installer/uninstaller
+└── GUIDE.md                    # Beginner-friendly setup guide
 ```
-
----
-
-## 🗺️ Roadmap
-
-### Upcoming Features
-- [ ] 📄 **OCR & PDF Tools:** Extract text from images, merge PDFs via Lumir.
-- [ ] 🏢 **Office Utilities:** Integration of essential office tools.
-- [ ] 🧠 **Context-Aware AI:** Lumir to understand chat history for better responses.
-- [ ] 📞 **Video Calling:** (Planned) WebRTC-based video calls.
-- [ ] 🔍 **Message Search:** Full-text search for message history.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
-
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a branch (`git checkout -b feature/AmazingFeature`)
+3. Commit (`git commit -m 'Add some AmazingFeature'`)
+4. Push (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 👨‍💻 Author
-
-**Divyanshu Chipa**
-- GitHub: [@DivyanshuChipa](https://github.com/DivyanshuChipa)
-- Email: Divyanshu6062015@gmail.com
+MIT License. See [LICENSE](LICENSE).
 
 ---
 
