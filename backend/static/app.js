@@ -131,9 +131,24 @@ if (window.location.pathname.includes("chat.html")) {
     if (profileEl) profileEl.innerText = myUsername;
     initTheme();
     initSidebar();
+    initSettings();
     loadUsers();
     connectWS();
   }
+}
+
+function initSettings() {
+    const lumirVisible = localStorage.getItem("lumirVisible") !== "false"; // Default true
+    const lumirToggle = document.getElementById("lumir-toggle");
+    if (lumirToggle) {
+        lumirToggle.checked = lumirVisible;
+    }
+}
+
+function toggleLumirVisibility() {
+    const lumirToggle = document.getElementById("lumir-toggle");
+    localStorage.setItem("lumirVisible", lumirToggle.checked);
+    loadUsers(); // Refresh list
 }
 
 function initTheme() {
@@ -256,6 +271,15 @@ async function loadUsers() {
       username: "Family Group",
       profile_photo: null
     });
+
+    // Lumir AI (if enabled)
+    const lumirVisible = localStorage.getItem("lumirVisible") !== "false";
+    if (lumirVisible) {
+        addUserToList({
+            username: "Lumir",
+            profile_photo: "/assets/lumir5.svg"
+        });
+    }
 
     data.users.forEach(user => {
       if (user.username !== myUsername) {
@@ -680,11 +704,32 @@ function handleOptionClick(option) {
 
     let command = option; // Default: send the button text
 
-    if (option === "Compress Image") {
+    // Mapping of interactive options to internal commands
+    const commandMap = {
+        "🛂 Passport A6 (6 Photos)": "###passport###",
+        "🛂 Passport A6 (9 Photos)": "###passport9###",
+        "📄 Extract Text (OCR)": "###ocr###",
+        "🗜️ Compress Image": "PROMPT_SIZE",
+        "📄 Convert to PDF": "###topdf###",
+        "🧠 Analyze Image (AI)": "###analyzeimage###",
+        "📄 Extract PDF Text": "###pdf2text###",
+        "🔗 Merge PDFs": "###mergepdfs###",
+        "🗜️ Compress PDF": "###compresspdf###",
+        "🎵 Extract Audio (MP3)": "###extractaudio###",
+        "🗜️ Compress Video": "###compressvideo:28:mp4###",
+        "🔄 Rotate Video": "###rotatevideo:90###",
+        "🎞️ Convert to MP4": "###convertmp4###"
+    };
+
+    if (commandMap[option]) {
+        command = commandMap[option];
+    }
+
+    if (command === "PROMPT_SIZE" || option === "Compress Image") {
         const size = prompt("Enter target size in KB (e.g. 500):");
         if (!size) return;
         command = `###compress<${size}>###`;
-    } else if (option === "Passport + Date") {
+    } else if (option === "Passport + Date" || option === "📅 Passport + Date") {
         // Create hidden date input
         const dateInput = document.createElement("input");
         dateInput.type = "date";

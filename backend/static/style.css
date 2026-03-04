@@ -173,6 +173,31 @@ body:not(.auth-page) {
 #settings-panel img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid var(--primary-color); object-fit: cover; }
 #settings-panel button { width: 100%; margin-top: 5px; font-size: 14px; border-radius: 4px; background: var(--primary-color); color: white; border: none; padding: 8px; cursor: pointer; }
 #settings-panel .btn-delete { background: #ff4d4d; }
+
+.settings-option {
+    width: 100%;
+    margin: 10px 0;
+    padding: 10px;
+    background: var(--bg-page);
+    border-radius: 8px;
+}
+
+.switch-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.switch-label input {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-color);
+}
+
 #user-list { flex: 1; overflow-y: auto; }
 .user-item { padding: 12px 15px; border-bottom: 1px solid var(--border-color); cursor: pointer; display: flex; align-items: center; color: var(--text-primary); white-space: nowrap; transition: background 0.2s ease; margin: 2px 8px; border-radius: 8px; border-bottom: none; }
 #sidebar.minimized .user-item span { display: none; }
