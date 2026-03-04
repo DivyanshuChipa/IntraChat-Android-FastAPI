@@ -1,4 +1,5 @@
 import sqlite3
+import json
 from datetime import datetime, timezone, timedelta
 
 DB_NAME = "chat_messages.db"
@@ -19,9 +20,15 @@ def init_msg_db():
         msg_type TEXT NOT NULL,
         file_url TEXT,
         file_name TEXT,
+        options TEXT,
         ts INTEGER NOT NULL
     )
     """)
+
+    try:
+        cur.execute("ALTER TABLE messages ADD COLUMN options TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS delivery_status (
@@ -37,17 +44,19 @@ def init_msg_db():
     conn.commit()
     conn.close()
 
-def save_message(text, sender, receiver, msg_type="text", file_url=None, file_name=None):
+def save_message(text, sender, receiver, msg_type="text", file_url=None, file_name=None, options=None):
     # ✅ IST timestamp
     ts = int(datetime.now(IST).timestamp() * 1000)
     
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
 
+    options_json = json.dumps(options) if options else None
+
     cur.execute("""
-    INSERT INTO messages (text, sender, receiver, msg_type, file_url, file_name, ts)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (text, sender, receiver, msg_type, file_url, file_name, ts))
+    INSERT INTO messages (text, sender, receiver, msg_type, file_url, file_name, options, ts)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (text, sender, receiver, msg_type, file_url, file_name, options_json, ts))
 
     msg_id = cur.lastrowid
     conn.commit()
@@ -132,6 +141,7 @@ def get_recent_messages(limit: int = 200):
             "type": row["msg_type"],
             "fileUrl": row["file_url"],
             "fileName": row["file_name"],
+            "options": json.loads(row["options"]) if row["options"] else None,
             "timestamp": row["ts"]
         }
         for row in rows
