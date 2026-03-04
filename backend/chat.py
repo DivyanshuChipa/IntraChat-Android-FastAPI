@@ -36,7 +36,8 @@ async def handle_lumir_processing(text_content, file_url, file_name, sender):
             receiver=sender,
             msg_type=bot_res.get("type", "text"),
             file_url=bot_res.get("file_url"),
-            file_name=bot_res.get("file_name")
+            file_name=bot_res.get("file_name"),
+            options=bot_res.get("options")
         )
 
         # 3. Create Delivery Entry (Mark as 0 pending initially)
@@ -132,6 +133,11 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 "url": msg.get("file_url"),
                 "filename": msg.get("file_name")
             }
+            if msg.get("options"):
+                try:
+                    offline_data["options"] = json.loads(msg["options"])
+                except Exception:
+                    pass
             await ws.send_text(json.dumps(offline_data))
             
             # Mark as delivered

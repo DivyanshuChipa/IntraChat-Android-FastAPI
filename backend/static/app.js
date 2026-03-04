@@ -419,6 +419,7 @@ function connectWS() {
     switch (msg.type) {
 
       case "text":
+      case "utility_options":
         if (isRelevant) {
           displayMessage(
             msg.sender,
