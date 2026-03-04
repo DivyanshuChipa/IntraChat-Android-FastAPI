@@ -1,8 +1,15 @@
 package com.example.intra.ui.chat.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -12,13 +19,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -32,35 +42,85 @@ fun MessageInputBar(
     receiverName: String,
     onAttachClick: () -> Unit
 ) {
+    val inputValue = viewModel.inputMessage.value
+    val hasText = inputValue.isNotBlank()
+    var isFocused by remember { mutableStateOf(false) }
+
+    val sendScale = remember { Animatable(1f) }
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.24f else 0f,
+        animationSpec = tween(250),
+        label = "inputGlowAlpha"
+    )
+
+    LaunchedEffect(hasText) {
+        if (hasText) {
+            sendScale.snapTo(0.88f)
+            sendScale.animateTo(1.12f, animationSpec = tween(120))
+            sendScale.animateTo(1f, animationSpec = tween(140))
+        } else {
+            sendScale.animateTo(1f, animationSpec = tween(120))
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        IconButton(onClick = onAttachClick) {
-            Icon(Icons.Filled.AttachFile, contentDescription = "Attach")
+        AnimatedVisibility(
+            visible = !hasText,
+            enter = fadeIn(tween(220)) + slideInHorizontally(
+                animationSpec = tween(220),
+                initialOffsetX = { -it / 2 }
+            ),
+            exit = fadeOut(tween(180)) + slideOutHorizontally(
+                animationSpec = tween(180),
+                targetOffsetX = { -it / 2 }
+            )
+        ) {
+            IconButton(onClick = onAttachClick) {
+                Icon(Icons.Filled.AttachFile, contentDescription = "Attach")
+            }
         }
 
-        OutlinedTextField(
-            value = viewModel.inputMessage.value,
-            onValueChange = {
-                if (it != viewModel.inputMessage.value) {
-                    viewModel.inputMessage.value = it
-                    if (it.isNotEmpty()) viewModel.sendTyping(receiverName)
-                }
-            },
-            placeholder = { Text("Type something...") },
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(26.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha))
+                .padding(2.dp)
+        ) {
+            OutlinedTextField(
+                value = inputValue,
+                onValueChange = {
+                    if (it != inputValue) {
+                        viewModel.inputMessage.value = it
+                        if (it.isNotEmpty()) viewModel.sendTyping(receiverName)
+                    }
+                },
+                placeholder = { Text("Type something...") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isFocused = it.isFocused }
+                    .clip(RoundedCornerShape(24.dp)),
+                singleLine = true,
+                shape = RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+        }
 
         IconButton(
             onClick = { viewModel.sendMessage(receiverName) },
-            enabled = viewModel.inputMessage.value.isNotBlank()
+            enabled = hasText,
+            modifier = Modifier.scale(sendScale.value)
         ) {
-            Icon(Icons.Filled.Send, contentDescription = "Send")
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
         }
     }
 }
@@ -127,6 +187,6 @@ fun UniqueLoader(modifier: Modifier = Modifier) {
         modifier = modifier
             .size(40.dp)
             .rotate(rotation)
-            .border(3.dp, Color.White.copy(alpha=0.8f), RoundedCornerShape(4.dp))
+            .border(3.dp, Color.White.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
     )
 }
