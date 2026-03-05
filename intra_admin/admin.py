@@ -30,10 +30,10 @@ QPushButton#TabBtn {
     border-radius: 8px;
     border: none;
 }
-QPushButton#TabBtn:hover { background-color: #313244; color: #fff; }
+QPushButton#TabBtn:hover { background-color: #313244; color: #ffffff; }
 QPushButton#TabBtn[active="true"] {
-    background-color: #cba6f7;
-    color: #1e1e2e;
+    background-color: #89b4fa;
+    color: #ffffff;
     font-weight: bold;
 }
 
@@ -248,6 +248,12 @@ class AdminWindow(QMainWindow):
         lbl = QLabel("User Management")
         lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
 
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Search users...")
+        self.search_input.setFixedWidth(250)
+        self.search_input.setFixedHeight(35)
+        self.search_input.textChanged.connect(self.filter_users)
+
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.setObjectName("RefreshBtn")
         refresh_btn.setFixedSize(100, 35)
@@ -256,6 +262,7 @@ class AdminWindow(QMainWindow):
 
         header.addWidget(lbl)
         header.addStretch()
+        header.addWidget(self.search_input)
         header.addWidget(refresh_btn)
 
         # Table
@@ -271,6 +278,16 @@ class AdminWindow(QMainWindow):
         layout.addLayout(header)
         layout.addWidget(self.table)
         return page
+
+    def filter_users(self, text):
+        search_text = text.lower()
+        for row in range(self.table.rowCount()):
+            username_item = self.table.item(row, 1)
+            if username_item:
+                if search_text in username_item.text().lower():
+                    self.table.setRowHidden(row, False)
+                else:
+                    self.table.setRowHidden(row, True)
 
     def load_users(self):
         try:
@@ -323,27 +340,39 @@ class AdminWindow(QMainWindow):
                 action_widget = QWidget()
                 action_layout = QHBoxLayout(action_widget)
                 action_layout.setContentsMargins(5, 5, 5, 5)
+                action_layout.setSpacing(5)
 
                 if not is_approved:
-                    btn_approve = QPushButton("Approve")
+                    btn_approve = QPushButton("✅")
+                    btn_approve.setToolTip("Approve User")
+                    btn_approve.setFixedSize(35, 35)
                     btn_approve.setObjectName("ApproveBtn")
                     btn_approve.setProperty("class", "actionBtn")
                     btn_approve.clicked.connect(lambda _, u=username: self.approve_user(u))
                     action_layout.addWidget(btn_approve)
 
-                btn_reset = QPushButton("Reset Pass")
+                btn_reset = QPushButton("🔑")
+                btn_reset.setToolTip("Reset Password")
+                btn_reset.setFixedSize(35, 35)
                 btn_reset.setObjectName("ResetBtn")
                 btn_reset.setProperty("class", "actionBtn")
                 btn_reset.clicked.connect(lambda _, u=username: self.reset_pass(u))
 
-                btn_del = QPushButton("Delete")
+                btn_del = QPushButton("🗑️")
+                btn_del.setToolTip("Delete User")
+                btn_del.setFixedSize(35, 35)
                 btn_del.setObjectName("DeleteBtn")
                 btn_del.setProperty("class", "actionBtn")
                 btn_del.clicked.connect(lambda _, u=username: self.delete_user(u))
 
                 action_layout.addWidget(btn_reset)
                 action_layout.addWidget(btn_del)
+                action_layout.addStretch()
                 self.table.setCellWidget(row, 4, action_widget)
+
+            # Re-apply filter if a search term exists
+            if hasattr(self, 'search_input') and self.search_input.text():
+                self.filter_users(self.search_input.text())
 
         except Exception as e:
             print(e)
@@ -636,49 +665,83 @@ class AdminWindow(QMainWindow):
         c_layout.setContentsMargins(30, 30, 30, 30)
         c_layout.setSpacing(15)
 
-        title = QLabel("Cleanup Database")
+        title = QLabel("Cleanup Database & Media Files")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #cdd6f4;")
 
-        desc = QLabel("Remove old messages from the database to save space. This action is irreversible.")
-        desc.setStyleSheet("color: #9399b2; font-size: 14px;")
+        desc = QLabel("Remove old messages from the database and old media files from the server storage. This action is irreversible.")
+        desc.setStyleSheet("color: #9399b2; font-size: 14px; line-height: 1.5;")
+        desc.setWordWrap(True)
 
         self.days_input = QLineEdit()
         self.days_input.setPlaceholderText("Number of days (e.g., 30)")
         self.days_input.setMinimumHeight(45)
 
-        btn = QPushButton("🗑️ DELETE MESSAGES")
-        btn.setObjectName("DeleteBtn")
-        btn.setMinimumHeight(50)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("""
-            QPushButton#DeleteBtn {
-                background-color: #f38ba8;
-                color: #11111b;
-                font-weight: bold;
-                border-radius: 8px;
-            }
-            QPushButton#DeleteBtn:hover {
-                background-color: #eba0ac;
-            }
+        # -- DB Cleanup Button --
+        btn_db = QPushButton("🗑️ DELETE DB MESSAGES")
+        btn_db.setMinimumHeight(50)
+        btn_db.setCursor(Qt.PointingHandCursor)
+        btn_db.setStyleSheet("""
+            QPushButton { background-color: #f38ba8; color: #11111b; font-weight: bold; border-radius: 8px; }
+            QPushButton:hover { background-color: #eba0ac; }
         """)
-        btn.clicked.connect(self.run_cleanup)
+        btn_db.clicked.connect(self.run_cleanup_db)
+
+        # -- File Cleanup Button --
+        btn_files = QPushButton("📁 DELETE OLD FILES")
+        btn_files.setMinimumHeight(50)
+        btn_files.setCursor(Qt.PointingHandCursor)
+        btn_files.setStyleSheet("""
+            QPushButton { background-color: #fab387; color: #11111b; font-weight: bold; border-radius: 8px; }
+            QPushButton:hover { background-color: #f9cb8f; }
+        """)
+        btn_files.clicked.connect(self.run_cleanup_files)
+
+        # Dono buttons ko ek line mein set karne ke liye
+        btn_layout = QHBoxLayout()
+        btn_layout.addWidget(btn_db)
+        btn_layout.addWidget(btn_files)
 
         c_layout.addWidget(title)
         c_layout.addWidget(desc)
         c_layout.addWidget(self.days_input)
         c_layout.addSpacing(10)
-        c_layout.addWidget(btn)
+        c_layout.addLayout(btn_layout)
 
         layout.addWidget(lbl)
         layout.addWidget(card)
         layout.addStretch()
         return page
 
-    def run_cleanup(self):
+    # Pehle wale run_cleanup ko isse replace karein
+    def run_cleanup_db(self):
         d = self.days_input.text()
-        if not d.isdigit(): return
+        if not d.isdigit():
+            QMessageBox.warning(self, "Invalid Input", "Please enter a valid number of days.")
+            return
+
         requests.post(f"{self.server_url}/admin/cleanup", headers=self.headers, params={"days": int(d)})
-        QMessageBox.information(self, "Done", "Cleanup complete.")
+        QMessageBox.information(self, "Done", "Database Cleanup complete.")
+
+    # Naya function files delete karne ke liye
+    def run_cleanup_files(self):
+        d = self.days_input.text()
+        if not d.isdigit():
+            QMessageBox.warning(self, "Invalid Input", "Please enter a valid number of days.")
+            return
+
+        try:
+            res = requests.post(f"{self.server_url}/admin/cleanup_files", headers=self.headers, params={"days": int(d)}, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("success"):
+                    msg = f"Files Cleanup Complete!\n\nDeleted Files: {data.get('deleted_files')}\nStorage Freed: {data.get('freed_mb')} MB"
+                    QMessageBox.information(self, "Done", msg)
+                else:
+                    QMessageBox.warning(self, "Warning", data.get("message", "Could not clean files."))
+            else:
+                QMessageBox.critical(self, "Error", f"Server error: {res.status_code}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to connect: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
