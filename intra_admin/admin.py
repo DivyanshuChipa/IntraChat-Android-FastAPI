@@ -636,49 +636,83 @@ class AdminWindow(QMainWindow):
         c_layout.setContentsMargins(30, 30, 30, 30)
         c_layout.setSpacing(15)
 
-        title = QLabel("Cleanup Database")
+        title = QLabel("Cleanup Database & Media Files")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #cdd6f4;")
 
-        desc = QLabel("Remove old messages from the database to save space. This action is irreversible.")
-        desc.setStyleSheet("color: #9399b2; font-size: 14px;")
+        desc = QLabel("Remove old messages from the database and old media files from the server storage. This action is irreversible.")
+        desc.setStyleSheet("color: #9399b2; font-size: 14px; line-height: 1.5;")
+        desc.setWordWrap(True)
 
         self.days_input = QLineEdit()
         self.days_input.setPlaceholderText("Number of days (e.g., 30)")
         self.days_input.setMinimumHeight(45)
 
-        btn = QPushButton("🗑️ DELETE MESSAGES")
-        btn.setObjectName("DeleteBtn")
-        btn.setMinimumHeight(50)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("""
-            QPushButton#DeleteBtn {
-                background-color: #f38ba8;
-                color: #11111b;
-                font-weight: bold;
-                border-radius: 8px;
-            }
-            QPushButton#DeleteBtn:hover {
-                background-color: #eba0ac;
-            }
+        # -- DB Cleanup Button --
+        btn_db = QPushButton("🗑️ DELETE DB MESSAGES")
+        btn_db.setMinimumHeight(50)
+        btn_db.setCursor(Qt.PointingHandCursor)
+        btn_db.setStyleSheet("""
+            QPushButton { background-color: #f38ba8; color: #11111b; font-weight: bold; border-radius: 8px; }
+            QPushButton:hover { background-color: #eba0ac; }
         """)
-        btn.clicked.connect(self.run_cleanup)
+        btn_db.clicked.connect(self.run_cleanup_db)
+
+        # -- File Cleanup Button --
+        btn_files = QPushButton("📁 DELETE OLD FILES")
+        btn_files.setMinimumHeight(50)
+        btn_files.setCursor(Qt.PointingHandCursor)
+        btn_files.setStyleSheet("""
+            QPushButton { background-color: #fab387; color: #11111b; font-weight: bold; border-radius: 8px; }
+            QPushButton:hover { background-color: #f9cb8f; }
+        """)
+        btn_files.clicked.connect(self.run_cleanup_files)
+
+        # Dono buttons ko ek line mein set karne ke liye
+        btn_layout = QHBoxLayout()
+        btn_layout.addWidget(btn_db)
+        btn_layout.addWidget(btn_files)
 
         c_layout.addWidget(title)
         c_layout.addWidget(desc)
         c_layout.addWidget(self.days_input)
         c_layout.addSpacing(10)
-        c_layout.addWidget(btn)
+        c_layout.addLayout(btn_layout)
 
         layout.addWidget(lbl)
         layout.addWidget(card)
         layout.addStretch()
         return page
 
-    def run_cleanup(self):
+    # Pehle wale run_cleanup ko isse replace karein
+    def run_cleanup_db(self):
         d = self.days_input.text()
-        if not d.isdigit(): return
+        if not d.isdigit():
+            QMessageBox.warning(self, "Invalid Input", "Please enter a valid number of days.")
+            return
+
         requests.post(f"{self.server_url}/admin/cleanup", headers=self.headers, params={"days": int(d)})
-        QMessageBox.information(self, "Done", "Cleanup complete.")
+        QMessageBox.information(self, "Done", "Database Cleanup complete.")
+
+    # Naya function files delete karne ke liye
+    def run_cleanup_files(self):
+        d = self.days_input.text()
+        if not d.isdigit():
+            QMessageBox.warning(self, "Invalid Input", "Please enter a valid number of days.")
+            return
+
+        try:
+            res = requests.post(f"{self.server_url}/admin/cleanup_files", headers=self.headers, params={"days": int(d)}, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("success"):
+                    msg = f"Files Cleanup Complete!\n\nDeleted Files: {data.get('deleted_files')}\nStorage Freed: {data.get('freed_mb')} MB"
+                    QMessageBox.information(self, "Done", msg)
+                else:
+                    QMessageBox.warning(self, "Warning", data.get("message", "Could not clean files."))
+            else:
+                QMessageBox.critical(self, "Error", f"Server error: {res.status_code}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to connect: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
