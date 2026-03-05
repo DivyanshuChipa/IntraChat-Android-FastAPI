@@ -8,9 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -72,7 +70,7 @@ fun AboutScreen(
             )
 
             Text(
-                text = "v1.0.2 (Beta)",
+                text = "v2.0.0 (Beta)",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )
@@ -83,15 +81,31 @@ fun AboutScreen(
             InfoSection(
                 icon = Icons.Default.Info,
                 title = "What is Intra?",
-                body = "Intra is a secure, local network messaging and calling app. It works without internet, keeping your data within your WiFi network."
+                body = "Intra is a secure, local network messaging and calling app. It works without internet, keeping your data within your WiFi network. Now featuring Lumir AI and advanced system utilities."
+            )
+
+            Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+            InfoSection(
+                icon = Icons.Default.Face,
+                title = "Lumir AI",
+                body = "Meet Lumir, your built-in AI assistant. Lumir can help you with tasks, answer questions, and even manage your local files and memories."
+            )
+
+            Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+            InfoSection(
+                icon = Icons.Default.Build,
+                title = "Utilities",
+                body = "Integrated tools for network management, file processing, and system optimization directly within the app."
             )
 
             Divider(modifier = Modifier.padding(vertical = 16.dp))
 
             InfoSection(
                 icon = Icons.Default.Lock,
-                title = "Privacy",
-                body = "Your messages and calls never leave your local network. No cloud, no tracking."
+                title = "Privacy First",
+                body = "Your messages, calls, and AI interactions never leave your local network. No cloud, no tracking, complete privacy."
             )
 
             Divider(modifier = Modifier.padding(vertical = 16.dp))
@@ -124,7 +138,7 @@ fun AboutScreen(
                 fontSize = 12.sp
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(16.dp))
 
             Text("Made with ❤️ for LAN", color = Color.Gray, fontSize = 12.sp)
         }
