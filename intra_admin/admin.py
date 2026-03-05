@@ -30,10 +30,10 @@ QPushButton#TabBtn {
     border-radius: 8px;
     border: none;
 }
-QPushButton#TabBtn:hover { background-color: #313244; color: #fff; }
+QPushButton#TabBtn:hover { background-color: #313244; color: #ffffff; }
 QPushButton#TabBtn[active="true"] {
-    background-color: #cba6f7;
-    color: #1e1e2e;
+    background-color: #89b4fa;
+    color: #ffffff;
     font-weight: bold;
 }
 
@@ -248,6 +248,12 @@ class AdminWindow(QMainWindow):
         lbl = QLabel("User Management")
         lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
 
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Search users...")
+        self.search_input.setFixedWidth(250)
+        self.search_input.setFixedHeight(35)
+        self.search_input.textChanged.connect(self.filter_users)
+
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.setObjectName("RefreshBtn")
         refresh_btn.setFixedSize(100, 35)
@@ -256,6 +262,7 @@ class AdminWindow(QMainWindow):
 
         header.addWidget(lbl)
         header.addStretch()
+        header.addWidget(self.search_input)
         header.addWidget(refresh_btn)
 
         # Table
@@ -271,6 +278,16 @@ class AdminWindow(QMainWindow):
         layout.addLayout(header)
         layout.addWidget(self.table)
         return page
+
+    def filter_users(self, text):
+        search_text = text.lower()
+        for row in range(self.table.rowCount()):
+            username_item = self.table.item(row, 1)
+            if username_item:
+                if search_text in username_item.text().lower():
+                    self.table.setRowHidden(row, False)
+                else:
+                    self.table.setRowHidden(row, True)
 
     def load_users(self):
         try:
@@ -323,27 +340,39 @@ class AdminWindow(QMainWindow):
                 action_widget = QWidget()
                 action_layout = QHBoxLayout(action_widget)
                 action_layout.setContentsMargins(5, 5, 5, 5)
+                action_layout.setSpacing(5)
 
                 if not is_approved:
-                    btn_approve = QPushButton("Approve")
+                    btn_approve = QPushButton("✅")
+                    btn_approve.setToolTip("Approve User")
+                    btn_approve.setFixedSize(35, 35)
                     btn_approve.setObjectName("ApproveBtn")
                     btn_approve.setProperty("class", "actionBtn")
                     btn_approve.clicked.connect(lambda _, u=username: self.approve_user(u))
                     action_layout.addWidget(btn_approve)
 
-                btn_reset = QPushButton("Reset Pass")
+                btn_reset = QPushButton("🔑")
+                btn_reset.setToolTip("Reset Password")
+                btn_reset.setFixedSize(35, 35)
                 btn_reset.setObjectName("ResetBtn")
                 btn_reset.setProperty("class", "actionBtn")
                 btn_reset.clicked.connect(lambda _, u=username: self.reset_pass(u))
 
-                btn_del = QPushButton("Delete")
+                btn_del = QPushButton("🗑️")
+                btn_del.setToolTip("Delete User")
+                btn_del.setFixedSize(35, 35)
                 btn_del.setObjectName("DeleteBtn")
                 btn_del.setProperty("class", "actionBtn")
                 btn_del.clicked.connect(lambda _, u=username: self.delete_user(u))
 
                 action_layout.addWidget(btn_reset)
                 action_layout.addWidget(btn_del)
+                action_layout.addStretch()
                 self.table.setCellWidget(row, 4, action_widget)
+
+            # Re-apply filter if a search term exists
+            if hasattr(self, 'search_input') and self.search_input.text():
+                self.filter_users(self.search_input.text())
 
         except Exception as e:
             print(e)
