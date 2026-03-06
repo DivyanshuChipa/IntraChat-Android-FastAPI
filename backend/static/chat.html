@@ -35,6 +35,9 @@
             <button onclick="logout()">Logout</button>
             <button class="btn-delete" onclick="deleteAccount()">Delete Account</button>
         </div>
+        <div id="search-container">
+            <input type="text" id="user-search" placeholder="Search user by name..." oninput="filterUsers()">
+        </div>
         <div id="user-list"></div>
     </div>
 
