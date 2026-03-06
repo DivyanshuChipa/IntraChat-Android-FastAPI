@@ -198,12 +198,54 @@ body:not(.auth-page) {
     accent-color: var(--primary-color);
 }
 
+#search-container {
+    padding: 10px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+#user-search {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    outline: none;
+    font-size: 0.9rem;
+}
+
+#user-search:focus {
+    border-color: var(--primary-color);
+}
+
+#sidebar.minimized #search-container {
+    display: none;
+}
+
 #user-list { flex: 1; overflow-y: auto; }
-.user-item { padding: 12px 15px; border-bottom: 1px solid var(--border-color); cursor: pointer; display: flex; align-items: center; color: var(--text-primary); white-space: nowrap; transition: background 0.2s ease; margin: 2px 8px; border-radius: 8px; border-bottom: none; }
+.user-item { padding: 12px 15px; border-bottom: 1px solid var(--border-color); cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: var(--text-primary); white-space: nowrap; transition: background 0.2s ease; margin: 2px 8px; border-radius: 8px; border-bottom: none; }
+.user-info-wrapper { display: flex; align-items: center; }
 #sidebar.minimized .user-item span { display: none; }
 #sidebar.minimized .avatar { margin-right: 0; }
 #sidebar.minimized .user-item { justify-content: center; margin: 5px; }
+#sidebar.minimized .badge { display: none; }
 .user-item:hover { background: var(--sidebar-item-hover); }
+
+.badge {
+    background-color: #ff3b30;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+    display: none; /* hidden by default */
+}
+.badge.active {
+    display: inline-block;
+}
 .user-item.active { background: var(--sidebar-item-active); border-left: 4px solid var(--primary-color); }
 .avatar { width: 42px; height: 42px; border-radius: 50%; margin-right: 12px; object-fit: cover; background: #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 

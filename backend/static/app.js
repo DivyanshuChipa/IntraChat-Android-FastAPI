@@ -115,6 +115,9 @@ const myUsername = localStorage.getItem("username");
 let ws = null;
 let currentReceiver = "Family Group";
 let userAvatars = {}; // username -> avatarUrl
+let unreadCounts = {}; // username -> count
+let allUsersList = []; // Array to keep track of loaded users for search/sort
+let latestMessageTimes = {}; // username -> timestamp
 
 // Auto-redirect logic
 if (window.location.pathname === "/" || window.location.pathname.includes("index.html")) {
@@ -263,11 +266,10 @@ async function loadUsers() {
       return;
     }
 
-    const list = document.getElementById("user-list");
-    list.innerHTML = "";
+    allUsersList = [];
 
     // Family Group
-    addUserToList({
+    allUsersList.push({
       username: "Family Group",
       profile_photo: "/assets/family_group.svg"
     });
@@ -275,7 +277,7 @@ async function loadUsers() {
     // Lumir AI (if enabled)
     const lumirVisible = localStorage.getItem("lumirVisible") !== "false";
     if (lumirVisible) {
-        addUserToList({
+        allUsersList.push({
             username: "Lumir",
             profile_photo: "/assets/lumir5.svg"
         });
@@ -283,7 +285,7 @@ async function loadUsers() {
 
     data.users.forEach(user => {
       if (user.username !== myUsername) {
-        addUserToList(user);
+        allUsersList.push(user);
       } else {
         // Current user
         if (user.profile_photo) {
@@ -293,15 +295,101 @@ async function loadUsers() {
       }
     });
 
+    // Pre-calculate latest message times from history if available or wait for history load
+    // For now, render the list
+    renderUserList();
+
+    // Attempt to load history to determine sorting right after loading users
+    // This will hit /messages and update latestMessageTimes, then re-render
+    try {
+        const msgRes = await fetch("/messages");
+        const msgData = await msgRes.json();
+
+        msgData.forEach(m => {
+            // Figure out who the conversation is with
+            let otherUser = null;
+            if (m.receiver === "Family Group") {
+                otherUser = "Family Group";
+            } else if (m.sender === myUsername) {
+                otherUser = m.receiver;
+            } else if (m.receiver === myUsername) {
+                otherUser = m.sender;
+            }
+
+            if (otherUser) {
+                if (!latestMessageTimes[otherUser] || m.timestamp > latestMessageTimes[otherUser]) {
+                    latestMessageTimes[otherUser] = m.timestamp;
+                }
+            }
+        });
+        renderUserList(); // Re-render sorted
+    } catch (err) {
+        console.error("Failed to load history for sorting:", err);
+    }
+
   } catch (e) {
     console.error("Error loading users:", e);
   }
+}
+
+function filterUsers() {
+  const searchInput = document.getElementById("user-search").value.toLowerCase();
+  const userItems = document.querySelectorAll(".user-item");
+
+  userItems.forEach(item => {
+    // Only search through dynamic users, keep static groups pinned unless they match
+    // Or we can just filter everything. Let's filter everything based on name.
+    const nameSpan = item.querySelector(".user-info-wrapper span");
+    if (nameSpan) {
+        const name = nameSpan.innerText.toLowerCase();
+        if (name.includes(searchInput)) {
+            item.style.display = "flex";
+        } else {
+            item.style.display = "none";
+        }
+    }
+  });
+}
+
+function renderUserList() {
+    const list = document.getElementById("user-list");
+    list.innerHTML = "";
+
+    // Determine sorting:
+    // Pinned at top: Family Group, then Lumir
+    // Then rest of users sorted by latest message time
+
+    let pinnedUsers = allUsersList.filter(u => u.username === "Family Group" || u.username === "Lumir");
+    let normalUsers = allUsersList.filter(u => u.username !== "Family Group" && u.username !== "Lumir");
+
+    // Sort pinned: Family Group first
+    pinnedUsers.sort((a, b) => {
+        if (a.username === "Family Group") return -1;
+        if (b.username === "Family Group") return 1;
+        return 0;
+    });
+
+    // Sort normal users by latest message time descending
+    normalUsers.sort((a, b) => {
+        const timeA = latestMessageTimes[a.username] ? new Date(latestMessageTimes[a.username]).getTime() : 0;
+        const timeB = latestMessageTimes[b.username] ? new Date(latestMessageTimes[b.username]).getTime() : 0;
+        return timeB - timeA;
+    });
+
+    const sortedUsers = [...pinnedUsers, ...normalUsers];
+
+    sortedUsers.forEach(user => {
+        addUserToList(user);
+    });
+
+    filterUsers(); // Re-apply search filter if there's any text
 }
 
 function addUserToList(user) {
   const div = document.createElement("div");
   div.className = "user-item";
   div.onclick = () => selectUser(user.username);
+  div.setAttribute("data-username", user.username);
 
   let imgUrl = user.profile_photo || "https://via.placeholder.com/40";
 
@@ -314,9 +402,19 @@ function addUserToList(user) {
 
   userAvatars[user.username] = imgUrl;
 
+  let count = unreadCounts[user.username] || 0;
+  let badgeClass = count > 0 ? "badge active" : "badge";
+
+  if (currentReceiver === user.username) {
+      div.classList.add("active");
+  }
+
   div.innerHTML = `
-    <img src="${imgUrl}" class="avatar">
-    <span>${user.username}</span>
+    <div class="user-info-wrapper">
+        <img src="${imgUrl}" class="avatar">
+        <span>${user.username}</span>
+    </div>
+    <span class="${badgeClass}" id="badge-${user.username}">${count > 0 ? count : ''}</span>
   `;
 
   document.getElementById("user-list").appendChild(div);
@@ -342,10 +440,16 @@ async function selectUser(name) {
     chatActions.style.display = "none";
   }
 
+  // Clear unread count when opening a chat
+  if (unreadCounts[name]) {
+      unreadCounts[name] = 0;
+      renderUserList(); // Re-render to update badges
+  }
+
   // Highlight active user
   const userItems = document.querySelectorAll(".user-item");
   userItems.forEach(item => {
-    if (item.innerText.includes(name)) {
+    if (item.getAttribute("data-username") === name) {
       item.classList.add("active");
     } else {
       item.classList.remove("active");
@@ -412,11 +516,28 @@ function connectWS() {
         return;
     }
 
+    // Determine the logical conversation partner
+    let chatPartner = null;
+    if (msg.receiver === "Family Group") {
+        chatPartner = "Family Group";
+    } else if (msg.sender === myUsername) {
+        chatPartner = msg.receiver;
+    } else if (msg.receiver === myUsername) {
+        chatPartner = msg.sender;
+    }
+
     // Only display if relevant to current chat
-    const isRelevant =
-      (currentReceiver === "Family Group" && msg.receiver === "Family Group") ||
-      (msg.sender === currentReceiver && msg.receiver === myUsername) ||
-      (msg.sender === myUsername && msg.receiver === currentReceiver);
+    const isRelevant = (chatPartner === currentReceiver);
+
+    // Update latest message time for sorting
+    if (chatPartner && ["text", "file", "utility_options"].includes(msg.type)) {
+        latestMessageTimes[chatPartner] = msg.timestamp || Date.now();
+        // If message is for another chat, increase unread count
+        if (!isRelevant && msg.sender !== myUsername) {
+            unreadCounts[chatPartner] = (unreadCounts[chatPartner] || 0) + 1;
+        }
+        renderUserList(); // Re-render to sort and show badges
+    }
 
     switch (msg.type) {
 
