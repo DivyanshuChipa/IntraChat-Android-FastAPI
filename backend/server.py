@@ -20,7 +20,7 @@ from users import delete_user_data # 👈 Import the new function
 from fastapi.staticfiles import StaticFiles
 
 # ================= JWT CONFIG =================
-SECRET_KEY = "CHANGE_THIS_TO_SOMETHING_RANDOM_AND_LONG"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_TO_SOMETHING_RANDOM_AND_LONG")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
