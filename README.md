@@ -164,6 +164,12 @@ MIT License. See [LICENSE](LICENSE).
 ---
 
 <div align="center">
+<img width="256" height="256" alt="Untitled16" src="https://github.com/user-attachments/assets/7e4c29d0-ae2e-408a-a8b2-bed2c8c71f8e" />
+</div>
+
+---
+    
+<div align="center">
 
 **Made with ❤️ for local network communication**
 
