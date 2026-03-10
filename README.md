@@ -19,6 +19,10 @@
 </div>
 
 ---
+<div align="center">
+<img width="1079" height="664" alt="Untitled15_20260309141519" src="https://github.com/user-attachments/assets/5a29da77-4718-44f9-a14d-5e5008ce8691" />
+</div>    
+---
 
 ## 📱 Overview
 
@@ -159,6 +163,12 @@ MIT License. See [LICENSE](LICENSE).
 
 ---
 
+<div align="center">
+<img width="256" height="256" alt="Untitled16" src="https://github.com/user-attachments/assets/7e4c29d0-ae2e-408a-a8b2-bed2c8c71f8e" />
+</div>
+
+---
+    
 <div align="center">
 
 **Made with ❤️ for local network communication**
