@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +39,20 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 import com.example.intra.ui.chat.components.MessageBubble
 import com.example.intra.ui.chat.components.MessageInputBar
 import com.example.intra.ui.chat.components.TypingIndicatorUI
@@ -46,6 +63,7 @@ import kotlinx.coroutines.delay
 fun ChatScreen(
     viewModel: ChatViewModel,
     receiverName: String,
+    receiverPhotoUrl: String? = null,
     onAttachClick: () -> Unit,
     onBackClick: () -> Unit,
     onStartCall: () -> Unit,
@@ -126,13 +144,64 @@ fun ChatScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(receiverName, fontSize = 18.sp)
-                        Text(
-                            viewModel.connectionStatus.value,
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Avatar Photo in TopBar
+                        val avatarBg = if (isDark) Color(0xFF2A2B33) else Color(0xFFEDE7F6)
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(avatarBg, CircleShape)
+                                .clip(CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (receiverPhotoUrl != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(receiverPhotoUrl)
+                                        .crossfade(true)
+                                        .diskCachePolicy(CachePolicy.DISABLED)
+                                        .memoryCachePolicy(CachePolicy.ENABLED)
+                                        .build(),
+                                    contentDescription = "Profile Photo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                // Fallback Icons
+                                when (receiverName) {
+                                    "Family Group" -> Icon(
+                                        imageVector = Icons.Filled.Group,
+                                        contentDescription = null,
+                                        tint = Color(0xFF25BB4B),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    "Lumir" -> Icon(
+                                        painter = painterResource(id = R.drawable.lumir7),
+                                        contentDescription = null,
+                                        tint = Color.Unspecified,
+                                        modifier = Modifier.fillMaxSize().padding(1.dp)
+                                    )
+                                    else -> Icon(
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = null,
+                                        tint = Color(0xFFB39DDB),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        // Username and Status Column
+                        Column {
+                            Text(receiverName, fontSize = 18.sp)
+                            Text(
+                                viewModel.connectionStatus.value,
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
