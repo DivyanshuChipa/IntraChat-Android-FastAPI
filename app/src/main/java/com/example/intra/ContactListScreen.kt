@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -107,19 +108,32 @@ fun ContactListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Search Bar
-            OutlinedTextField(
+            // Modern Search Bar
+            val searchBgColor = if (isDark) Color(0xFF2A2B33) else Color(0xFFF2F2F2)
+            TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search contacts...") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                placeholder = { Text("Search contacts...", color = if (isDark) Color.Gray else Color.DarkGray) },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search", tint = if (isDark) Color.LightGray else Color.Gray) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = if (isDark) Color.LightGray else Color.Gray)
+                        }
+                    }
+                },
                 singleLine = true,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = topBarColor,
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = searchBgColor,
+                    unfocusedContainerColor = searchBgColor,
+                    disabledContainerColor = searchBgColor,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
                     cursorColor = topBarColor
                 )
             )
