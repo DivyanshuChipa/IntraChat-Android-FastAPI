@@ -28,7 +28,15 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val isLoading: Boolean = false,
     val localUri: String? = null,
-    val options: List<String>? = null
+    val options: List<String>? = null,
+    // Ephemeral Utility Fields (Not saved to DB)
+    val cpu: String? = null,
+    val ram: String? = null,
+    val disk: String? = null,
+    val status: String? = null,
+    val location: String? = null,
+    val temp: String? = null,
+    val condition: String? = null
 )
 
 class ChatViewModel(
@@ -413,7 +421,14 @@ class ChatViewModel(
                     isSelf = isSelf,
                     timestamp = ts,
                     type = type, // Pass the type (e.g. utility_options)
-                    options = if (optionsList.isNotEmpty()) optionsList else null
+                    options = if (optionsList.isNotEmpty()) optionsList else null,
+                    cpu = if (json.has("cpu")) json.optString("cpu") else null,
+                    ram = if (json.has("ram")) json.optString("ram") else null,
+                    disk = if (json.has("disk")) json.optString("disk") else null,
+                    status = if (json.has("status")) json.optString("status") else null,
+                    location = if (json.has("location")) json.optString("location") else null,
+                    temp = if (json.has("temp")) json.optString("temp") else null,
+                    condition = if (json.has("condition")) json.optString("condition") else null
                 )
             }
 
