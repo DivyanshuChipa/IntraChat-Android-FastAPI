@@ -308,11 +308,18 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            currentChatReceiver != null -> ChatScreen(
-                                viewModel = chatViewModel,
-                                receiverName = currentChatReceiver!!,
+                            currentChatReceiver != null -> {
+                                val contact = contactViewModel.contacts.find { it.username == currentChatReceiver }
+                                val receiverPhotoUrl = contact?.profilePhoto?.let {
+                                    settingsManager.getBaseUrl().removeSuffix("/") + it
+                                }
 
-                                onAttachClick = {
+                                ChatScreen(
+                                    viewModel = chatViewModel,
+                                    receiverName = currentChatReceiver!!,
+                                    receiverPhotoUrl = receiverPhotoUrl,
+
+                                    onAttachClick = {
                                     currentUploadViewModel = chatViewModel
                                     currentUploadReceiver = currentChatReceiver
                                     filePickerLauncher.launch("*/*")
@@ -334,12 +341,13 @@ class MainActivity : ComponentActivity() {
                                                 .removeSuffix("/") + it
                                         }
 
-                                    chatViewModel.sendCallRequest(target)
-                                    callViewModel.onStartOutgoingCall(target, photo)
-                                    webRTCClient.startCall(target)
-                                    proximitySensor.deactivate()
-                                }
-                            )
+                                        chatViewModel.sendCallRequest(target)
+                                        callViewModel.onStartOutgoingCall(target, photo)
+                                        webRTCClient.startCall(target)
+                                        proximitySensor.deactivate()
+                                    }
+                                )
+                            }
 
                             else -> ContactListScreen(
                                 username = chatViewModel.currentUsername,

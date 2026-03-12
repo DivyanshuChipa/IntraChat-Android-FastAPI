@@ -209,7 +209,8 @@ fun ShareScreen(
                         profilePhotoUrl = null,
                         unreadCount = 0,
                         isActive = selectedRecipient == "Family Group",
-                        onClick = { selectedRecipient = "Family Group" }
+                        onClick = { selectedRecipient = "Family Group" },
+                        onProfileClick = { /* Do nothing in share screen */ }
                     )
                 }
 
@@ -226,7 +227,8 @@ fun ShareScreen(
                             profilePhotoUrl = user.profilePhoto,
                             unreadCount = 0,
                             isActive = selectedRecipient == user.username,
-                            onClick = { selectedRecipient = user.username }
+                            onClick = { selectedRecipient = user.username },
+                            onProfileClick = { /* Do nothing in share screen */ }
                         )
                     }
                 }

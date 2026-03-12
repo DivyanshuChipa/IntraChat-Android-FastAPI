@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -40,6 +41,10 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +85,9 @@ fun ContactListScreen(
 
     var searchQuery by remember { mutableStateOf("") }
 
+    // State for Profile Dialog
+    var selectedProfileForDialog by remember { mutableStateOf<ProfileDialogData?>(null) }
+
     Scaffold(
         containerColor = colorScheme.surface,
         topBar = {
@@ -107,19 +115,32 @@ fun ContactListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Search Bar
-            OutlinedTextField(
+            // Modern Search Bar
+            val searchBgColor = if (isDark) Color(0xFF2A2B33) else Color(0xFFF2F2F2)
+            TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search contacts...") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                placeholder = { Text("Search contacts...", color = if (isDark) Color.Gray else Color.DarkGray) },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search", tint = if (isDark) Color.LightGray else Color.Gray) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = if (isDark) Color.LightGray else Color.Gray)
+                        }
+                    }
+                },
                 singleLine = true,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = topBarColor,
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = searchBgColor,
+                    unfocusedContainerColor = searchBgColor,
+                    disabledContainerColor = searchBgColor,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
                     cursorColor = topBarColor
                 )
             )
@@ -145,7 +166,10 @@ fun ContactListScreen(
                                 profilePhotoUrl = null,
                                 unreadCount = 0, // Family Group ke liye badge nahi dikhana abhi
                                 isActive = activeChatUser == "Family Group", // 🆕 Active detection
-                                onClick = { onChatClick("Family Group") }
+                                onClick = { onChatClick("Family Group") },
+                                onProfileClick = {
+                                    selectedProfileForDialog = ProfileDialogData("Family Group", null, Icons.Filled.Group, Color(0xFF25BB4B), null)
+                                }
                             )
                         }
                     }
@@ -163,7 +187,10 @@ fun ContactListScreen(
                                 unreadCount = 0,
                                 isActive = activeChatUser == "Lumir",
                                 iconResourceId = R.drawable.lumir7, // 🤖 Use Custom Vector
-                                onClick = { onChatClick("Lumir") }
+                                onClick = { onChatClick("Lumir") },
+                                onProfileClick = {
+                                    selectedProfileForDialog = ProfileDialogData("Lumir", null, Icons.Default.SmartToy, Color(0xFF1100FF), R.drawable.lumir7)
+                                }
                             )
                         }
                     }
@@ -196,7 +223,10 @@ fun ContactListScreen(
                                 profilePhotoUrl = user.profilePhoto,
                                 unreadCount = displayUnreadCount, // 🆕 Updated logic
                                 isActive = activeChatUser == user.username, // 🆕 Active detection
-                                onClick = { onChatClick(user.username) }
+                                onClick = { onChatClick(user.username) },
+                                onProfileClick = {
+                                    selectedProfileForDialog = ProfileDialogData(user.username, user.profilePhoto, Icons.Filled.Person, Color(0xFFB39DDB), null)
+                                }
                             )
                         }
                     }
@@ -204,7 +234,104 @@ fun ContactListScreen(
             }
         }
     }
+
+    // Render Profile Dialog if a profile is selected
+    selectedProfileForDialog?.let { profileData ->
+        ProfilePhotoDialog(
+            profileData = profileData,
+            onDismiss = { selectedProfileForDialog = null },
+            isDark = isDark,
+            baseUrl = settingsManager.getBaseUrl().removeSuffix("/")
+        )
+    }
 }
+
+@Composable
+fun ProfilePhotoDialog(
+    profileData: ProfileDialogData,
+    onDismiss: () -> Unit,
+    isDark: Boolean,
+    baseUrl: String
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        val fullPhotoUrl = if (profileData.profilePhotoUrl != null) {
+            baseUrl + profileData.profilePhotoUrl
+        } else null
+
+        val bgColor = if (isDark) Color(0xFF1E1E2E) else Color.White
+        val textColor = if (isDark) Color.White else Color.Black
+        val avatarBg = if (isDark) Color(0xFF2A2B33) else Color(0xFFEDE7F6)
+
+        Box(
+            modifier = Modifier
+                .width(280.dp) // WhatsApp-style square-ish size
+                .clip(RoundedCornerShape(8.dp))
+                .background(bgColor)
+        ) {
+            // Profile Image (Large)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .background(avatarBg),
+                contentAlignment = Alignment.Center
+            ) {
+                if (fullPhotoUrl != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(fullPhotoUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Profile Photo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (profileData.iconResourceId != null) {
+                    Icon(
+                        painter = painterResource(id = profileData.iconResourceId),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(140.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = profileData.fallbackIcon,
+                        contentDescription = null,
+                        tint = profileData.fallbackIconTint,
+                        modifier = Modifier.size(140.dp)
+                    )
+                }
+            }
+
+            // Translucent Name Overlay at the top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = profileData.name,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+// Data class to hold info for the dialog
+data class ProfileDialogData(
+    val name: String,
+    val profilePhotoUrl: String?,
+    val fallbackIcon: ImageVector,
+    val fallbackIconTint: Color,
+    val iconResourceId: Int?
+)
 
 @Composable
 fun ContactItem(
@@ -218,7 +345,8 @@ fun ContactItem(
     unreadCount: Int = 0,
     isActive: Boolean = false, // 🆕 STEP 6: Active chat indicator
     iconResourceId: Int? = null, // 🆕 NEW: Optional Drawable Resource ID
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onProfileClick: () -> Unit // 🆕 NEW: Click listener for profile avatar
 ) {
     val nameColor = if (isDark) Color.White else Color.Black
     val subColor = if (isDark) Color.LightGray else Color.DarkGray
@@ -253,7 +381,8 @@ fun ContactItem(
             modifier = Modifier
                 .size(48.dp)
                 .background(avatarBg, CircleShape)
-                .clip(CircleShape),
+                .clip(CircleShape)
+                .clickable { onProfileClick() }, // 🆕 Make avatar clickable
             contentAlignment = Alignment.Center
         ) {
             if (fullPhotoUrl != null) {
