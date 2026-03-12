@@ -14,11 +14,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -289,6 +298,63 @@ fun MessageBubble(
                         )
                     }
 
+                } else if (message.type == "utility_server") {
+                    val textColor = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Dns, contentDescription = "Server", modifier = Modifier.size(24.dp), tint = textColor)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Server Status", color = textColor, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 16.sp)
+                            Spacer(Modifier.weight(1f))
+                            val isOnline = message.status?.lowercase() == "online"
+                            Icon(
+                                if (isOnline) Icons.Default.CheckCircle else Icons.Default.Error,
+                                contentDescription = "Status",
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFF44336)
+                            )
+                        }
+
+                        Divider(modifier = Modifier.padding(vertical = 8.dp), color = textColor.copy(alpha = 0.2f))
+
+                        // CPU
+                        ServerStatRow("CPU Usage", message.cpu ?: "0%", Icons.Default.Memory, textColor)
+                        // RAM
+                        ServerStatRow("RAM Usage", message.ram ?: "0%", Icons.Default.Memory, textColor) // Ideally standard Memory icon for RAM too or maybe nothing
+                        // Disk
+                        ServerStatRow("Disk Usage", message.disk ?: "0%", Icons.Default.Storage, textColor)
+                    }
+                } else if (message.type == "utility_weather") {
+                    val textColor = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.LocationOn, contentDescription = "Location", modifier = Modifier.size(24.dp), tint = textColor)
+                            Spacer(Modifier.width(8.dp))
+                            Text(message.location ?: "Unknown Location", color = textColor, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 16.sp)
+                        }
+
+                        Divider(modifier = Modifier.padding(vertical = 8.dp), color = textColor.copy(alpha = 0.2f))
+
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Thermostat, contentDescription = "Temp", tint = textColor)
+                                Spacer(Modifier.width(4.dp))
+                                Text(message.temp ?: "--°C", color = textColor, fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    if ((message.condition ?: "").lowercase().contains("cloud")) Icons.Default.Cloud else Icons.Default.WbSunny,
+                                    contentDescription = "Condition",
+                                    tint = textColor
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(message.condition ?: "--", color = textColor, fontSize = 16.sp)
+                            }
+                        }
+                    }
                 } else {
                     val textColor = if (message.isSelf)
                         MaterialTheme.colorScheme.onPrimary
@@ -421,4 +487,34 @@ fun MessageBubble(
 fun formatTime(ts: Long): String {
     val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
     return sdf.format(Date(ts))
+}
+
+@Composable
+fun ServerStatRow(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color) {
+    val floatValue = value.replace("%", "").toFloatOrNull()?.div(100f) ?: 0f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(label, color = color, fontSize = 12.sp)
+                Text(value, color = color, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            }
+            Spacer(Modifier.height(4.dp))
+            LinearProgressIndicator(
+                progress = floatValue,
+                color = if (floatValue > 0.8f) Color(0xFFF44336) else color,
+                trackColor = color.copy(alpha = 0.2f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+            )
+        }
+    }
 }
