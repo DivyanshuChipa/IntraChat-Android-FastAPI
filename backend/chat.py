@@ -55,6 +55,12 @@ async def handle_lumir_processing(text_content, file_url, file_name, sender):
             "timestamp": int(datetime.now(IST).timestamp() * 1000)
         }
 
+        # Merge all additional fields from bot_res into bot_reply
+        # This ensures dynamic fields like 'cpu', 'temp', 'location', etc. are sent to the client.
+        for key, value in bot_res.items():
+            if key not in ["type", "text", "file_url", "file_name", "sender", "receiver", "timestamp", "url", "filename"]:
+                bot_reply[key] = value
+
         if "options" in bot_res:
             bot_reply["options"] = bot_res["options"]
 
