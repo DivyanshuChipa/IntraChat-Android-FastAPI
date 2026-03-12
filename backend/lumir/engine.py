@@ -3,11 +3,50 @@ from .ai_engine import ask_ai
 import sys
 import os
 import re
+import psutil
+import requests
 
 # To access users.py from the parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from users import get_ai_config
 
+def get_server_status():
+    try:
+        # The Tank 🚜 ka current load check karo
+        cpu = psutil.cpu_percent(interval=0.1)
+        ram = psutil.virtual_memory().percent
+        disk = psutil.disk_usage('/').percent
+
+        return {
+            "type": "utility_server",
+            "cpu": f"{cpu}%",
+            "ram": f"{ram}%",
+            "disk": f"{disk}%",
+            "status": "Online 🟢",
+            "text": f"Server Status: CPU {cpu}%, RAM {ram}%" # Fallback
+        }
+    except Exception as e:
+        return {"type": "text", "text": f"⚠️ Server status error: {str(e)}"}
+
+def get_weather(location="Maheshpura"):
+    try:
+        # wttr.in se weather data uthao
+        url = f"https://wttr.in/{location}?format=j1"
+        response = requests.get(url, timeout=5.0)
+        data = response.json()
+        temp = data['current_condition'][0]['temp_C']
+        desc = data['current_condition'][0]['weatherDesc'][0]['value']
+
+        return {
+            "type": "utility_weather",
+            "location": location.capitalize(),
+            "temp": f"{temp}°C",
+            "condition": desc,
+            "text": f"Weather in {location}: {temp}°C, {desc}" # Fallback
+        }
+    except Exception as e:
+        print(f"Weather error: {e}")
+        return {"type": "text", "text": "Bhai net nahi chal raha ya weather server down hai! 🌧️"}
 class LumirEngine:
     def __init__(self):
         # 🧠 Bot ki Memory: Sender -> Last Image URL
@@ -144,8 +183,16 @@ class LumirEngine:
         if text in ["hi", "hello", "hey"]:
             return {"type": "text", "text": "👋 Hello! I am Lumir, your LAN assistant. Type /help to see what I can do."}
 
+        # 🟢 NAYA CODE: Commands ko yahan pakdo!
+        if text == "/server":
+            return get_server_status()
+
+        if text == "/weather":
+            return get_weather()
+
+        # Update Help Menu
         if text == "/help" or text == "/hrlp":
-            return {"type": "text", "text": "🛠️ **Available Commands:**\n1. `###passport###` (Send an image first)\n2. Just chat with me! (If Admin has enabled AI mode)"}
+            return {"type": "text", "text": "🛠️ **Available Commands:**\n1. `/server` (Tank Status)\n2. `/weather` (Live Weather)\n3. `###passport###` (Send an image first)\n4. Just chat with me!"}
 
         # 🗜️ 3.6 SMART COMPRESS IMAGE LOGIC
         # Regex to find commands like ###compress<60>###

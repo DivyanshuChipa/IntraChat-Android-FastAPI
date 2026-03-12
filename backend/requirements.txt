@@ -9,3 +9,4 @@ pytesseract
 requests
 PyPDF2
 chromadb
+psutil
