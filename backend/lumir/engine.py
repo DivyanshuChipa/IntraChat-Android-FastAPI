@@ -196,7 +196,7 @@ class LumirEngine:
 
         # 🗜️ 3.6 SMART COMPRESS IMAGE LOGIC
         # Regex to find commands like ###compress<60>###
-        import re
+        #import re
         compress_match = re.search(r'###compress<(\d+)>###', text)
 
         if compress_match:
