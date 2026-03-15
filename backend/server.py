@@ -34,7 +34,20 @@ if not ADMIN_SECRET:
     print("👉 Use this key for Desktop Admin Panel or set INTRA_ADMIN_KEY for persistence.")
 
 def verify_admin(x_admin_key: str = Header(None)):
-    if not x_admin_key or not secrets.compare_digest(x_admin_key, ADMIN_SECRET):
+    # secrets.compare_digest raises TypeError for non-ASCII strings.
+    # Normalizing both to bytes ensures clean rejection for invalid/non-ASCII keys.
+    if not x_admin_key:
+        raise HTTPException(status_code=403, detail="Admin access denied")
+
+    try:
+        is_valid = secrets.compare_digest(
+            x_admin_key.encode("utf-8"),
+            ADMIN_SECRET.encode("utf-8")
+        )
+    except (TypeError, UnicodeEncodeError):
+        is_valid = False
+
+    if not is_valid:
         raise HTTPException(status_code=403, detail="Admin access denied")
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)")
