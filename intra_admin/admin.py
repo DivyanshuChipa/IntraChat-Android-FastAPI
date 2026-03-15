@@ -95,7 +95,7 @@ class ConnectDialog(QDialog):
         self.settings = QSettings("Intra", "AdminPanel")
         saved_ip = self.settings.value("server_ip", "192.168.31.104")
         saved_port = self.settings.value("server_port", "8000")
-        saved_key = self.settings.value("admin_key", "INTRA_ADMIN_123")
+        saved_key = self.settings.value("admin_key", "")
 
         layout = QVBoxLayout()
         form = QFormLayout()
