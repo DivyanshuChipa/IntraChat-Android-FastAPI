@@ -2,6 +2,7 @@
 
 # lan_server/server.py
 import os
+import secrets
 from fastapi import FastAPI
 from fastapi import Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,10 +26,28 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
 # ================= ADMIN CONFIG =================
-ADMIN_SECRET = os.getenv("INTRA_ADMIN_KEY", "INTRA_ADMIN_123",)
+ADMIN_SECRET = os.getenv("INTRA_ADMIN_KEY")
+if not ADMIN_SECRET:
+    ADMIN_SECRET = secrets.token_urlsafe(32)
+    print("⚠️  WARNING: INTRA_ADMIN_KEY environment variable is not set.")
+    print(f"🔐 A temporary random admin secret has been generated: {ADMIN_SECRET}")
+    print("👉 Use this key for Desktop Admin Panel or set INTRA_ADMIN_KEY for persistence.")
 
 def verify_admin(x_admin_key: str = Header(None)):
-    if x_admin_key != ADMIN_SECRET:
+    # secrets.compare_digest raises TypeError for non-ASCII strings.
+    # Normalizing both to bytes ensures clean rejection for invalid/non-ASCII keys.
+    if not x_admin_key:
+        raise HTTPException(status_code=403, detail="Admin access denied")
+
+    try:
+        is_valid = secrets.compare_digest(
+            x_admin_key.encode("utf-8"),
+            ADMIN_SECRET.encode("utf-8")
+        )
+    except (TypeError, UnicodeEncodeError):
+        is_valid = False
+
+    if not is_valid:
         raise HTTPException(status_code=403, detail="Admin access denied")
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)")
