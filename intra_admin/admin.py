@@ -118,9 +118,9 @@ class ConnectDialog(QDialog):
         self.setLayout(layout)
 
     def save_and_accept(self):
-        self.settings.setValue("server_ip", self.ip_input.text())
-        self.settings.setValue("server_port", self.port_input.text())
-        self.settings.setValue("admin_key", self.key_input.text())
+        self.settings.setValue("server_ip", self.ip_input.text().strip())
+        self.settings.setValue("server_port", self.port_input.text().strip())
+        self.settings.setValue("admin_key", self.key_input.text().strip())
         self.accept()
 
 # ================= MAIN ADMIN WINDOW =================

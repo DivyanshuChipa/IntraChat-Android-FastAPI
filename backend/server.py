@@ -37,17 +37,25 @@ def verify_admin(x_admin_key: str = Header(None)):
     # secrets.compare_digest raises TypeError for non-ASCII strings.
     # Normalizing both to bytes ensures clean rejection for invalid/non-ASCII keys.
     if not x_admin_key:
+        print("🚫 Admin Access Denied: No X-Admin-Key header provided.")
         raise HTTPException(status_code=403, detail="Admin access denied")
+
+    # Strip potential whitespace from accidental copy-paste
+    clean_key = x_admin_key.strip()
+    clean_secret = ADMIN_SECRET.strip()
 
     try:
         is_valid = secrets.compare_digest(
-            x_admin_key.encode("utf-8"),
-            ADMIN_SECRET.encode("utf-8")
+            clean_key.encode("utf-8"),
+            clean_secret.encode("utf-8")
         )
     except (TypeError, UnicodeEncodeError):
         is_valid = False
 
     if not is_valid:
+        # Diagnostic log (masked key for security)
+        masked_key = clean_key[:4] + "..." + clean_key[-4:] if len(clean_key) > 8 else "****"
+        print(f"🚫 Admin Access Denied: Key mismatch. Received length: {len(clean_key)}, Masked: {masked_key}")
         raise HTTPException(status_code=403, detail="Admin access denied")
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)")
