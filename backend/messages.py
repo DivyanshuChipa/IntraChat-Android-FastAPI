@@ -41,6 +41,15 @@ def init_msg_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS user_facts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        fact TEXT NOT NULL,
+        ts INTEGER NOT NULL
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -196,3 +205,27 @@ def get_lumir_history(username: str, limit: int = 6):
         history.append({"role": role, "content": row["text"]})
         
     return history
+
+def save_user_fact(username: str, fact: str):
+    ts = int(datetime.now(IST).timestamp() * 1000)
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+    # Naya fact insert karo
+    cur.execute("INSERT INTO user_facts (username, fact, ts) VALUES (?, ?, ?)", (username, fact, ts))
+    
+    # 🔥 THE MAGIC: Sirf latest 10 facts rakho, baki puraane automatically delete kar do!
+    cur.execute("""
+        DELETE FROM user_facts WHERE id NOT IN (
+            SELECT id FROM user_facts WHERE username = ? ORDER BY ts DESC LIMIT 10
+        )
+    """, (username,))
+    conn.commit()
+    conn.close()
+
+def get_user_facts(username: str):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+    cur.execute("SELECT fact FROM user_facts WHERE username = ? ORDER BY ts ASC", (username,))
+    rows = cur.fetchall()
+    conn.close()
+    return [row[0] for row in rows]

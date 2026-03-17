@@ -6,9 +6,10 @@ import re
 import psutil
 import requests
 
-# To access users.py from the parent directory
+# To access users.py and messages.py from the parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from users import get_ai_config
+from messages import get_user_facts, save_user_fact
 
 def get_server_status():
     try:
@@ -442,12 +443,36 @@ class LumirEngine:
                 # 🛑 DYNAMIC BABY LOCK
                 smart_models_str = config.get("ai_smart_models", "gpt-oss:20b-cloud, gemma3:27b-cloud")
                 smart_models_list = [m.strip().lower() for m in smart_models_str.split(",")]
-
                 is_smart = current_model.lower() in smart_models_list
+
+                # 🧠 NEW: FETCH 10-FACT SUMMARY
+                user_facts_list = get_user_facts(sender)
+
+                # ==========================================
+                # 🕵️‍♂️ THE FACT DIGGER (Background Memory Extractor)
+                # ==========================================
+                trigger_words = ["i like", "mera naam", "mujhe pasand", "i am", "remember", "mera plan", "mai", "mera", "mujhe", "love", "hate"]
+                
+                # Sirf tab extract karo jab Smart Model ho aur trigger word use hua ho
+                if is_smart and any(tw in text.lower() for tw in trigger_words):
+                    try:
+                        print(f"🕵️‍♂️ [FACT DIGGER] Triggered for {sender}...")
+                        extract_prompt = f"Extract a single, concise factual statement about the user from this message: '{text}'. If no clear personal fact exists, reply with exactly 'NONE'. Do not add any conversational text."
+                        
+                        # Background extraction query (History aur user_facts khali rakhenge taaki speed fast ho)
+                        fact = ask_ai(prompt=extract_prompt, config=config, history=[], sender=sender)
+                        
+                        if fact and "NONE" not in fact.upper() and len(fact) < 150:
+                            save_user_fact(sender, fact)
+                            user_facts_list.append(fact) # Add to current list so AI uses it in the very next reply!
+                            print(f"💾 [FACT SAVED]: {fact}")
+                    except Exception as e:
+                        print(f"⚠️ [FACT DIGGER ERROR]: {e} (Continuing normal chat...)")
 
                 if not is_smart:
                     print("👶 Baby Model Detected! Disabling Long Term Memory.")
                     chat_history = []
+                    user_facts_list = None # Fallback ke liye complex injection band kar do
                 else:
                     from messages import get_lumir_history
                     chat_history = get_lumir_history(sender, limit=6)
@@ -474,7 +499,7 @@ class LumirEngine:
                                 print(f"👁️ [ENGINE] Sending image to AI: {target_image_path}")
 
                 # AI ko prompt, config, history, sender name, aur AANKHEIN (image_path) bhejo
-                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender, image_path=target_image_path)
+                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender, image_path=target_image_path, user_facts=user_facts_list)
 
                 # 🧹 MEMORY CLEANUP: Image process hone ke baad context clear karo
                 # Taaki agli chat mein bina matlab wapas itni heavy Base64 image na jaye!

@@ -3,7 +3,7 @@ import json
 import base64 # 👈 NAYA IMPORT AANKHON KE LIYE
 import os
 
-def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None):
+def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
 
@@ -22,6 +22,13 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
     Your creator is an engineer known as 'Divya'. 
     Always reply in a helpful and concise manner. 
     IMPORTANT: The user you are currently chatting with is named '{sender}'. Address them by their name naturally in conversation."""
+
+    # 🧠 NEW: INJECT FACTS INVISIBLY
+    if user_facts:
+        system_prompt += f"\n\nHere are some important facts you must remember about {sender}:\n"
+        for fact in user_facts:
+            system_prompt += f"- {fact}\n"
+        system_prompt += "\nUse these facts to personalize your responses, but DO NOT mention that you are reading from a memory list."
 
     messages = [{"role": "system", "content": system_prompt}]
 
