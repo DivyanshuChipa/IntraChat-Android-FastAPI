@@ -55,7 +55,8 @@ def verify_admin(x_admin_key: str = Header(None)):
     if not is_valid:
         # Diagnostic log (masked key for security)
         masked_key = clean_key[:4] + "..." + clean_key[-4:] if len(clean_key) > 8 else "****"
-        print(f"🚫 Admin Access Denied: Key mismatch. Received length: {len(clean_key)}, Masked: {masked_key}")
+        print(f"🚫 Admin Access Denied: Key mismatch. Received length: {len(clean_key)} (Expected: {len(clean_secret)}), Masked input: {masked_key}")
+        print("💡 TIP: Copy the EXACT random secret from the server logs above.")
         raise HTTPException(status_code=403, detail="Admin access denied")
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)")
