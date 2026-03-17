@@ -17,7 +17,6 @@ class AuthViewModel : ViewModel() {
     private val TAG = "AuthViewModel"
 
     private val settingsManager = SettingsManager(MyApplication.instance)
-    private val apiService = ApiClient.apiService
 
     // UI State
     val usernameInput = mutableStateOf("")
@@ -49,7 +48,7 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val request = AuthRequest(username, password)
-                val response = apiService.loginUser(request)
+                val response = ApiClient.apiService.loginUser(request)
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val body = response.body()!!
@@ -89,7 +88,7 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val request = AuthRequest(username, password)
-                val response = apiService.registerUser(request)
+                val response = ApiClient.apiService.registerUser(request)
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     errorMessage.value = "Registration Successful! Logging in..."
@@ -124,7 +123,7 @@ class AuthViewModel : ViewModel() {
             try {
                 // Same AuthRequest use kar rahe hain (username + password)
                 val request = AuthRequest(username, password)
-                val response = apiService.deleteAccount(request)
+                val response = ApiClient.apiService.deleteAccount(request)
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     Log.d(TAG, "💀 Account Deleted: $username")
@@ -170,7 +169,7 @@ class AuthViewModel : ViewModel() {
                     file.asRequestBody("image/*".toMediaTypeOrNull())
                 )
 
-                val response = apiService.uploadProfilePhoto(usernamePart, filePart)
+                val response = ApiClient.apiService.uploadProfilePhoto(usernamePart, filePart)
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val newPhotoUrl = response.body()?.profilePhoto
