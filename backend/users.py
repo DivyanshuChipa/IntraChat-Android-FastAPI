@@ -211,3 +211,19 @@ def set_ai_config(enabled: bool, model: str, url: str, vision_model: str, fallba
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_smart_models', ?)", (smart_models,))
     conn.commit()
     conn.close()
+
+# --- Admin Key Persistence ---
+def get_admin_key_db():
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def set_admin_key_db(key: str):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('admin_key', ?)", (key,))
+    conn.commit()
+    conn.close()

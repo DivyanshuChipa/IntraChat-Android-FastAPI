@@ -13,7 +13,7 @@ from jose import jwt
 from datetime import datetime, timedelta, timezone
 import chat, files, calls, messages
 import profiles  # 👈 1. Import profiles module
-from users import init_db, register_user, verify_user
+from users import init_db, register_user, verify_user, get_admin_key_db, set_admin_key_db
 from messages import init_msg_db
 from users import get_all_users
 from messages import get_recent_messages
@@ -25,13 +25,24 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_TO_SOMETHING_RANDOM_AND_LO
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-# ================= ADMIN CONFIG =================
+# ================= ADMIN CONFIG (Persistent) =================
+# We must ensure DB is initialized before fetching the key
+init_db()
+init_msg_db()
+
 ADMIN_SECRET = os.getenv("INTRA_ADMIN_KEY")
 if not ADMIN_SECRET:
-    ADMIN_SECRET = secrets.token_urlsafe(32)
-    print("⚠️  WARNING: INTRA_ADMIN_KEY environment variable is not set.")
-    print(f"🔐 A temporary random admin secret has been generated: {ADMIN_SECRET}")
-    print("👉 Use this key for Desktop Admin Panel or set INTRA_ADMIN_KEY for persistence.")
+    # Try to get from Database
+    ADMIN_SECRET = get_admin_key_db()
+
+    if not ADMIN_SECRET:
+        # Generate new and save
+        ADMIN_SECRET = secrets.token_urlsafe(32)
+        set_admin_key_db(ADMIN_SECRET)
+        print("✨ Generated new persistent Admin Secret.")
+
+print(f"🔐 Admin Secret: {ADMIN_SECRET}")
+print("👉 Use this key for Desktop Admin Panel or set INTRA_ADMIN_KEY to override.")
 
 def verify_admin(x_admin_key: str = Header(None)):
     # secrets.compare_digest raises TypeError for non-ASCII strings.
@@ -74,9 +85,6 @@ app.add_middleware(
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# DB init (users.db for auth)
-init_db()
-init_msg_db()
 
 # ================= Pydantic MODELS =================
 class UserAuth(BaseModel):
