@@ -20,8 +20,11 @@ try:
     db_path = os.path.join(os.path.dirname(__file__), "chroma_storage")
     chroma_client = chromadb.PersistentClient(path=db_path)
 
-    # Collection banaiye (Table for Long Term Memory)
+    # Purana wala (Media ke liye)
     memory_collection = chroma_client.get_or_create_collection(name="lumir_long_term_memory")
+
+    # 🌟 NAYA WALA (User Facts ke liye)
+    facts_collection = chroma_client.get_or_create_collection(name="lumir_user_facts")
 
     VECTOR_DB_ACTIVE = True
     print("🧠 Lumir Vector Memory: ACTIVATED (Raphael Mode On 🌟)")
@@ -87,3 +90,34 @@ def find_media_in_memory(sender, query_text):
     except Exception as e:
         print(f"❌ Memory Search Error: {e}")
         return None
+
+def save_fact_to_chroma(sender: str, fact: str):
+    if not is_memory_active(): return False
+    try:
+        doc_id = str(uuid.uuid4())
+        facts_collection.add(
+            documents=[fact],
+            metadatas=[{"sender": sender, "timestamp": str(int(time.time()))}],
+            ids=[doc_id]
+        )
+        return True
+    except Exception as e:
+        print(f"❌ Chroma Fact Save Error: {e}")
+        return False
+
+def search_facts_in_chroma(sender: str, query_text: str, n_results: int = 2):
+    if not is_memory_active(): return []
+    try:
+        # User ke current message (query) ke hisaab se sabse relevant 2 facts dhoondho!
+        results = facts_collection.query(
+            query_texts=[query_text],
+            n_results=n_results,
+            where={"sender": sender}
+        )
+        if results['documents'] and results['documents'][0]:
+            print(f"🧠 [CHROMA RECALL]: Found facts relevant to '{query_text}'")
+            return results['documents'][0] # Returns a list of matched fact strings
+        return []
+    except Exception as e:
+        print(f"❌ Chroma Fact Search Error: {e}")
+        return []

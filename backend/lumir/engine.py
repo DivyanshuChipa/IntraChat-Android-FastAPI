@@ -5,11 +5,12 @@ import os
 import re
 import psutil
 import requests
+from .memory import search_facts_in_chroma, save_fact_to_chroma
 
 # To access users.py and messages.py from the parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from users import get_ai_config
-from messages import get_user_facts, save_user_fact
+from messages import get_lumir_history
 
 def get_server_status():
     try:
@@ -445,9 +446,6 @@ class LumirEngine:
                 smart_models_list = [m.strip().lower() for m in smart_models_str.split(",")]
                 is_smart = current_model.lower() in smart_models_list
 
-                # 🧠 NEW: FETCH 10-FACT SUMMARY
-                user_facts_list = get_user_facts(sender)
-
                 # ==========================================
                 # 🕵️‍♂️ THE FACT DIGGER (Background Memory Extractor)
                 # ==========================================
@@ -457,24 +455,27 @@ class LumirEngine:
                 if is_smart and any(tw in text.lower() for tw in trigger_words):
                     try:
                         print(f"🕵️‍♂️ [FACT DIGGER] Triggered for {sender}...")
-                        extract_prompt = f"Extract a single, concise factual statement about the user from this message: '{text}'. If no clear personal fact exists, reply with exactly 'NONE'. Do not add any conversational text."
-                        
-                        # Background extraction query (History aur user_facts khali rakhenge taaki speed fast ho)
+                        extract_prompt = f"Extract a single, concise factual statement about the user from this message: '{text}'. If no clear personal fact exists, reply with exactly 'NONE'."
                         fact = ask_ai(prompt=extract_prompt, config=config, history=[], sender=sender)
                         
                         if fact and "NONE" not in fact.upper() and len(fact) < 150:
-                            save_user_fact(sender, fact)
-                            user_facts_list.append(fact) # Add to current list so AI uses it in the very next reply!
-                            print(f"💾 [FACT SAVED]: {fact}")
+                            # 🌟 SAVE TO CHROMA DB INSTEAD OF SQLITE
+                            save_fact_to_chroma(sender, fact)
+                            print(f"💾 [CHROMA FACT SAVED]: {fact}")
                     except Exception as e:
-                        print(f"⚠️ [FACT DIGGER ERROR]: {e} (Continuing normal chat...)")
+                        print(f"⚠️ [FACT DIGGER ERROR]: {e}")
+
+                # 🌟 THE MAGIC: Ab saare facts nahi nikalenge!
+                # Sirf wo facts nikalenge jo user ke current question ('text') se match karte hain!
+                if is_smart:
+                    user_facts_list = search_facts_in_chroma(sender, text)
+                else:
+                    user_facts_list = None
 
                 if not is_smart:
                     print("👶 Baby Model Detected! Disabling Long Term Memory.")
                     chat_history = []
-                    user_facts_list = None # Fallback ke liye complex injection band kar do
                 else:
-                    from messages import get_lumir_history
                     chat_history = get_lumir_history(sender, limit=6)
                     if chat_history and chat_history[-1]["role"] == "user" and chat_history[-1]["content"].lower().strip() == text.lower().strip():
                         chat_history.pop()
