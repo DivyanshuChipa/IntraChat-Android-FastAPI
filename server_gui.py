@@ -28,12 +28,19 @@ QPushButton#StopBtn:disabled { background-color: #45475a; color: #a6adc8; }
 QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244; border-radius: 8px; padding: 10px; font-family: 'Consolas', monospace; }
 """
 
-# Path to the backend database
-DB_PATH = os.path.join(os.path.dirname(__file__), "backend", "chat_users.db")
+# Possible database locations (different setups may use different filenames/working dirs)
+BASE_DIR = os.path.dirname(__file__)
+DB_CANDIDATES = [
+    os.path.join(BASE_DIR, "backend", "chat_users.db"),
+    os.path.join(BASE_DIR, "backend", "chat_user.db"),
+    os.path.join(BASE_DIR, "chat_users.db"),
+    os.path.join(BASE_DIR, "chat_user.db"),
+]
 
 class ServerController(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.current_admin_key = ""
         self.setWindowTitle("Intra Service Monitor 🚜 (Systemd)")
         self.resize(800, 550)
         self.setStyleSheet(STYLESHEET)
@@ -60,6 +67,12 @@ class ServerController(QMainWindow):
         self.info_box.setObjectName("InfoBox")
         self.info_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.info_box)
+
+        self.copy_key_btn = QPushButton("📋 COPY ADMIN KEY")
+        self.copy_key_btn.setObjectName("StartBtn")
+        self.copy_key_btn.setCursor(Qt.PointingHandCursor)
+        self.copy_key_btn.clicked.connect(self.copy_admin_key)
+        layout.addWidget(self.copy_key_btn)
 
         # 3. Buttons
         btn_layout = QHBoxLayout()
@@ -112,31 +125,48 @@ class ServerController(QMainWindow):
         return IP
 
     def get_admin_password(self):
-        try:
-            if not os.path.exists(DB_PATH):
-                return "Database not found"
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT value FROM config WHERE key='admin_key'")
-            row = cursor.fetchone()
-            conn.close()
-            return row[0] if row else "Not Generated Yet"
-        except Exception as e:
-            return f"Error: {str(e)}"
+        last_error = None
+        for db_path in DB_CANDIDATES:
+            if not os.path.exists(db_path):
+                continue
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+                row = cursor.fetchone()
+                conn.close()
+                if row and row[0]:
+                    return row[0]
+            except Exception as e:
+                # Try the next candidate and report only if all fail
+                last_error = str(e)
+
+        if last_error:
+            return f"Error: {last_error}"
+        return "Not Generated Yet"
 
     def update_info_box(self, status):
         ip = self.get_local_ip()
         password = self.get_admin_password()
+        self.current_admin_key = password if password not in ("Not Generated Yet", "Database not found") and not password.startswith("Error:") else ""
         status_color = "#a6e3a1" if status == "Running 🟢" else "#f38ba8"
+        self.copy_key_btn.setEnabled(bool(self.current_admin_key))
 
         info_html = f"""
         <table width="100%">
             <tr><td width="150"><b>Service Status:</b></td><td><span style='color: {status_color};'>{status}</span></td></tr>
             <tr><td><b>Android App IP:</b></td><td><span style='color: #89b4fa;'>http://{ip}:8000</span></td></tr>
-            <tr><td><b>Admin Password:</b></td><td><span style='color: #f9e2af;'>{password}</span></td></tr>
+            <tr><td><b>Admin Key:</b></td><td><span style='color: #f9e2af;'>{password}</span></td></tr>
         </table>
         """
         self.info_box.setText(info_html)
+
+    def copy_admin_key(self):
+        if not self.current_admin_key:
+            self.console.append("<span style='color: #f38ba8;'>[INFO] Admin key abhi available nahi hai.</span>")
+            return
+        QApplication.clipboard().setText(self.current_admin_key)
+        self.console.append("<span style='color: #a6e3a1;'>[INFO] Admin key clipboard me copy ho gaya.</span>")
 
     def check_service_status(self):
         """Runs 'systemctl is-active lanserver' silently to check status"""
