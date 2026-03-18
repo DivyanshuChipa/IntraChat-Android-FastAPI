@@ -752,10 +752,19 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
   const displayName = sender === myUsername ? "Me" : sender;
 
   let content = "";
-  if (currentReceiver === "Family Group" || sender !== myUsername) {
-    content += `<b>${displayName}:</b> `;
-  } else {
-    content += `<b>Me:</b> `;
+  if (currentReceiver === "Family Group" && sender !== myUsername) {
+    // Generate a color based on sender string
+    const colors = ['#E53935', '#D81B60', '#8E24AA', '#3949AB', '#039BE5', '#00897B', '#43A047', '#F4511E'];
+    let hash = 0;
+    for (let i = 0; i < sender.length; i++) {
+        hash = sender.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % colors.length;
+    const senderColor = colors[colorIndex];
+    content += `<div style="color: ${senderColor}; font-weight: bold; font-size: 0.8em; margin-bottom: 4px;">${displayName}</div>`;
+  } else if (sender !== myUsername) {
+    // Private chat from others
+    content += `<div style="font-weight: bold; font-size: 0.8em; margin-bottom: 4px;">${displayName}</div>`;
   }
 
   if (fileUrl) {

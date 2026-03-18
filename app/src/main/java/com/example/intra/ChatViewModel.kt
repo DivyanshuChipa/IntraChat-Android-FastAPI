@@ -29,6 +29,8 @@ data class ChatMessage(
     val isLoading: Boolean = false,
     val localUri: String? = null,
     val options: List<String>? = null,
+    val senderName: String? = null,
+    val receiver: String? = null,
     // Ephemeral Utility Fields (Not saved to DB)
     val cpu: String? = null,
     val ram: String? = null,
@@ -168,7 +170,9 @@ class ChatViewModel(
         val msg = ChatMessage(
             text = text,
             isSelf = true,
-            timestamp = ts
+            timestamp = ts,
+            senderName = currentUsername,
+            receiver = receiver
         )
 
         messages.add(msg)
@@ -194,7 +198,9 @@ class ChatViewModel(
         val msg = ChatMessage(
             text = command,
             isSelf = true,
-            timestamp = ts
+            timestamp = ts,
+            senderName = currentUsername,
+            receiver = receiver
         )
 
         messages.add(msg)
@@ -223,7 +229,9 @@ class ChatViewModel(
             fileName = file.name,
             timestamp = ts,
             isLoading = true,
-            localUri = file.absolutePath
+            localUri = file.absolutePath,
+            senderName = currentUsername,
+            receiver = receiver
         )
 
         withContext(Dispatchers.Main) {
@@ -259,7 +267,9 @@ class ChatViewModel(
                 fileUrl = json.optString("url"),
                 fileName = json.optString("filename"),
                 timestamp = ts,
-                isLoading = false
+                isLoading = false,
+                senderName = currentUsername,
+                receiver = receiver
             )
 
             withContext(Dispatchers.Main) {
@@ -404,7 +414,9 @@ class ChatViewModel(
                     type = "file",
                     fileUrl = json.optString("url"),
                     fileName = json.optString("filename"),
-                    timestamp = ts
+                    timestamp = ts,
+                    senderName = sender,
+                    receiver = receiver
                 )
             } else {
                 // Parse options if available
@@ -422,6 +434,8 @@ class ChatViewModel(
                     timestamp = ts,
                     type = type, // Pass the type (e.g. utility_options)
                     options = if (optionsList.isNotEmpty()) optionsList else null,
+                    senderName = sender,
+                    receiver = receiver,
                     cpu = if (json.has("cpu")) json.optString("cpu") else null,
                     ram = if (json.has("ram")) json.optString("ram") else null,
                     disk = if (json.has("disk")) json.optString("disk") else null,
@@ -522,7 +536,9 @@ class ChatViewModel(
                     fileUrl = entity.fileUrl,
                     fileName = entity.fileName,
                     timestamp = entity.timestamp,
-                    options = if (optionsList.isNotEmpty()) optionsList else null
+                    options = if (optionsList.isNotEmpty()) optionsList else null,
+                    senderName = entity.senderName,
+                    receiver = entity.receiver
                 )
             }
 

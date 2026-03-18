@@ -1,0 +1,25 @@
+INFO:     Started server process [3736]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+🧠 Lumir Vector Memory: ACTIVATED (Raphael Mode On 🌟)
+✨ Generated new persistent Admin Secret.
+🔐 Admin Secret: Ed-3yrCOB2QwBkClmUwlegZXM8PwOX9VARRnlK_a2ZE
+👉 Use this key for Desktop Admin Panel or set INTRA_ADMIN_KEY to override.
+INFO:     127.0.0.1:38754 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38754 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38760 - "GET /app.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52366 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52366 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52374 - "GET /app.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52374 - "POST /register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:52374 - "GET /chat.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38598 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38598 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38600 - "GET /app.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38600 - "POST /register HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:38600 - "GET /chat.html HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3736]
