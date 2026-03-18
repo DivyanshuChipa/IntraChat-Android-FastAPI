@@ -40,6 +40,7 @@ DB_CANDIDATES = [
 class ServerController(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.current_admin_key = ""
         self.setWindowTitle("Intra Service Monitor 🚜 (Systemd)")
         self.resize(800, 550)
         self.setStyleSheet(STYLESHEET)
@@ -66,6 +67,12 @@ class ServerController(QMainWindow):
         self.info_box.setObjectName("InfoBox")
         self.info_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.info_box)
+
+        self.copy_key_btn = QPushButton("📋 COPY ADMIN KEY")
+        self.copy_key_btn.setObjectName("StartBtn")
+        self.copy_key_btn.setCursor(Qt.PointingHandCursor)
+        self.copy_key_btn.clicked.connect(self.copy_admin_key)
+        layout.addWidget(self.copy_key_btn)
 
         # 3. Buttons
         btn_layout = QHBoxLayout()
@@ -141,7 +148,9 @@ class ServerController(QMainWindow):
     def update_info_box(self, status):
         ip = self.get_local_ip()
         password = self.get_admin_password()
+        self.current_admin_key = password if password not in ("Not Generated Yet", "Database not found") and not password.startswith("Error:") else ""
         status_color = "#a6e3a1" if status == "Running 🟢" else "#f38ba8"
+        self.copy_key_btn.setEnabled(bool(self.current_admin_key))
 
         info_html = f"""
         <table width="100%">
@@ -151,6 +160,13 @@ class ServerController(QMainWindow):
         </table>
         """
         self.info_box.setText(info_html)
+
+    def copy_admin_key(self):
+        if not self.current_admin_key:
+            self.console.append("<span style='color: #f38ba8;'>[INFO] Admin key abhi available nahi hai.</span>")
+            return
+        QApplication.clipboard().setText(self.current_admin_key)
+        self.console.append("<span style='color: #a6e3a1;'>[INFO] Admin key clipboard me copy ho gaya.</span>")
 
     def check_service_status(self):
         """Runs 'systemctl is-active lanserver' silently to check status"""
