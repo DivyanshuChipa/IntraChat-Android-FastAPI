@@ -749,9 +749,9 @@ if __name__ == "__main__":
     # 1. Show Connection Dialog first
     conn_dialog = ConnectDialog()
     if conn_dialog.exec() == QDialog.Accepted:
-        ip = conn_dialog.ip_input.text().strip()
-        port = conn_dialog.port_input.text().strip()
-        key = conn_dialog.key_input.text().strip()
+        ip = conn_dialog.ip_input.text()
+        port = conn_dialog.port_input.text()
+        key = conn_dialog.key_input.text()
 
         url = f"http://{ip}:{port}"
 
