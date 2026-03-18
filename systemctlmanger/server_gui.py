@@ -29,12 +29,15 @@ QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244
 """
 
 # Possible database locations (different setups may use different filenames/working dirs)
-BASE_DIR = os.path.dirname(__file__)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 DB_CANDIDATES = [
-    os.path.join(BASE_DIR, "backend", "chat_users.db"),
-    os.path.join(BASE_DIR, "backend", "chat_user.db"),
-    os.path.join(BASE_DIR, "chat_users.db"),
-    os.path.join(BASE_DIR, "chat_user.db"),
+    os.path.join(REPO_ROOT, "backend", "chat_users.db"),
+    os.path.join(REPO_ROOT, "backend", "chat_user.db"),
+    os.path.join(REPO_ROOT, "chat_users.db"),
+    os.path.join(REPO_ROOT, "chat_user.db"),
+    os.path.join(SCRIPT_DIR, "chat_users.db"),
+    os.path.join(SCRIPT_DIR, "chat_user.db"),
 ]
 
 class ServerController(QMainWindow):
