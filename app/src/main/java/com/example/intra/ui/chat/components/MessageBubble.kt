@@ -128,6 +128,22 @@ fun MessageBubble(
         ) {
             Column(modifier = Modifier.padding(10.dp)) {
 
+                if (!message.isSelf && message.receiver == "Family Group" && message.senderName != null) {
+                    val colors = listOf(
+                        Color(0xFFE53935), Color(0xFFD81B60), Color(0xFF8E24AA),
+                        Color(0xFF3949AB), Color(0xFF039BE5), Color(0xFF00897B),
+                        Color(0xFF43A047), Color(0xFFF4511E)
+                    )
+                    val colorIndex = kotlin.math.abs(message.senderName.hashCode()) % colors.size
+                    Text(
+                        text = message.senderName,
+                        color = colors[colorIndex],
+                        fontSize = 12.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+
                 val fileName = message.fileName ?: "File"
                 val fileExtension = fileName.substringAfterLast(".", "").lowercase()
 
