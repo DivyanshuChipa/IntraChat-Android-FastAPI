@@ -1,8 +1,11 @@
 import sqlite3
 import json
+import os
 from datetime import datetime, timezone, timedelta
 
-DB_NAME = "chat_messages.db"
+# Use absolute path to ensure DB is always in the backend/ folder
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_NAME = os.path.join(BASE_DIR, "chat_messages.db")
 
 # ✅ IST Timezone (UTC + 5:30)
 IST = timezone(timedelta(hours=5, minutes=30))

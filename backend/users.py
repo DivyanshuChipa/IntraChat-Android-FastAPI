@@ -6,7 +6,9 @@ import sqlite3
 from passlib.hash import pbkdf2_sha256
 import os
 
-DATABASE_NAME = "chat_users.db"
+# Use absolute path to ensure DB is always in the backend/ folder
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_NAME = os.path.join(BASE_DIR, "chat_users.db")
 
 def init_db():
     conn = sqlite3.connect(DATABASE_NAME)

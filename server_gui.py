@@ -29,7 +29,9 @@ QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244
 """
 
 # Path to the backend database
-DB_PATH = os.path.join(os.path.dirname(__file__), "backend", "chat_users.db")
+# Note: Since server_gui.py is in the root, it looks into backend/chat_users.db
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "backend", "chat_users.db")
 
 class ServerController(QMainWindow):
     def __init__(self):
@@ -114,13 +116,13 @@ class ServerController(QMainWindow):
     def get_admin_password(self):
         try:
             if not os.path.exists(DB_PATH):
-                return "Database not found"
+                return f"DB Not Found at {DB_PATH}"
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute("SELECT value FROM config WHERE key='admin_key'")
             row = cursor.fetchone()
             conn.close()
-            return row[0] if row else "Not Generated Yet"
+            return row[0] if row else "Key not in DB"
         except Exception as e:
             return f"Error: {str(e)}"
 
