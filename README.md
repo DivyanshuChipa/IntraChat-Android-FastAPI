@@ -14,7 +14,7 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-purple.svg)](https://kotlinlang.org/)
 [![Android](https://img.shields.io/badge/Android-5.0+-green.svg)](https://developer.android.com/)
 [![PySide6](https://img.shields.io/badge/PySide6-Desktop%20Admin-green.svg)](https://doc.qt.io/qtforpython/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 </div>
 
@@ -159,7 +159,7 @@ IntraChat-Android-FastAPI/
 
 ## 📄 License
 
-MIT License. See [LICENSE](LICENSE).
+GPLv3 License. See [LICENSE](LICENSE).
 
 ---
 

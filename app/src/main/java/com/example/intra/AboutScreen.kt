@@ -133,7 +133,7 @@ fun AboutScreen(
 
             // License Section
             Text(
-                text = "MIT License © 2025 DivyanshuChipa",
+                text = "GPLv3 License © 2026 DivyanshuChipa",
                 color = Color.Gray,
                 fontSize = 12.sp
             )
