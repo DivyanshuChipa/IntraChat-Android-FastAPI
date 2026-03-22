@@ -1,4 +1,3 @@
-
 # lan_server/users.py
 
 # ===== File: users.py =====
@@ -8,10 +7,11 @@ import os
 
 DATABASE_NAME = "chat_users.db"
 
+
 def init_db():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    
+
     # Users Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -22,7 +22,7 @@ def init_db():
             is_approved INTEGER DEFAULT 1
         )
     """)
-    
+
     # Config Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS config (
@@ -30,24 +30,31 @@ def init_db():
             value TEXT
         )
     """)
-    cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('require_approval', '0')")
+    cursor.execute(
+        "INSERT OR IGNORE INTO config (key, value) VALUES ('require_approval', '0')"
+    )
 
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_approved INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
-        pass 
-        
+        pass
+
     conn.commit()
     conn.close()
+
 
 # --- Config Helpers ---
 def set_require_approval(enabled: bool):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     val = "1" if enabled else "0"
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('require_approval', ?)", (val,))
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('require_approval', ?)",
+        (val,),
+    )
     conn.commit()
     conn.close()
+
 
 def get_require_approval():
     conn = sqlite3.connect(DATABASE_NAME)
@@ -57,12 +64,14 @@ def get_require_approval():
     conn.close()
     return row[0] == "1" if row else False
 
+
 def approve_user_db(username):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET is_approved = 1 WHERE username = ?", (username,))
     conn.commit()
     conn.close()
+
 
 # --- Security Check for WebSocket ---
 def is_user_approved(username):
@@ -74,51 +83,60 @@ def is_user_approved(username):
     # Agar user exist karta hai aur approved (1) hai, tabhi True
     return result is not None and result[0] == 1
 
+
 # --- Modified Registration ---
 def register_user(username, password):
     approval_needed = get_require_approval()
-    is_approved = 0 if approval_needed else 1 
+    is_approved = 0 if approval_needed else 1
 
     hash = pbkdf2_sha256.hash(password)
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "INSERT INTO users (username, password_hash, is_approved) VALUES (?, ?, ?)", 
-            (username, hash, is_approved)
+            "INSERT INTO users (username, password_hash, is_approved) VALUES (?, ?, ?)",
+            (username, hash, is_approved),
         )
         conn.commit()
-        
+
         if approval_needed:
-             return {"success": True, "message": "Registration successful! Wait for Admin approval."}
+            return {
+                "success": True,
+                "message": "Registration successful! Wait for Admin approval.",
+            }
         else:
-             return {"success": True, "message": "User registered successfully"}
-             
+            return {"success": True, "message": "User registered successfully"}
+
     except sqlite3.IntegrityError:
         return {"success": False, "message": "Username already taken"}
     except Exception as e:
         return {"success": False, "message": str(e)}
     finally:
         conn.close()
+
+
 # --- 🔥 FINAL LOGIN LOGIC (PRO STYLE) ---
+
 
 def verify_user(username, password):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT password_hash, is_approved FROM users WHERE username=?", (username,))
+    cursor.execute(
+        "SELECT password_hash, is_approved FROM users WHERE username=?", (username,)
+    )
     result = cursor.fetchone()
     conn.close()
-    
+
     if result:
         password_hash = result[0]
         is_approved = result[1]
-        
+
         if pbkdf2_sha256.verify(password, password_hash):
             if is_approved == 0:
                 # ✅ Dictionary Return (ChatGPT recommended)
-                return {"status": "PENDING"}  
+                return {"status": "PENDING"}
             return {"status": "OK"}
-            
+
     return {"status": "INVALID"}
 
 
@@ -128,19 +146,20 @@ def get_all_users():
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT id, username, profile_photo, is_approved FROM users")
-        users = []
-        for row in cursor.fetchall():
-            users.append({
+        return [
+            {
                 "id": row[0],
                 "username": row[1],
                 "profile_photo": row[2],
-                "is_approved": bool(row[3])
-            })
-        return users
-    except:
+                "is_approved": bool(row[3]),
+            }
+            for row in cursor
+        ]
+    except Exception:
         return []
     finally:
         conn.close()
+
 
 def delete_user_data(username):
     conn = sqlite3.connect(DATABASE_NAME)
@@ -150,8 +169,10 @@ def delete_user_data(username):
         result = cursor.fetchone()
         if result and result[0]:
             photo_path = result[0]
-            if photo_path.startswith("/"): photo_path = photo_path[1:]
-            if os.path.exists(photo_path): os.remove(photo_path)
+            if photo_path.startswith("/"):
+                photo_path = photo_path[1:]
+            if os.path.exists(photo_path):
+                os.remove(photo_path)
         cursor.execute("DELETE FROM users WHERE username=?", (username,))
         conn.commit()
         return {"success": True, "message": "Account deleted successfully"}
@@ -160,27 +181,36 @@ def delete_user_data(username):
     finally:
         conn.close()
 
+
 def reset_user_password(username, new_password):
     new_hash = pbkdf2_sha256.hash(new_password)
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
+    cursor.execute(
+        "UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username)
+    )
     conn.commit()
     conn.close()
     return {"success": True, "message": "Password reset successfully"}
-    
+
+
 def update_user_photo(username, file_path):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET profile_photo = ? WHERE username = ?", (file_path, username))
+    cursor.execute(
+        "UPDATE users SET profile_photo = ? WHERE username = ?", (file_path, username)
+    )
     conn.commit()
     conn.close()
+
 
 # --- AI Config Helpers ---
 def get_ai_config():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models')")
+    cursor.execute(
+        "SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models')"
+    )
     rows = cursor.fetchall()
     conn.close()
 
@@ -189,28 +219,55 @@ def get_ai_config():
         "ai_enabled": False,
         "ai_model": "gpt-oss:20b-cloud",
         "ollama_url": "http://localhost:11434",
-        "ai_vision_model": "gemma:27b-cloud", # Naya Vision Model
+        "ai_vision_model": "gemma:27b-cloud",  # Naya Vision Model
         "ai_fallback": "gemma3:270m",  # Naya Fallback Model
-        "ai_smart_models": "gpt-oss:20b-cloud, llama3:8b" # Inko Vector DB milega
+        "ai_smart_models": "gpt-oss:20b-cloud, llama3:8b",  # Inko Vector DB milega
     }
 
     for key, value in rows:
-        if key == 'ai_enabled': config[key] = (value == "1")
-        else: config[key] = value
+        if key == "ai_enabled":
+            config[key] = value == "1"
+        else:
+            config[key] = value
 
     return config
 
-def set_ai_config(enabled: bool, model: str, url: str, vision_model: str, fallback: str, smart_models: str):
+
+def set_ai_config(
+    enabled: bool,
+    model: str,
+    url: str,
+    vision_model: str,
+    fallback: str,
+    smart_models: str,
+):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_enabled', ?)", ("1" if enabled else "0",))
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_model', ?)", (model,))
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ollama_url', ?)", (url,))
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_vision_model', ?)", (vision_model,))
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_fallback', ?)", (fallback,))
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('ai_smart_models', ?)", (smart_models,))
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_enabled', ?)",
+        ("1" if enabled else "0",),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_model', ?)", (model,)
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('ollama_url', ?)", (url,)
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_vision_model', ?)",
+        (vision_model,),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_fallback', ?)",
+        (fallback,),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_smart_models', ?)",
+        (smart_models,),
+    )
     conn.commit()
     conn.close()
+
 
 # --- Admin Key Persistence ---
 def get_admin_key_db():
@@ -221,9 +278,12 @@ def get_admin_key_db():
     conn.close()
     return row[0] if row else None
 
+
 def set_admin_key_db(key: str):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('admin_key', ?)", (key,))
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('admin_key', ?)", (key,)
+    )
     conn.commit()
     conn.close()
