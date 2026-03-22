@@ -10,6 +10,7 @@ object ApiClient {
     // Cache variables (taaki baar baar naya connection na banaye)
     private var retrofit: Retrofit? = null
     private var lastBaseUrl: String? = null
+    private var apiServiceInstance: ApiService? = null
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -28,7 +29,7 @@ object ApiClient {
             val currentUrl = settings.getBaseUrl()
 
             // 2. Check karo: Agar Retrofit nahi bana hai, ya IP change ho gayi hai
-            if (retrofit == null || lastBaseUrl != currentUrl) {
+            if (retrofit == null || lastBaseUrl != currentUrl || apiServiceInstance == null) {
                 retrofit = Retrofit.Builder()
                     .baseUrl(currentUrl)
                     .client(client)
@@ -37,10 +38,11 @@ object ApiClient {
 
                 // Save new URL reference
                 lastBaseUrl = currentUrl
+                apiServiceInstance = retrofit!!.create(ApiService::class.java)
             }
 
             // 3. Return API service
-            return retrofit!!.create(ApiService::class.java)
+            return apiServiceInstance!!
         }
 
     // WebSocket URL helper (Same as before)

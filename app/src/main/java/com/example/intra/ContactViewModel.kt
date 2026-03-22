@@ -16,8 +16,6 @@ class ContactViewModel : ViewModel() {
     var isRefreshing by mutableStateOf(false)
         private set
 
-    private val apiService = ApiClient.apiService
-
     // 🆕 STEP 3A: ChatDao ka reference lo
     private val chatDao = ChatDatabase
         .getDatabase(MyApplication.instance)
@@ -40,7 +38,7 @@ class ContactViewModel : ViewModel() {
             isRefreshing = true
             try {
                 // ✅ STEP 3C: Server se users fetch karo (same as before)
-                val response = apiService.getUsers()
+                val response = ApiClient.apiService.getUsers()
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val usersList = response.body()?.users ?: emptyList()
