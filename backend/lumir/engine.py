@@ -198,7 +198,6 @@ class LumirEngine:
 
         # 🗜️ 3.6 SMART COMPRESS IMAGE LOGIC
         # Regex to find commands like ###compress<60>###
-        #import re
         compress_match = re.search(r'###compress<(\d+)>###', text)
 
         if compress_match:
@@ -324,9 +323,12 @@ class LumirEngine:
             from .utilities import compress_video
             res = compress_video(file_urls[-1], crf_val, fmt_val)
 
-            if sender in self.user_context: del self.user_context[sender]
-            if res["success"]: return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
-            else: return {"type": "text", "text": res["message"]}
+            if sender in self.user_context:
+                del self.user_context[sender]
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
 
         # 🔄 3.13 ROTATE VIDEO LOGIC
         if text.startswith("###rotatevideo:"):
@@ -339,9 +341,12 @@ class LumirEngine:
             from .utilities import rotate_video
             res = rotate_video(file_urls[-1], rot_type)
 
-            if sender in self.user_context: del self.user_context[sender]
-            if res["success"]: return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
-            else: return {"type": "text", "text": res["message"]}
+            if sender in self.user_context:
+                del self.user_context[sender]
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
 
         # 🎞️ 3.14 CONVERT TO MP4 LOGIC
         if "###convertmp4###" in text:
@@ -352,9 +357,12 @@ class LumirEngine:
             from .utilities import convert_to_mp4
             res = convert_to_mp4(file_urls[-1])
 
-            if sender in self.user_context: del self.user_context[sender]
-            if res["success"]: return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
-            else: return {"type": "text", "text": res["message"]}
+            if sender in self.user_context:
+                del self.user_context[sender]
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
 
         # 👁️ 3.15 AI VISION LOGIC (Button Click)
         if "###analyzeimage###" in text:
@@ -373,7 +381,6 @@ class LumirEngine:
                 vision_prompt = "Please analyze this image carefully. Describe what you see in detail, including objects, people, environment, and any written text."
 
                 # ask_ai ko call karo image_path ke sath! (History khali rakhenge taaki jaldi process ho)
-                #from .ai_engine import ask_ai
                 ai_reply = ask_ai(prompt=vision_prompt, config=config, history=[], sender=sender, image_path=local_path)
 
                 # Memory clear karo
@@ -507,7 +514,6 @@ class LumirEngine:
                 if target_image_path and sender in self.user_context:
                     del self.user_context[sender]
 
-                #import re
                 safe_reply = ai_reply.replace("\n", "  ").strip()
                 safe_reply = re.sub(' +', ' ', safe_reply)
 
