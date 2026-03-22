@@ -72,11 +72,11 @@ def verify_admin(x_admin_key: str = Header(None)):
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)")
 
-# CORS: sabko allow (LAN ke liye thik hai)
+# CORS: allow origins (disabled credentials for security)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
