@@ -202,10 +202,17 @@ class WebRTCClient(
             videoCapturer = createVideoCapturer()
         }
 
+        val activeCapturer = videoCapturer
+        if (activeCapturer == null) {
+            Log.w("WebRTC", "⚠️ No compatible camera capturer available. Falling back to audio-only call.")
+            isVideoCall = false
+            return
+        }
+
         if (localVideoSource == null) {
-            localVideoSource = peerConnectionFactory?.createVideoSource(videoCapturer!!.isScreencast)
-            videoCapturer?.initialize(surfaceTextureHelper, context, localVideoSource?.capturerObserver)
-            videoCapturer?.startCapture(1024, 720, 30) // Resolution can be adjusted
+            localVideoSource = peerConnectionFactory?.createVideoSource(activeCapturer.isScreencast)
+            activeCapturer.initialize(surfaceTextureHelper, context, localVideoSource?.capturerObserver)
+            activeCapturer.startCapture(1024, 720, 30) // Resolution can be adjusted
         }
 
         if (localVideoTrack == null) {
@@ -414,7 +421,9 @@ class WebRTCClient(
 
         if (isVideoCall) {
             startLocalVideo()
-            peerConnection?.addTrack(localVideoTrack, listOf("local_video_stream"))
+            localVideoTrack?.let { track ->
+                peerConnection?.addTrack(track, listOf("local_video_stream"))
+            } ?: Log.w("WebRTC", "⚠️ Local video track unavailable. Continuing call without publishing video.")
         }
     }
 
@@ -455,6 +464,9 @@ class WebRTCClient(
 
         localVideoSource?.dispose()
         localVideoSource = null
+
+        localVideoTrack?.dispose()
+        localVideoTrack = null
 
         surfaceTextureHelper?.dispose()
         surfaceTextureHelper = null
