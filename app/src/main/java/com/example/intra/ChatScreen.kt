@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,7 +67,7 @@ fun ChatScreen(
     receiverPhotoUrl: String? = null,
     onAttachClick: () -> Unit,
     onBackClick: () -> Unit,
-    onStartCall: () -> Unit,
+    onStartCall: (isVideo: Boolean) -> Unit,
 ) {
     val listState = rememberLazyListState()
     var videoUrlToPlay by remember { mutableStateOf<String?>(null) }
@@ -213,10 +214,16 @@ fun ChatScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onStartCall) {
+                    IconButton(onClick = { onStartCall(true) }) {
+                        Icon(
+                            imageVector = Icons.Default.Videocam,
+                            contentDescription = "Video Call"
+                        )
+                    }
+                    IconButton(onClick = { onStartCall(false) }) {
                         Icon(
                             imageVector = Icons.Default.Call,
-                            contentDescription = "Call"
+                            contentDescription = "Audio Call"
                         )
                     }
                 }

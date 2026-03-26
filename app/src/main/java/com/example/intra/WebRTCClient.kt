@@ -19,10 +19,21 @@ class WebRTCClient(
     private var audioSource: AudioSource? = null
     private var localAudioTrack: AudioTrack? = null
 
+    // Video components
+    val eglBaseContext: EglBase.Context by lazy { EglBase.create().eglBaseContext }
+    private var surfaceTextureHelper: SurfaceTextureHelper? = null
+    private var videoCapturer: VideoCapturer? = null
+    private var localVideoSource: VideoSource? = null
+    private var localVideoTrack: VideoTrack? = null
+    private var remoteVideoTrack: VideoTrack? = null
+    private var remoteRendererSaved: SurfaceViewRenderer? = null
+    private var isVideoEnabled = true
+
     // Default Speaker State: Hum shuruat Speaker ON se karenge
     private var isSpeakerOn = false
 
     private var currentTarget: String = ""
+    private var isVideoCall = false
 
     init {
         initWebRTC()
@@ -32,6 +43,7 @@ class WebRTCClient(
         // 1. WebRTC Initialization options
         val options = PeerConnectionFactory.InitializationOptions.builder(context)
             .setEnableInternalTracer(true)
+            .setFieldTrials("WebRTC-H264HighProfile/Enabled/")
             .createInitializationOptions()
         PeerConnectionFactory.initialize(options)
 
@@ -42,8 +54,13 @@ class WebRTCClient(
             .createAudioDeviceModule()
 
         // 3. Create Factory
+        val videoEncoderFactory = DefaultVideoEncoderFactory(eglBaseContext, true, true)
+        val videoDecoderFactory = DefaultVideoDecoderFactory(eglBaseContext)
+
         peerConnectionFactory = PeerConnectionFactory.builder()
             .setAudioDeviceModule(audioDeviceModule)
+            .setVideoEncoderFactory(videoEncoderFactory)
+            .setVideoDecoderFactory(videoDecoderFactory)
             .setOptions(PeerConnectionFactory.Options().apply {
                 disableEncryption = false
                 disableNetworkMonitor = false
@@ -131,11 +148,91 @@ class WebRTCClient(
     }
 
     // ----------------------------------------------------------------
+    // 📹 VIDEO MANAGEMENT
+    // ----------------------------------------------------------------
+
+    private fun createVideoCapturer(): VideoCapturer? {
+        val enumerator = Camera2Enumerator(context)
+        val deviceNames = enumerator.deviceNames
+
+        // Try to find front camera first
+        for (deviceName in deviceNames) {
+            if (enumerator.isFrontFacing(deviceName)) {
+                return enumerator.createCapturer(deviceName, null)
+            }
+        }
+        // Fallback to back camera
+        for (deviceName in deviceNames) {
+            if (enumerator.isBackFacing(deviceName)) {
+                return enumerator.createCapturer(deviceName, null)
+            }
+        }
+        return null
+    }
+
+    fun setupLocalVideoRenderer(localRenderer: SurfaceViewRenderer) {
+        localRenderer.setEnableHardwareScaler(true)
+        localRenderer.setMirror(true) // Mirror for front camera
+        localVideoTrack?.addSink(localRenderer)
+    }
+
+    fun removeLocalVideoRenderer(localRenderer: SurfaceViewRenderer) {
+        localVideoTrack?.removeSink(localRenderer)
+    }
+
+    fun setupRemoteVideoRenderer(remoteRenderer: SurfaceViewRenderer) {
+        remoteRenderer.setEnableHardwareScaler(true)
+        remoteRendererSaved = remoteRenderer
+        remoteVideoTrack?.addSink(remoteRenderer)
+    }
+
+    fun removeRemoteVideoRenderer(remoteRenderer: SurfaceViewRenderer) {
+        remoteVideoTrack?.removeSink(remoteRenderer)
+        if (remoteRendererSaved == remoteRenderer) {
+            remoteRendererSaved = null
+        }
+    }
+
+    private fun startLocalVideo() {
+        if (surfaceTextureHelper == null) {
+            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBaseContext)
+        }
+
+        if (videoCapturer == null) {
+            videoCapturer = createVideoCapturer()
+        }
+
+        if (localVideoSource == null) {
+            localVideoSource = peerConnectionFactory?.createVideoSource(videoCapturer!!.isScreencast)
+            videoCapturer?.initialize(surfaceTextureHelper, context, localVideoSource?.capturerObserver)
+            videoCapturer?.startCapture(1024, 720, 30) // Resolution can be adjusted
+        }
+
+        if (localVideoTrack == null) {
+            localVideoTrack = peerConnectionFactory?.createVideoTrack("video_track_101", localVideoSource)
+            localVideoTrack?.setEnabled(true)
+        }
+    }
+
+    fun toggleVideo(shouldBeOn: Boolean) {
+        if (!isVideoCall) return
+        isVideoEnabled = shouldBeOn
+        localVideoTrack?.setEnabled(isVideoEnabled)
+        Log.d("WebRTC", "📹 Video Track Enabled: $isVideoEnabled")
+    }
+
+    fun switchCamera() {
+        if (!isVideoCall) return
+        (videoCapturer as? CameraVideoCapturer)?.switchCamera(null)
+    }
+
+    // ----------------------------------------------------------------
     // 📞 CALL LOGIC
     // ----------------------------------------------------------------
 
-    fun startCall(targetUsername: String) {
+    fun startCall(targetUsername: String, isVideoCall: Boolean = false) {
         currentTarget = targetUsername
+        this.isVideoCall = isVideoCall
 
         // 🔥 STEP 0: Set Audio Mode for Call (Fix for J2 Camera & Earpiece Issue)
         setupAudioForCall()
@@ -147,6 +244,9 @@ class WebRTCClient(
 
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            if (isVideoCall) {
+                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            }
         }
 
         peerConnection?.createOffer(object : SdpObserver {
@@ -159,6 +259,7 @@ class WebRTCClient(
                                 put("type", "webrtc_offer")
                                 put("sdp", it.description)
                                 put("receiver", targetUsername)
+                                put("is_video_call", isVideoCall) // Also let the remote know
                             }
                             sendSignal(json.toString())
                         }
@@ -174,8 +275,9 @@ class WebRTCClient(
         }, constraints)
     }
 
-    fun answerCall(targetUsername: String, offerSdp: String) {
+    fun answerCall(targetUsername: String, offerSdp: String, isVideoCall: Boolean = false) {
         currentTarget = targetUsername
+        this.isVideoCall = isVideoCall
 
         // 🔥 STEP 0: Set Audio Mode for Call (Fix for J2 Camera & Earpiece Issue)
         setupAudioForCall()
@@ -190,6 +292,9 @@ class WebRTCClient(
             override fun onSetSuccess() {
                 val constraints = MediaConstraints().apply {
                     mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+                    if (isVideoCall) {
+                        mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+                    }
                 }
                 peerConnection?.createAnswer(object : SdpObserver {
                     override fun onCreateSuccess(sdp: SessionDescription?) {
@@ -280,6 +385,13 @@ class WebRTCClient(
                         // ChatGPT sahi tha: Agar hum yahan force karenge, toh
                         // jab bhi thoda glitch hoga, phone wapas Speaker mode me chala jayega.
                         // Sirf Track enable karna kaafi hai.
+                    } else if (track is VideoTrack) {
+                        track.setEnabled(true)
+                        remoteVideoTrack = track
+                        remoteRendererSaved?.let { renderer ->
+                            track.addSink(renderer)
+                        }
+                        Log.d("WebRTC", "📹 Remote Video Track Added")
                     }
                 }
 
@@ -299,6 +411,11 @@ class WebRTCClient(
         localAudioTrack?.setEnabled(true)
         val streamId = "local_audio_stream"
         peerConnection?.addTrack(localAudioTrack, listOf(streamId))
+
+        if (isVideoCall) {
+            startLocalVideo()
+            peerConnection?.addTrack(localVideoTrack, listOf("local_video_stream"))
+        }
     }
 
     // 🔥 FIX 1: Call end karne par signal bhejo
@@ -327,10 +444,28 @@ class WebRTCClient(
         audioManager.abandonAudioFocus(null)
 
         localAudioTrack?.setEnabled(false)
+
+        try {
+            videoCapturer?.stopCapture()
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        }
+        videoCapturer?.dispose()
+        videoCapturer = null
+
+        localVideoSource?.dispose()
+        localVideoSource = null
+
+        surfaceTextureHelper?.dispose()
+        surfaceTextureHelper = null
+
+        remoteRendererSaved = null
+
         peerConnection?.close()
         peerConnection = null
         currentTarget = ""
+        isVideoCall = false
 
-        Log.d("WebRTC", "❌ Call Ended & Audio Cleaned")
+        Log.d("WebRTC", "❌ Call Ended & Audio/Video Cleaned")
     }
 }

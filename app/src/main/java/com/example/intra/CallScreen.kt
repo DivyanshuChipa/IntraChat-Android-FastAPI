@@ -33,7 +33,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material.icons.filled.Cameraswitch
+import org.webrtc.SurfaceViewRenderer
+import org.webrtc.RendererCommon
 
 @Composable
 fun CallScreen(
@@ -42,11 +47,14 @@ fun CallScreen(
     onRejectCall: () -> Unit,
     onAcceptCall: () -> Unit,
     onToggleMute: () -> Unit,
-    onToggleSpeaker: () -> Unit
+    onToggleSpeaker: () -> Unit,
+    onToggleVideo: () -> Unit,
+    onSwitchCamera: () -> Unit,
+    webRTCClient: WebRTCClient? = null
 ) {
     // 🔥 TIMER STATE - Call duration track karne ke liye
     var callSeconds by remember(state.status) { mutableStateOf(0) }
-
+    val context = LocalContext.current
 
     // 🔥 TIMER LOGIC - Connected hone pe start, status change pe auto stop
     LaunchedEffect(state.status) {
@@ -73,6 +81,26 @@ fun CallScreen(
             ),
         contentAlignment = Alignment.Center
     ) {
+        // --- VIDEO CALL BACKGROUND ---
+        if (state.isVideoCall && state.status == CallStatus.CONNECTED) {
+            AndroidView(
+                factory = { ctx ->
+                    SurfaceViewRenderer(ctx).apply {
+                        if (webRTCClient != null) {
+                            init(webRTCClient.eglBaseContext, null)
+                            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+                            webRTCClient.setupRemoteVideoRenderer(this)
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                onRelease = { renderer ->
+                    webRTCClient?.removeRemoteVideoRenderer(renderer)
+                    renderer.release()
+                }
+            )
+        }
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
@@ -82,63 +110,119 @@ fun CallScreen(
         ) {
             // --- TOP SECTION: Avatar & Status (Same) ---
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier.size(170.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AvatarGlowRing(
-                        isActive = state.status != CallStatus.CONNECTED
-                    )
+                if (!state.isVideoCall || state.status != CallStatus.CONNECTED) {
+                        AvatarGlowRing(
+                            isActive = state.status != CallStatus.CONNECTED
+                        )
 
-                    Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (state.profilePhotoUrl != null) {
-                            AsyncImage(
-                                model = state.profilePhotoUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(60.dp)
-                            )
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (state.profilePhotoUrl != null) {
+                                AsyncImage(
+                                    model = state.profilePhotoUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(60.dp)
+                                )
+                            }
                         }
+                }
+
+                if (!state.isVideoCall || state.status != CallStatus.CONNECTED) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = state.targetUser,
+                        color = Color.White,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    AnimatedContent(
+                        targetState = state.status,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "callStatus"
+                    ) { status ->
+                        Text(
+                            text = when (status) {
+                                CallStatus.OUTGOING -> "Calling..."
+                                CallStatus.INCOMING -> "Incoming Call..."
+                                CallStatus.CONNECTED -> formatTime(callSeconds)
+                                else -> ""
+                            },
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 18.sp
+                        )
+                    }
+                } else {
+                    // Transparent overlay texts for Video Call
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = state.targetUser,
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = formatTime(callSeconds),
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = state.targetUser,
-                    color = Color.White,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                AnimatedContent(
-                    targetState = state.status,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "callStatus"
-                ) { status ->
-                    Text(
-                        text = when (status) {
-                            CallStatus.OUTGOING -> "Calling..."
-                            CallStatus.INCOMING -> "Incoming Call..."
-                            CallStatus.CONNECTED -> formatTime(callSeconds)
-                            else -> ""
-                        },
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 18.sp
-                    )
+            // --- LOCAL VIDEO (PiP) ---
+            if (state.isVideoCall && state.status == CallStatus.CONNECTED && state.isVideoEnabled) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(bottom = 32.dp, end = 16.dp),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(100.dp)
+                            .height(150.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .background(Color.Black)
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                SurfaceViewRenderer(ctx).apply {
+                                    if (webRTCClient != null) {
+                                        init(webRTCClient.eglBaseContext, null)
+                                        setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+                                        setZOrderMediaOverlay(true)
+                                        webRTCClient.setupLocalVideoRenderer(this)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                            onRelease = { renderer ->
+                                webRTCClient?.removeLocalVideoRenderer(renderer)
+                                renderer.release()
+                            }
+                        )
+                    }
                 }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             // --- BOTTOM SECTION: Buttons ---
@@ -176,6 +260,22 @@ fun CallScreen(
                         onClick = onToggleMute
                     )
 
+                    if (state.isVideoCall) {
+                        CallActionButton(
+                            icon = if (state.isVideoEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                            color = if (state.isVideoEnabled) Color.White else Color.White.copy(alpha = 0.2f),
+                            iconTint = if (state.isVideoEnabled) Color.Black else Color.White,
+                            onClick = onToggleVideo
+                        )
+
+                        CallActionButton(
+                            icon = Icons.Default.Cameraswitch,
+                            color = Color.White.copy(alpha = 0.2f),
+                            iconTint = Color.White,
+                            onClick = onSwitchCamera
+                        )
+                    }
+
                     // End Call Button (Same for Connected/Outgoing)
                     CallActionButton(
                         icon = Icons.Default.CallEnd,
@@ -184,12 +284,14 @@ fun CallScreen(
                         onClick = onEndCall
                     )
 
-                    CallActionButton(
-                        icon = if (state.isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                        color = if (state.isSpeakerOn) Color.White else Color.White.copy(alpha = 0.2f),
-                        iconTint = if (state.isSpeakerOn) Color.Black else Color.White,
-                        onClick = onToggleSpeaker
-                    )
+                    if (!state.isVideoCall) {
+                        CallActionButton(
+                            icon = if (state.isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            color = if (state.isSpeakerOn) Color.White else Color.White.copy(alpha = 0.2f),
+                            iconTint = if (state.isSpeakerOn) Color.Black else Color.White,
+                            onClick = onToggleSpeaker
+                        )
+                    }
                 }
             }
         }

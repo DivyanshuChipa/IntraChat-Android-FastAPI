@@ -339,13 +339,14 @@ class ChatViewModel(
     // 📞 CALL REQUEST (Outgoing)
     // ===============================
 
-    fun sendCallRequest(receiver: String) {
+    fun sendCallRequest(receiver: String, isVideoCall: Boolean = false) {
         val myPhoto = settingsManager.getMyPhoto()
         val json = JSONObject().apply {
             put("type", "call_request")
             put("sender", currentUsername)
             put("receiver", receiver)
             put("profile_photo", myPhoto)
+            put("is_video_call", isVideoCall)
         }
         WsManager.send(json.toString())
     }
