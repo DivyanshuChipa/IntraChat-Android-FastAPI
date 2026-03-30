@@ -61,6 +61,7 @@ fun MessageInputBar(
     var isFocused by remember { mutableStateOf(false) }
 
     val sendScale = remember { Animatable(1f) }
+    var pendingWeatherCommand by remember { mutableStateOf<String?>(null) }
 
     // Initialize Location Client
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -71,23 +72,30 @@ fun MessageInputBar(
         onResult = { permissions ->
             val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            val weatherCommand = pendingWeatherCommand
+            pendingWeatherCommand = null
 
             if (isGranted) {
                 // Fetch location and send message
                 fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
                     .addOnSuccessListener { location ->
                         if (location != null) {
-                            viewModel.sendMessage(receiverName, location.latitude, location.longitude)
+                            viewModel.sendMessage(
+                                receiverName,
+                                location.latitude,
+                                location.longitude,
+                                weatherCommand
+                            )
                         } else {
-                            viewModel.sendMessage(receiverName)
+                            viewModel.sendMessage(receiverName, messageText = weatherCommand)
                         }
                     }
                     .addOnFailureListener {
-                        viewModel.sendMessage(receiverName)
+                        viewModel.sendMessage(receiverName, messageText = weatherCommand)
                     }
             } else {
                 // Permission denied, just send message normally
-                viewModel.sendMessage(receiverName)
+                viewModel.sendMessage(receiverName, messageText = weatherCommand)
             }
         }
     )
@@ -161,7 +169,8 @@ fun MessageInputBar(
 
         IconButton(
             onClick = {
-                if (inputValue.trim().equals("/weather", ignoreCase = true) && settingsManager.isLocationEnabled()) {
+                val outboundText = inputValue.trim()
+                if (outboundText.equals("/weather", ignoreCase = true) && settingsManager.isLocationEnabled()) {
                     // Check Permissions
                     val hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                     val hasCoarseLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -171,16 +180,22 @@ fun MessageInputBar(
                         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
                             .addOnSuccessListener { location ->
                                 if (location != null) {
-                                    viewModel.sendMessage(receiverName, location.latitude, location.longitude)
+                                    viewModel.sendMessage(
+                                        receiverName,
+                                        location.latitude,
+                                        location.longitude,
+                                        outboundText
+                                    )
                                 } else {
-                                    viewModel.sendMessage(receiverName) // Fallback
+                                    viewModel.sendMessage(receiverName, messageText = outboundText) // Fallback
                                 }
                             }
                             .addOnFailureListener {
-                                viewModel.sendMessage(receiverName) // Fallback
+                                viewModel.sendMessage(receiverName, messageText = outboundText) // Fallback
                             }
                     } else {
                         // Request Permissions
+                        pendingWeatherCommand = outboundText
                         locationPermissionLauncher.launch(
                             arrayOf(
                                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -190,7 +205,7 @@ fun MessageInputBar(
                     }
                 } else {
                     // Normal Message or Location OFF
-                    viewModel.sendMessage(receiverName)
+                    viewModel.sendMessage(receiverName, messageText = outboundText)
                 }
             },
             enabled = hasText,
