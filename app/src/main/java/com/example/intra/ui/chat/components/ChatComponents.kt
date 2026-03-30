@@ -1,5 +1,10 @@
 package com.example.intra.ui.chat.components
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,23 +35,62 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.intra.ChatViewModel
+import com.example.intra.SettingsManager
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import kotlinx.coroutines.delay
 
+@SuppressLint("MissingPermission")
 @Composable
 fun MessageInputBar(
     viewModel: ChatViewModel,
     receiverName: String,
     onAttachClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val settingsManager = remember { SettingsManager(context) }
+
     val inputValue = viewModel.inputMessage.value
     val hasText = inputValue.isNotBlank()
     var isFocused by remember { mutableStateOf(false) }
 
     val sendScale = remember { Animatable(1f) }
+
+    // Initialize Location Client
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    // Permission Launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+            if (isGranted) {
+                // Fetch location and send message
+                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                    .addOnSuccessListener { location ->
+                        if (location != null) {
+                            viewModel.sendMessage(receiverName, location.latitude, location.longitude)
+                        } else {
+                            viewModel.sendMessage(receiverName)
+                        }
+                    }
+                    .addOnFailureListener {
+                        viewModel.sendMessage(receiverName)
+                    }
+            } else {
+                // Permission denied, just send message normally
+                viewModel.sendMessage(receiverName)
+            }
+        }
+    )
     val glowAlpha by animateFloatAsState(
         targetValue = if (isFocused) 0.24f else 0f,
         animationSpec = tween(250),
@@ -116,7 +160,39 @@ fun MessageInputBar(
         }
 
         IconButton(
-            onClick = { viewModel.sendMessage(receiverName) },
+            onClick = {
+                if (inputValue.trim().equals("/weather", ignoreCase = true) && settingsManager.isLocationEnabled()) {
+                    // Check Permissions
+                    val hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    val hasCoarseLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasFineLocation || hasCoarseLocation) {
+                        // Permissions granted, fetch location
+                        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                            .addOnSuccessListener { location ->
+                                if (location != null) {
+                                    viewModel.sendMessage(receiverName, location.latitude, location.longitude)
+                                } else {
+                                    viewModel.sendMessage(receiverName) // Fallback
+                                }
+                            }
+                            .addOnFailureListener {
+                                viewModel.sendMessage(receiverName) // Fallback
+                            }
+                    } else {
+                        // Request Permissions
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                } else {
+                    // Normal Message or Location OFF
+                    viewModel.sendMessage(receiverName)
+                }
+            },
             enabled = hasText,
             modifier = Modifier.scale(sendScale.value)
         ) {
