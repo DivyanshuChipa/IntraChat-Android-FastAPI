@@ -24,10 +24,10 @@ SIGNAL_TYPES = {
 }
 
 # 🚀 BACKGROUND WORKER: Processes Lumir requests without blocking the WebSocket loop
-async def handle_lumir_processing(text_content, file_url, file_name, sender):
+async def handle_lumir_processing(text_content, file_url, file_name, sender, lat=None, lon=None):
     try:
         # 1. Process heavy task in a separate thread to prevent event loop blocking
-        bot_res = await asyncio.to_thread(lumir_engine.process, text=text_content, file_url=file_url, sender=sender)
+        bot_res = await asyncio.to_thread(lumir_engine.process, text=text_content, file_url=file_url, sender=sender, lat=lat, lon=lon)
 
         # 2. Save Lumir's response to DB
         msg_id = save_message(
@@ -173,6 +173,10 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 receiver = parsed.get("receiver")
                 msg_type = parsed.get("type", "text")
 
+                # 📍 NAYA: Android app se aane wale GPS Coordinates extract karo
+                lat = parsed.get("lat")
+                lon = parsed.get("lon")
+
                 final_raw = json.dumps(parsed)
 
                 # ==========================================
@@ -202,7 +206,8 @@ async def websocket_endpoint(ws: WebSocket, username: str):
 
                     # 🔥 THE ULTIMATE MAGIC: Fire and Forget Task!
                     # Ye line server ko free kar degi, aur processing background mein hogi.
-                    asyncio.create_task(handle_lumir_processing(text_content, file_url, file_name, sender))
+                    # Yahan handle_lumir_processing ko lat, lon bhej do!
+                    asyncio.create_task(handle_lumir_processing(text_content, file_url, file_name, sender, lat, lon))
 
                     # Baki chat logic skip karo (Forwarding ya group logic nahi chalega)
                     continue

@@ -30,31 +30,50 @@ def get_server_status():
     except Exception as e:
         return {"type": "text", "text": f"⚠️ Server status error: {str(e)}"}
 
-def get_weather(location="Maheshpura"):
+def get_weather(lat=None, lon=None):
     try:
-        # wttr.in se weather data uthao
-        url = f"https://wttr.in/{location}?format=j1"
-        response = requests.get(url, timeout=5.0)
-        data = response.json()
-        temp = data['current_condition'][0]['temp_C']
-        desc = data['current_condition'][0]['weatherDesc'][0]['value']
+        if lat and lon:
+            # 🌍 Real GPS Weather via Open-Meteo (No API Key needed!)
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+            response = requests.get(url, timeout=5.0)
+            data = response.json()
+            temp = data['current_weather']['temperature']
+            is_day = data['current_weather']['is_day']
+            desc = "Clear/Sunny ☀️" if is_day else "Clear Night 🌙" 
+            
+            return {
+                "type": "utility_weather",
+                "location": "Live GPS Location 📍",
+                "temp": f"{temp}°C",
+                "condition": desc,
+                "text": f"Live Weather: {temp}°C, {desc}"
+            }
+        else:
+            # 🏠 Fallback default location (Maheshpura)
+            location = "Maheshpura"
+            url = f"https://wttr.in/{location}?format=j1"
+            response = requests.get(url, timeout=5.0)
+            data = response.json()
+            temp = data['current_condition'][0]['temp_C']
+            desc = data['current_condition'][0]['weatherDesc'][0]['value']
 
-        return {
-            "type": "utility_weather",
-            "location": location.capitalize(),
-            "temp": f"{temp}°C",
-            "condition": desc,
-            "text": f"Weather in {location}: {temp}°C, {desc}" # Fallback
-        }
+            return {
+                "type": "utility_weather",
+                "location": location.capitalize(),
+                "temp": f"{temp}°C",
+                "condition": desc,
+                "text": f"Weather in {location}: {temp}°C, {desc}"
+            }
     except Exception as e:
         print(f"Weather error: {e}")
         return {"type": "text", "text": "Bhai net nahi chal raha ya weather server down hai! 🌧️"}
+
 class LumirEngine:
     def __init__(self):
         # 🧠 Bot ki Memory: Sender -> Last Image URL
         self.user_context = {}
 
-    def process(self, text: str, file_url: str = None, sender: str = "Unknown"):
+    def process(self, text: str, file_url: str = None, sender: str = "Unknown", lat: float = None, lon: float = None):
         text = text.lower().strip()
         # ==========================================
         # 🧠 RAPHAEL'S AGENT ROUTER (Vector DB Search)
@@ -190,7 +209,7 @@ class LumirEngine:
             return get_server_status()
 
         if text == "/weather":
-            return get_weather()
+            return get_weather(lat, lon)
 
         # Update Help Menu
         if text == "/help" or text == "/hrlp":
@@ -524,4 +543,5 @@ class LumirEngine:
         except Exception as e:
             print(f"❌ AI Router Error: {e}")
             return {"type": "text", "text": f"⚠️ AI System Error: {str(e)}"}
+
 lumir_engine = LumirEngine()

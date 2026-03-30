@@ -165,6 +165,12 @@ class ChatViewModel(
             put("receiver", receiver)
             put("text", text)
             put("timestamp", ts)
+
+            // 📍 NAYA: GPS hardcoded for testing Weather 2.0
+            if (text.lowercase() == "/weather" && receiver == "Lumir") {
+                put("lat", 19.0760) // Mumbai
+                put("lon", 72.8777)
+            }
         }
 
         val msg = ChatMessage(
@@ -193,6 +199,12 @@ class ChatViewModel(
             put("receiver", receiver)
             put("text", command)
             put("timestamp", ts)
+
+            // 📍 NAYA: GPS hardcoded for testing Weather 2.0
+            if (command.lowercase() == "/weather" && receiver == "Lumir") {
+                put("lat", 19.0760) // Mumbai
+                put("lon", 72.8777)
+            }
         }
 
         val msg = ChatMessage(
