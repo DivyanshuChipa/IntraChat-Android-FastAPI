@@ -94,6 +94,9 @@ dependencies {
        implementation("androidx.media3:media3-ui:1.2.0")
        implementation("androidx.media3:media3-common:1.2.0")
 
+        //gps
+       implementation("com.google.android.gms:play-services-location:21.2.0")
+
         // ... (बाकी libs.androidx.core.ktx, etc.)
     val room_version = "2.6.1"
     // Room Libraries

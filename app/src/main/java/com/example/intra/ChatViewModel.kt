@@ -152,7 +152,7 @@ class ChatViewModel(
     // 💬 SEND TEXT MESSAGE
     // ===============================
 
-    fun sendMessage(receiver: String) {
+    fun sendMessage(receiver: String, lat: Double? = null, lon: Double? = null) {
         val text = inputMessage.value.trim()
         if (text.isEmpty()) return
 
@@ -166,10 +166,10 @@ class ChatViewModel(
             put("text", text)
             put("timestamp", ts)
 
-            // 📍 NAYA: GPS hardcoded for testing Weather 2.0
-            if (text.lowercase() == "/weather" && receiver == "Lumir") {
-                put("lat", 19.0760) // Mumbai
-                put("lon", 72.8777)
+            // 📍 NAYA: Dynamic GPS for Weather 2.0
+            if (lat != null && lon != null) {
+                put("lat", lat)
+                put("lon", lon)
             }
         }
 
@@ -191,7 +191,7 @@ class ChatViewModel(
         }
     }
 
-    fun sendOptionCommand(receiver: String, command: String) {
+    fun sendOptionCommand(receiver: String, command: String, lat: Double? = null, lon: Double? = null) {
         val ts = System.currentTimeMillis()
         val json = JSONObject().apply {
             put("type", "text")
@@ -200,10 +200,10 @@ class ChatViewModel(
             put("text", command)
             put("timestamp", ts)
 
-            // 📍 NAYA: GPS hardcoded for testing Weather 2.0
-            if (command.lowercase() == "/weather" && receiver == "Lumir") {
-                put("lat", 19.0760) // Mumbai
-                put("lon", 72.8777)
+            // 📍 NAYA: Dynamic GPS for Weather 2.0
+            if (lat != null && lon != null) {
+                put("lat", lat)
+                put("lon", lon)
             }
         }
 
