@@ -49,7 +49,7 @@ async def check_morning_weather():
             )
 
             # Trigger AI in background (we use the main loop or asyncio thread if needed)
-            ai_reply = ask_ai(prompt=system_prompt, config=config, history=[], sender="System")
+            ai_reply = await asyncio.to_thread(ask_ai, prompt=system_prompt, config=config, history=[], sender="System")
 
             if ai_reply:
                 ai_reply = ai_reply.strip()
