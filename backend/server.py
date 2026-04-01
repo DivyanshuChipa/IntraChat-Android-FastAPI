@@ -3,6 +3,7 @@
 # lan_server/server.py
 import os
 import secrets
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,8 +70,25 @@ def verify_admin(x_admin_key: str = Header(None)):
         print(f"🚫 Admin Access Denied: Key mismatch. Received length: {len(clean_key)} (Expected: {len(clean_secret)}), Masked input: {masked_key}")
         print("💡 TIP: Copy the EXACT random secret from the server logs above.")
         raise HTTPException(status_code=403, detail="Admin access denied")
+
+# ================= BACKGROUND TASKS & SCHEDULER =================
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from tasks import check_morning_weather
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Setup Scheduler
+    scheduler = AsyncIOScheduler(timezone='Asia/Kolkata')
+    # Run daily at 07:00 AM
+    scheduler.add_job(check_morning_weather, 'cron', hour=7, minute=0)
+    scheduler.start()
+    print("🌅 Weather Sentinel scheduler started (Runs at 07:00 AM IST).")
+    yield
+    scheduler.shutdown()
+    print("🌅 Weather Sentinel scheduler stopped.")
+
 # ================= FASTAPI APP =================
-app = FastAPI(title="LAN Chat Server (modular)")
+app = FastAPI(title="LAN Chat Server (modular)", lifespan=lifespan)
 
 # CORS: allow origins (disabled credentials for security)
 app.add_middleware(

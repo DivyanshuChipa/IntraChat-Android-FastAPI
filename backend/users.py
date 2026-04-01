@@ -44,6 +44,31 @@ def init_db():
 
 
 # --- Config Helpers ---
+def get_default_location():
+    """
+    Fetches the default location (default_lat, default_lon) from the config table.
+    Defaults to Maheshpura coordinates: lat=26.2183, lon=78.1828 if not found.
+    """
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT key, value FROM config WHERE key IN ('default_lat', 'default_lon')")
+    rows = cursor.fetchall()
+    conn.close()
+
+    lat = 26.2183
+    lon = 78.1828
+
+    for key, value in rows:
+        try:
+            if key == 'default_lat':
+                lat = float(value)
+            elif key == 'default_lon':
+                lon = float(value)
+        except ValueError:
+            pass
+
+    return lat, lon
+
 def set_require_approval(enabled: bool):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
