@@ -10,3 +10,5 @@ requests
 PyPDF2
 chromadb
 psutil
+apscheduler
+httpx
