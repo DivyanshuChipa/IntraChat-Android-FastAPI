@@ -152,11 +152,18 @@ class ChatViewModel(
     // 💬 SEND TEXT MESSAGE
     // ===============================
 
-    fun sendMessage(receiver: String, lat: Double? = null, lon: Double? = null) {
-        val text = inputMessage.value.trim()
+    fun sendMessage(
+        receiver: String,
+        lat: Double? = null,
+        lon: Double? = null,
+        messageText: String? = null
+    ) {
+        val text = (messageText ?: inputMessage.value).trim()
         if (text.isEmpty()) return
 
-        inputMessage.value = ""
+        if (messageText == null || inputMessage.value.trim() == text) {
+            inputMessage.value = ""
+        }
         val ts = System.currentTimeMillis()
 
         val json = JSONObject().apply {
