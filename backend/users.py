@@ -44,6 +44,49 @@ def init_db():
 
 
 # --- Config Helpers ---
+
+
+# --- Weather Location Config Helpers ---
+def get_default_location():
+    """
+    Fetch weather default location from config table.
+    Falls back to Maheshpura coordinates when missing/invalid.
+    """
+    lat = 26.2183
+    lon = 78.1828
+
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT key, value FROM config WHERE key IN ('default_lat', 'default_lon')")
+    rows = cursor.fetchall()
+    conn.close()
+
+    for key, value in rows:
+        try:
+            if key == "default_lat":
+                lat = float(value)
+            elif key == "default_lon":
+                lon = float(value)
+        except (TypeError, ValueError):
+            continue
+
+    return lat, lon
+
+
+def set_default_location(lat: float, lon: float):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('default_lat', ?)",
+        (str(lat),),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('default_lon', ?)",
+        (str(lon),),
+    )
+    conn.commit()
+    conn.close()
+
 def set_require_approval(enabled: bool):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
