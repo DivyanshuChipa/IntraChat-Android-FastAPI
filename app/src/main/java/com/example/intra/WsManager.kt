@@ -12,15 +12,19 @@ object WsManager {
     private const val TAG = "WsManager"
     private var webSocket: WebSocket? = null
 
-    // ✅ PATCH 4: Public isConnected property with private setter
-    // Yeh MainActivity aur Service ko batayega ki connection alive hai ya nahi
+    /**
+     * Public isConnected property with private setter.
+     * Informs MainActivity and Service about the connection status.
+     */
     var isConnected = false
         private set
 
     private var currentUsername: String? = null
     private var appContext: Context? = null
 
-    // 🔔 Multiple listeners (Service + ViewModel)
+    /**
+     * Listener interface for WebSocket events.
+     */
     interface Listener {
         fun onMessage(text: String)
         fun onStatus(status: String)
@@ -30,7 +34,7 @@ object WsManager {
 
     fun addListener(listener: Listener) {
         listeners.add(listener)
-        // Naye listener ko turant current status bata do
+        // Immediately notify the new listener of the current status
         listener.onStatus(if (isConnected) "Connected" else "Disconnected")
     }
 
@@ -38,7 +42,9 @@ object WsManager {
         listeners.remove(listener)
     }
 
-    // 🔌 SINGLE connection point
+    /**
+     * Establishes a single WebSocket connection point.
+     */
     fun connect(context: Context, username: String) {
         if (webSocket != null) {
             Log.d(TAG, "Already connected, skipping")
@@ -48,8 +54,7 @@ object WsManager {
         appContext = context.applicationContext
         currentUsername = username
 
-        val settings = SettingsManager(appContext!!)
-        val url = "ws://${settings.getServerIp()}:${settings.getServerPort()}/ws/$username"
+        val url = ApiClient.getWsUrl(username)
 
         Log.d(TAG, "Connecting to $url")
         notifyStatus("Connecting…")
@@ -71,24 +76,24 @@ object WsManager {
         }
     }
 
-    // ❗ Call ONLY on logout
+    /**
+     * Disconnects the WebSocket. Call ONLY on logout.
+     */
     fun disconnect() {
         webSocket?.close(1000, "Logout")
         webSocket = null
-        // ✅ PATCH 4: isConnected ko false set karo on disconnect
         isConnected = false
         notifyStatus("Disconnected")
     }
 
     // ============================
-    // 🔁 Internal helpers
+    // Internal helpers
     // ============================
 
     private val socketListener = object : WebSocketListener() {
 
         override fun onOpen(ws: WebSocket, response: Response) {
             Log.d(TAG, "Connected ✔")
-            // ✅ PATCH 4: Connection successful hone par isConnected = true
             isConnected = true
             notifyStatus("Connected")
         }
@@ -110,7 +115,6 @@ object WsManager {
 
     private fun cleanupAndReconnect() {
         webSocket = null
-        // ✅ PATCH 4: Connection lost hone par isConnected = false
         isConnected = false
         notifyStatus("Reconnecting…")
 

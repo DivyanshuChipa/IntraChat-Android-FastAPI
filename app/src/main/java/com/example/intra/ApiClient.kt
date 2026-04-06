@@ -7,9 +7,12 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    // Cache variables (taaki baar baar naya connection na banaye)
+    // Cache variables to avoid redundant connection creation
+    @Volatile
     private var retrofit: Retrofit? = null
+    @Volatile
     private var lastBaseUrl: String? = null
+    @Volatile
     private var apiServiceInstance: ApiService? = null
 
     private val client = OkHttpClient.Builder()
@@ -18,34 +21,40 @@ object ApiClient {
         .writeTimeout(5, TimeUnit.MINUTES)
         .build()
 
-    // 🔥 FIX: 'fun getApiService()' hata diya.
-    // Saara logic 'val apiService' ke getter me daal diya.
-    // Ab baki files (AuthViewModel, etc.) me koi error nahi aayega.
+    /**
+     * Provides the ApiService instance.
+     * Uses a getter property with a synchronized block for thread-safe initialization.
+     * Recreates the Retrofit instance if the base URL changes in settings.
+     */
     val apiService: ApiService
         get() {
-            // 1. Settings se current URL nikalo
             val context = MyApplication.instance
             val settings = SettingsManager(context)
             val currentUrl = settings.getBaseUrl()
 
-            // 2. Check karo: Agar Retrofit nahi bana hai, ya IP change ho gayi hai
+            // Double-checked locking for thread-safety and performance
             if (retrofit == null || lastBaseUrl != currentUrl || apiServiceInstance == null) {
-                retrofit = Retrofit.Builder()
-                    .baseUrl(currentUrl)
-                    .client(client)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
+                synchronized(this) {
+                    if (retrofit == null || lastBaseUrl != currentUrl || apiServiceInstance == null) {
+                        retrofit = Retrofit.Builder()
+                            .baseUrl(currentUrl)
+                            .client(client)
+                            .addConverterFactory(GsonConverterFactory.create())
+                            .build()
 
-                // Save new URL reference
-                lastBaseUrl = currentUrl
-                apiServiceInstance = retrofit!!.create(ApiService::class.java)
+                        // Save new URL reference
+                        lastBaseUrl = currentUrl
+                        apiServiceInstance = retrofit!!.create(ApiService::class.java)
+                    }
+                }
             }
 
-            // 3. Return API service
             return apiServiceInstance!!
         }
 
-    // WebSocket URL helper (Same as before)
+    /**
+     * Constructs the WebSocket URL based on current server settings.
+     */
     fun getWsUrl(username: String): String {
         val context = MyApplication.instance
         val settings = SettingsManager(context)
