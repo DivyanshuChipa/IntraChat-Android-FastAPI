@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Tuple
 
 import httpx
 
@@ -18,7 +19,7 @@ DEFAULT_LON = 78.1828
 
 
 
-def _get_default_coordinates() -> tuple[float, float]:
+def _get_default_coordinates() -> Tuple[float, float]:
     try:
         return get_default_location()
     except Exception:
