@@ -488,8 +488,48 @@ class AdminWindow(QMainWindow):
         card_layout.addWidget(self.settings_status)
         card_layout.addWidget(save_btn)
 
+        # Weather Location Card
+        weather_card = QFrame()
+        weather_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
+        weather_layout = QFormLayout(weather_card)
+        weather_layout.setContentsMargins(30, 30, 30, 30)
+        weather_layout.setSpacing(15)
+
+        self.weather_lat_input = QLineEdit()
+        self.weather_lat_input.setPlaceholderText("e.g. 26.2183")
+        self.weather_lon_input = QLineEdit()
+        self.weather_lon_input.setPlaceholderText("e.g. 78.1828")
+
+        self.weather_status = QLabel("")
+        self.weather_status.setStyleSheet("font-weight: bold; font-size: 14px;")
+
+        weather_save_btn = QPushButton("💾 SAVE WEATHER LOCATION")
+        weather_save_btn.setObjectName("SaveBtn")
+        weather_save_btn.setMinimumHeight(50)
+        weather_save_btn.setCursor(Qt.PointingHandCursor)
+        weather_save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #89b4fa;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #b4befe;
+            }
+        """)
+        weather_save_btn.clicked.connect(self.save_weather_location)
+
+        weather_layout.addRow("Default Latitude:", self.weather_lat_input)
+        weather_layout.addRow("Default Longitude:", self.weather_lon_input)
+        weather_layout.addRow(self.weather_status)
+        weather_layout.addRow(weather_save_btn)
+
         layout.addWidget(lbl)
         layout.addWidget(card)
+        layout.addSpacing(15)
+        layout.addWidget(weather_card)
         layout.addStretch()
         return page
 
@@ -502,6 +542,7 @@ class AdminWindow(QMainWindow):
                 self.chk_approval.blockSignals(True)
                 self.chk_approval.setChecked(bool(data["require_approval"]))
                 self.chk_approval.blockSignals(False)
+            self.load_weather_location()
         except Exception as e:
             print("load_settings error:", e)
 
@@ -524,6 +565,52 @@ class AdminWindow(QMainWindow):
         except Exception as e:
             self.settings_status.setText(f"❌ Error: {str(e)}")
             self.settings_status.setStyleSheet("color: #f38ba8;")
+
+    def load_weather_location(self):
+        try:
+            self.weather_status.setText("")
+            res = requests.get(f"{self.server_url}/admin/weather_location", headers=self.headers, timeout=3)
+            data = res.json()
+            if data.get("success"):
+                self.weather_lat_input.setText(str(data.get("default_lat", "")))
+                self.weather_lon_input.setText(str(data.get("default_lon", "")))
+        except Exception as e:
+            self.weather_status.setText(f"❌ Load failed: {str(e)}")
+            self.weather_status.setStyleSheet("color: #f38ba8;")
+
+    def save_weather_location(self):
+        try:
+            lat = float(self.weather_lat_input.text().strip())
+            lon = float(self.weather_lon_input.text().strip())
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Input", "Latitude/Longitude must be valid numbers.")
+            return
+
+        if not (-90 <= lat <= 90):
+            QMessageBox.warning(self, "Invalid Latitude", "Latitude must be between -90 and 90.")
+            return
+
+        if not (-180 <= lon <= 180):
+            QMessageBox.warning(self, "Invalid Longitude", "Longitude must be between -180 and 180.")
+            return
+
+        try:
+            self.weather_status.setText("Saving weather location...")
+            self.weather_status.setStyleSheet("color: #89b4fa;")
+            res = requests.post(
+                f"{self.server_url}/admin/weather_location",
+                headers=self.headers,
+                params={"lat": lat, "lon": lon},
+                timeout=3,
+            )
+            if res.status_code == 200:
+                self.weather_status.setText("✅ Weather location saved successfully!")
+                self.weather_status.setStyleSheet("color: #a6e3a1;")
+            else:
+                raise Exception(f"Server error: {res.status_code}")
+        except Exception as e:
+            self.weather_status.setText(f"❌ Error: {str(e)}")
+            self.weather_status.setStyleSheet("color: #f38ba8;")
 
 
     # ================= PAGE: AI SETTINGS =================

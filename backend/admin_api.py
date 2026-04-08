@@ -3,7 +3,7 @@ import os
 import time
 from fastapi import APIRouter, Depends
 from server import verify_admin
-from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config
+from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location
 from messages import cleanup_old_messages
 from chat import connected_clients   # 👈 SOURCE OF TRUTH
 
@@ -102,6 +102,19 @@ def admin_cleanup_files(days: int, admin=Depends(verify_admin)):
         "freed_mb": freed_mb,
         "message": f"Deleted {deleted_count} files. Freed {freed_mb} MB space."
     }
+
+
+# ================= WEATHER LOCATION SETTINGS =================
+@router.get("/weather_location")
+def admin_get_weather_location(admin=Depends(verify_admin)):
+    lat, lon = get_default_location()
+    return {"success": True, "default_lat": lat, "default_lon": lon}
+
+
+@router.post("/weather_location")
+def admin_set_weather_location(lat: float, lon: float, admin=Depends(verify_admin)):
+    set_default_location(lat, lon)
+    return {"success": True, "message": "Weather location updated", "default_lat": lat, "default_lon": lon}
 
 # ================= AI SETTINGS =================
 @router.get("/ai_settings")
