@@ -495,6 +495,29 @@ class AdminWindow(QMainWindow):
         weather_layout.setContentsMargins(30, 30, 30, 30)
         weather_layout.setSpacing(15)
 
+        # -- Search City Row --
+        search_layout = QHBoxLayout()
+        self.city_search_input = QLineEdit()
+        self.city_search_input.setPlaceholderText("e.g. Gwalior, Guna")
+        self.city_search_input.setStyleSheet("padding: 8px;")
+
+        city_search_btn = QPushButton("🔍 Find")
+        city_search_btn.setCursor(Qt.PointingHandCursor)
+        city_search_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #cba6f7;
+                color: #11111b;
+                font-weight: bold;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover { background-color: #f5c2e7; }
+        """)
+        city_search_btn.clicked.connect(self.search_city_coordinates)
+
+        search_layout.addWidget(self.city_search_input)
+        search_layout.addWidget(city_search_btn)
+
         self.weather_lat_input = QLineEdit()
         self.weather_lat_input.setPlaceholderText("e.g. 26.2183")
         self.weather_lon_input = QLineEdit()
@@ -521,6 +544,7 @@ class AdminWindow(QMainWindow):
         """)
         weather_save_btn.clicked.connect(self.save_weather_location)
 
+        weather_layout.addRow("Search City:", search_layout)
         weather_layout.addRow("Default Latitude:", self.weather_lat_input)
         weather_layout.addRow("Default Longitude:", self.weather_lon_input)
         weather_layout.addRow(self.weather_status)
@@ -577,6 +601,42 @@ class AdminWindow(QMainWindow):
         except Exception as e:
             self.weather_status.setText(f"❌ Load failed: {str(e)}")
             self.weather_status.setStyleSheet("color: #f38ba8;")
+
+    def search_city_coordinates(self):
+        city = self.city_search_input.text().strip()
+        if not city:
+            QMessageBox.warning(self, "Input Required", "Please enter a city name to search.")
+            return
+
+        try:
+            self.weather_status.setText("Searching...")
+            self.weather_status.setStyleSheet("color: #89b4fa;")
+            url = "https://geocoding-api.open-meteo.com/v1/search"
+            res = requests.get(url, params={"name": city, "count": 1}, timeout=5)
+
+            if res.status_code == 200:
+                data = res.json()
+                results = data.get("results", [])
+                if results:
+                    lat = results[0].get("latitude")
+                    lon = results[0].get("longitude")
+                    name = results[0].get("name")
+                    country = results[0].get("country", "")
+
+                    self.weather_lat_input.setText(str(lat))
+                    self.weather_lon_input.setText(str(lon))
+                    self.weather_status.setText(f"✅ Found: {name}, {country}")
+                    self.weather_status.setStyleSheet("color: #a6e3a1;")
+                else:
+                    self.weather_status.setText("❌ City not found.")
+                    self.weather_status.setStyleSheet("color: #f38ba8;")
+            else:
+                self.weather_status.setText(f"❌ API Error: {res.status_code}")
+                self.weather_status.setStyleSheet("color: #f38ba8;")
+        except Exception as e:
+            self.weather_status.setText("❌ Network Error")
+            self.weather_status.setStyleSheet("color: #f38ba8;")
+            QMessageBox.critical(self, "Search Failed", str(e))
 
     def save_weather_location(self):
         try:
