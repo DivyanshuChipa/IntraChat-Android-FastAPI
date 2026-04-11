@@ -618,14 +618,16 @@ class AdminWindow(QMainWindow):
                 data = res.json()
                 results = data.get("results", [])
                 if results:
-                    lat = results[0].get("latitude")
-                    lon = results[0].get("longitude")
-                    name = results[0].get("name")
-                    country = results[0].get("country", "")
+                    top = results[0]
+                    lat = top.get("latitude")
+                    lon = top.get("longitude")
 
                     self.weather_lat_input.setText(str(lat))
                     self.weather_lon_input.setText(str(lon))
-                    self.weather_status.setText(f"✅ Found: {name}, {country}")
+
+                    location_name_parts = [top.get("name"), top.get("admin1"), top.get("country")]
+                    location_name = ", ".join([part for part in location_name_parts if part])
+                    self.weather_status.setText(f"✅ Found: {location_name}")
                     self.weather_status.setStyleSheet("color: #a6e3a1;")
                 else:
                     self.weather_status.setText("❌ City not found.")
