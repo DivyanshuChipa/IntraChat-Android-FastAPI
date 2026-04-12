@@ -507,6 +507,18 @@ class AdminWindow(QMainWindow):
         weather_save_btn.setObjectName("SaveBtn")
         weather_save_btn.setMinimumHeight(50)
         weather_save_btn.setCursor(Qt.PointingHandCursor)
+        weather_save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #89b4fa;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #b4befe;
+            }
+        """)
         weather_save_btn.clicked.connect(self.save_weather_location)
 
         weather_layout.addRow("Default Latitude:", self.weather_lat_input)
