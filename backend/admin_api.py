@@ -3,7 +3,7 @@ import os
 import time
 from fastapi import APIRouter, Depends
 from server import verify_admin
-from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location
+from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location, get_environment_settings, set_environment_settings
 from messages import cleanup_old_messages
 from chat import connected_clients   # 👈 SOURCE OF TRUTH
 
@@ -115,6 +115,19 @@ def admin_get_weather_location(admin=Depends(verify_admin)):
 def admin_set_weather_location(lat: float, lon: float, admin=Depends(verify_admin)):
     set_default_location(lat, lon)
     return {"success": True, "message": "Weather location updated", "default_lat": lat, "default_lon": lon}
+
+# ================= ENVIRONMENT MONITOR SETTINGS =================
+@router.get("/environment_settings")
+def admin_get_environment_settings(admin=Depends(verify_admin)):
+    settings = get_environment_settings()
+    return {"success": True, "settings": settings}
+
+@router.post("/environment_settings")
+def admin_set_environment_settings(
+    mode: str, temp: float, wind: float, rain: float, admin=Depends(verify_admin)
+):
+    set_environment_settings(mode, temp, wind, rain)
+    return {"success": True, "message": "Smart Environment settings updated successfully!"}
 
 # ================= AI SETTINGS =================
 @router.get("/ai_settings")

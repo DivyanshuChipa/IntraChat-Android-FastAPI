@@ -488,6 +488,49 @@ class AdminWindow(QMainWindow):
         card_layout.addWidget(self.settings_status)
         card_layout.addWidget(save_btn)
 
+        # Environment Monitor Settings Card
+        env_card = QFrame()
+        env_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
+        env_layout = QFormLayout(env_card)
+        env_layout.setContentsMargins(30, 30, 30, 30)
+        env_layout.setSpacing(15)
+
+        self.env_mode_dropdown = QComboBox()
+        self.env_mode_dropdown.addItems(["Auto-Pilot (Smart Mode)", "Normal (7 AM Only)"])
+        self.env_mode_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
+        self.env_temp_input = QLineEdit()
+        self.env_temp_input.setPlaceholderText("e.g. 40.0")
+        self.env_wind_input = QLineEdit()
+        self.env_wind_input.setPlaceholderText("e.g. 40.0")
+        self.env_rain_input = QLineEdit()
+        self.env_rain_input.setPlaceholderText("e.g. 5.0")
+
+        self.env_status = QLabel("")
+        self.env_status.setStyleSheet("font-weight: bold; font-size: 14px;")
+
+        env_save_btn = QPushButton("💾 SAVE ENVIRONMENT SETTINGS")
+        env_save_btn.setMinimumHeight(50)
+        env_save_btn.setCursor(Qt.PointingHandCursor)
+        env_save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #89b4fa;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover { background-color: #b4befe; }
+        """)
+        env_save_btn.clicked.connect(self.save_environment_settings)
+
+        env_layout.addRow("Mode:", self.env_mode_dropdown)
+        env_layout.addRow("Alert Temp (°C):", self.env_temp_input)
+        env_layout.addRow("Alert Wind (km/h):", self.env_wind_input)
+        env_layout.addRow("Alert Rain (mm):", self.env_rain_input)
+        env_layout.addRow(self.env_status)
+        env_layout.addRow(env_save_btn)
+
         # Weather Location Card
         weather_card = QFrame()
         weather_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
@@ -553,6 +596,8 @@ class AdminWindow(QMainWindow):
         layout.addWidget(lbl)
         layout.addWidget(card)
         layout.addSpacing(15)
+        layout.addWidget(env_card)
+        layout.addSpacing(15)
         layout.addWidget(weather_card)
         layout.addStretch()
         return page
@@ -567,6 +612,7 @@ class AdminWindow(QMainWindow):
                 self.chk_approval.setChecked(bool(data["require_approval"]))
                 self.chk_approval.blockSignals(False)
             self.load_weather_location()
+            self.load_environment_settings()
         except Exception as e:
             print("load_settings error:", e)
 
@@ -589,6 +635,51 @@ class AdminWindow(QMainWindow):
         except Exception as e:
             self.settings_status.setText(f"❌ Error: {str(e)}")
             self.settings_status.setStyleSheet("color: #f38ba8;")
+
+    def load_environment_settings(self):
+        try:
+            self.env_status.setText("")
+            res = requests.get(f"{self.server_url}/admin/environment_settings", headers=self.headers, timeout=3)
+            data = res.json()
+            if data.get("success"):
+                settings = data.get("settings", {})
+                mode_str = "Auto-Pilot (Smart Mode)" if settings.get("env_mode") == "auto" else "Normal (7 AM Only)"
+                self.env_mode_dropdown.setCurrentText(mode_str)
+                self.env_temp_input.setText(str(settings.get("alert_temp", "")))
+                self.env_wind_input.setText(str(settings.get("alert_wind", "")))
+                self.env_rain_input.setText(str(settings.get("alert_rain", "")))
+        except Exception as e:
+            self.env_status.setText(f"❌ Load failed: {str(e)}")
+            self.env_status.setStyleSheet("color: #f38ba8;")
+
+    def save_environment_settings(self):
+        try:
+            temp = float(self.env_temp_input.text().strip())
+            wind = float(self.env_wind_input.text().strip())
+            rain = float(self.env_rain_input.text().strip())
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Input", "Limits must be valid numbers.")
+            return
+
+        mode_val = "auto" if "Auto-Pilot" in self.env_mode_dropdown.currentText() else "normal"
+
+        try:
+            self.env_status.setText("Saving environment settings...")
+            self.env_status.setStyleSheet("color: #89b4fa;")
+            res = requests.post(
+                f"{self.server_url}/admin/environment_settings",
+                headers=self.headers,
+                params={"mode": mode_val, "temp": temp, "wind": wind, "rain": rain},
+                timeout=3,
+            )
+            if res.status_code == 200:
+                self.env_status.setText("✅ Environment settings saved successfully!")
+                self.env_status.setStyleSheet("color: #a6e3a1;")
+            else:
+                raise Exception(f"Server error: {res.status_code}")
+        except Exception as e:
+            self.env_status.setText(f"❌ Error: {str(e)}")
+            self.env_status.setStyleSheet("color: #f38ba8;")
 
     def load_weather_location(self):
         try:

@@ -31,3 +31,7 @@ venv/
 .env
 .venv
 admintra/
+backend/lumir/chroma_storage/
+*.sqlite3
+weather_cache.json
+alert_tracker.json

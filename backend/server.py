@@ -73,19 +73,24 @@ def verify_admin(x_admin_key: str = Header(None)):
 
 # ================= BACKGROUND TASKS & SCHEDULER =================
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from tasks import check_morning_weather
+from tasks import sync_weather_data, hourly_sentinel_check
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Setup Scheduler
     scheduler = AsyncIOScheduler(timezone='Asia/Kolkata')
-    # Run daily at 07:00 AM
-    scheduler.add_job(check_morning_weather, 'cron', hour=7, minute=0)
+
+    # Run data sync daily at 07:00 AM
+    scheduler.add_job(sync_weather_data, 'cron', hour=7, minute=0)
+
+    # Run smart environment monitor every hour at minute 5 (offset to avoid race condition with sync)
+    scheduler.add_job(hourly_sentinel_check, 'cron', minute=5)
+
     scheduler.start()
-    print("🌅 Weather Sentinel scheduler started (Runs at 07:00 AM IST).")
+    print("🌅 Level 5 Smart Environment Monitor scheduler started.")
     yield
     scheduler.shutdown()
-    print("🌅 Weather Sentinel scheduler stopped.")
+    print("🌅 Smart Environment Monitor scheduler stopped.")
 
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)", lifespan=lifespan)
