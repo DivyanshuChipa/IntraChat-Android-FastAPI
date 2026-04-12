@@ -499,6 +499,8 @@ class AdminWindow(QMainWindow):
         self.weather_lat_input.setPlaceholderText("e.g. 26.2183")
         self.weather_lon_input = QLineEdit()
         self.weather_lon_input.setPlaceholderText("e.g. 78.1828")
+        self.weather_location_input = QLineEdit()
+        self.weather_location_input.setPlaceholderText("e.g. Gwalior, Guna, Chachora")
 
         self.weather_status = QLabel("")
         self.weather_status.setStyleSheet("font-weight: bold; font-size: 14px;")
@@ -520,7 +522,31 @@ class AdminWindow(QMainWindow):
             }
         """)
         weather_save_btn.clicked.connect(self.save_weather_location)
+        weather_resolve_btn = QPushButton("📍 FIND COORDINATES")
+        weather_resolve_btn.setMinimumHeight(42)
+        weather_resolve_btn.setCursor(Qt.PointingHandCursor)
+        weather_resolve_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #a6e3a1;
+                color: #11111b;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #94e2d5;
+            }
+        """)
+        weather_resolve_btn.clicked.connect(self.resolve_weather_location)
 
+        weather_location_row = QWidget()
+        weather_location_row_layout = QHBoxLayout(weather_location_row)
+        weather_location_row_layout.setContentsMargins(0, 0, 0, 0)
+        weather_location_row_layout.setSpacing(10)
+        weather_location_row_layout.addWidget(self.weather_location_input)
+        weather_location_row_layout.addWidget(weather_resolve_btn)
+
+        weather_layout.addRow("Find by Place Name:", weather_location_row)
         weather_layout.addRow("Default Latitude:", self.weather_lat_input)
         weather_layout.addRow("Default Longitude:", self.weather_lon_input)
         weather_layout.addRow(self.weather_status)
@@ -576,6 +602,42 @@ class AdminWindow(QMainWindow):
                 self.weather_lon_input.setText(str(data.get("default_lon", "")))
         except Exception as e:
             self.weather_status.setText(f"❌ Load failed: {str(e)}")
+            self.weather_status.setStyleSheet("color: #f38ba8;")
+
+    def resolve_weather_location(self):
+        place_name = self.weather_location_input.text().strip()
+        if not place_name:
+            QMessageBox.warning(self, "Missing Place", "Please enter a place/city name first.")
+            return
+
+        try:
+            self.weather_status.setText("Finding coordinates...")
+            self.weather_status.setStyleSheet("color: #89b4fa;")
+            res = requests.get(
+                "https://geocoding-api.open-meteo.com/v1/search",
+                params={"name": place_name, "count": 1, "language": "en", "format": "json"},
+                timeout=6,
+            )
+            data = res.json()
+            results = data.get("results") or []
+            if not results:
+                raise Exception("No matching place found.")
+
+            top = results[0]
+            lat = top.get("latitude")
+            lon = top.get("longitude")
+            if lat is None or lon is None:
+                raise Exception("Coordinates missing in geocoding response.")
+
+            self.weather_lat_input.setText(str(lat))
+            self.weather_lon_input.setText(str(lon))
+
+            location_name_parts = [top.get("name"), top.get("admin1"), top.get("country")]
+            location_name = ", ".join([part for part in location_name_parts if part])
+            self.weather_status.setText(f"✅ Found: {location_name}")
+            self.weather_status.setStyleSheet("color: #a6e3a1;")
+        except Exception as e:
+            self.weather_status.setText(f"❌ Lookup failed: {str(e)}")
             self.weather_status.setStyleSheet("color: #f38ba8;")
 
     def save_weather_location(self):
