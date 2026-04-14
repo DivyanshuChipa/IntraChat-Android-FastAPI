@@ -14,7 +14,11 @@ from pydantic import BaseModel
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 import chat, files, calls, messages
-from tasks import run_proactive_weather_sentinel
+from tasks import (
+    run_hourly_weather_guard,
+    run_intraday_weather_refresh,
+    run_proactive_weather_sentinel,
+)
 import profiles  # 👈 1. Import profiles module
 from users import init_db, register_user, verify_user, get_admin_key_db, set_admin_key_db
 from messages import init_msg_db
@@ -83,8 +87,23 @@ async def lifespan(app: FastAPI):
         id="proactive_weather_sentinel",
         replace_existing=True,
     )
+    scheduler.add_job(
+        run_hourly_weather_guard,
+        trigger="cron",
+        minute=5,
+        id="hourly_weather_guard",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_intraday_weather_refresh,
+        trigger="cron",
+        hour="12,15,18,21",
+        minute=0,
+        id="intraday_weather_refresh",
+        replace_existing=True,
+    )
     scheduler.start()
-    print("🌅 Weather Sentinel scheduler started (Runs at 07:00 AM IST).")
+    print("🌅 Weather Sentinel scheduler started (07:00 daily + hourly guard + smart intraday refresh).")
     try:
         yield
     finally:
