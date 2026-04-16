@@ -17,7 +17,8 @@ LOGGER = logging.getLogger(__name__)
 IST = timezone(timedelta(hours=5, minutes=30))
 DEFAULT_LAT = 26.2183
 DEFAULT_LON = 78.1828
-CACHE_FILE = "weather_cache.json"
+CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weather_cache.json")
+TRACKER_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alert_tracker.json")
 
 def _get_default_coordinates() -> Tuple[float, float]:
     try:
@@ -158,22 +159,24 @@ async def hourly_sentinel_check() -> None:
             return
 
         # ---------------------------------------------
-        # SPAM PREVENTION: Check if we already alerted today
+        # SMART SPAM PREVENTION: True Rolling Window
         # ---------------------------------------------
-        date_str = now_ist.strftime("%Y-%m-%d")
-        tracker_file = "alert_tracker.json"
+        # Compare current time against last exact timestamp to prevent block-boundary race conditions.
+        now_ts = now_ist.timestamp()
+        reason_key = "|".join(sorted(reasons))
 
         tracker = {}
-        if os.path.exists(tracker_file):
+        if os.path.exists(TRACKER_FILE):
             try:
-                with open(tracker_file, "r") as tf:
+                with open(TRACKER_FILE, "r") as tf:
                     tracker = json.load(tf)
             except:
                 pass
 
-        # Only 1 alert per day for now to prevent spam
-        if tracker.get("last_alert_date") == date_str:
-            LOGGER.debug("Alert already sent today. Skipping to prevent spam.")
+        # If we already sent this EXACT reason profile within the last 3 hours (10800 seconds), skip it.
+        last_time = tracker.get(reason_key, 0)
+        if now_ts - last_time < 10800:
+            LOGGER.debug("Identical alert already sent within the last 3 hours. Skipping to prevent spam.")
             return
 
         # Prepare summary for AI
@@ -205,8 +208,8 @@ async def hourly_sentinel_check() -> None:
             await _broadcast_family_warning(generated_message.strip())
 
             # Update tracker
-            tracker["last_alert_date"] = date_str
-            with open(tracker_file, "w") as tf:
+            tracker[reason_key] = now_ts
+            with open(TRACKER_FILE, "w") as tf:
                 json.dump(tracker, tf)
 
     except Exception:
