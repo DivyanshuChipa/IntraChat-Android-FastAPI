@@ -10,7 +10,7 @@ import httpx
 from chat import connected_clients, send_to_user
 from lumir.ai_engine import ask_ai
 from messages import create_delivery_entries, save_message
-from users import get_ai_config, get_all_users, get_default_location
+from users import get_ai_config, get_all_users, get_default_location, get_environment_settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,13 +18,6 @@ IST = timezone(timedelta(hours=5, minutes=30))
 DEFAULT_LAT = 26.2183
 DEFAULT_LON = 78.1828
 WEATHER_CACHE_FILE = os.path.join(os.path.dirname(__file__), "weather_cache.json")
-
-# Default thresholds (future-ready for admin-config driven values)
-TEMP_ALERT_THRESHOLD_C = 42.0
-WIND_ALERT_THRESHOLD_KMH = 40.0
-RAIN_ALERT_THRESHOLD_MM = 10.0
-
-
 
 def _get_default_coordinates() -> Tuple[float, float]:
     try:
@@ -101,6 +94,19 @@ def _compose_contextual_prompt(location: str, reasons: list, start_hour: int, en
     )
 
 
+def _get_environment_thresholds() -> Tuple[float, float, float]:
+    try:
+        env_settings = get_environment_settings()
+        return (
+            float(env_settings.get("alert_temp", 40.0)),
+            float(env_settings.get("alert_wind", 40.0)),
+            float(env_settings.get("alert_rain", 5.0)),
+        )
+    except Exception:
+        LOGGER.debug("Could not load environment settings; using default thresholds.", exc_info=True)
+        return 40.0, 40.0, 5.0
+
+
 async def refresh_weather_cache(force: bool = False) -> None:
     lat, lon = _get_default_coordinates()
     location = f"{lat:.4f}, {lon:.4f}"
@@ -128,13 +134,14 @@ async def refresh_weather_cache(force: bool = False) -> None:
         payload = response.json()
 
     daily = payload.get("daily", {})
+    alert_temp, alert_wind, alert_rain = _get_environment_thresholds()
     precipitation_sum = float((daily.get("precipitation_sum") or [0.0])[0] or 0.0)
     max_temp = float((daily.get("temperature_2m_max") or [0.0])[0] or 0.0)
     max_wind = float((daily.get("wind_speed_10m_max") or [0.0])[0] or 0.0)
     danger_day = (
-        precipitation_sum >= RAIN_ALERT_THRESHOLD_MM
-        or max_temp >= TEMP_ALERT_THRESHOLD_C
-        or max_wind >= WIND_ALERT_THRESHOLD_KMH
+        precipitation_sum >= alert_rain
+        or max_temp >= alert_temp
+        or max_wind >= alert_wind
     )
 
     _save_weather_cache(
@@ -181,13 +188,14 @@ async def run_hourly_weather_guard() -> None:
         peak_temp = max([float(v or 0.0) for v in temperatures[start_idx:end_idx]] or [0.0])
         peak_rain = max([float(v or 0.0) for v in precipitations[start_idx:end_idx]] or [0.0])
         peak_wind = max([float(v or 0.0) for v in wind_speeds[start_idx:end_idx]] or [0.0])
+        alert_temp, alert_wind, alert_rain = _get_environment_thresholds()
 
         reasons = []
-        if peak_temp >= TEMP_ALERT_THRESHOLD_C:
+        if peak_temp >= alert_temp:
             reasons.append(f"temperature {peak_temp:.1f}°C")
-        if peak_wind >= WIND_ALERT_THRESHOLD_KMH:
+        if peak_wind >= alert_wind:
             reasons.append(f"wind {peak_wind:.1f} km/h")
-        if peak_rain >= RAIN_ALERT_THRESHOLD_MM:
+        if peak_rain >= alert_rain:
             reasons.append(f"rain {peak_rain:.1f} mm")
 
         if not reasons:

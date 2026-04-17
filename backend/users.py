@@ -87,6 +87,42 @@ def set_default_location(lat: float, lon: float):
     conn.commit()
     conn.close()
 
+
+def get_environment_settings():
+    """
+    Fetch Smart Environment Monitor settings from config.
+    Defaults:
+      - env_mode: auto
+      - alert_temp: 40.0
+      - alert_wind: 40.0
+      - alert_rain: 5.0
+    """
+    settings = {
+        "env_mode": "auto",
+        "alert_temp": 40.0,
+        "alert_wind": 40.0,
+        "alert_rain": 5.0,
+    }
+
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT key, value FROM config WHERE key IN ('env_mode', 'alert_temp', 'alert_wind', 'alert_rain')"
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    for key, value in rows:
+        try:
+            if key == "env_mode":
+                settings[key] = value
+            else:
+                settings[key] = float(value)
+        except (TypeError, ValueError):
+            continue
+
+    return settings
+
 def set_require_approval(enabled: bool):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
