@@ -31,6 +31,15 @@ QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244
 # Possible database locations (different setups may use different filenames/working dirs)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+
+# Add intra_admin to path so we can import AdminWindow
+INTRA_ADMIN_DIR = os.path.join(REPO_ROOT, "intra_admin")
+if INTRA_ADMIN_DIR not in sys.path:
+    sys.path.insert(0, INTRA_ADMIN_DIR)
+try:
+    from admin import AdminWindow
+except ImportError:
+    AdminWindow = None
 DB_CANDIDATES = [
     os.path.join(REPO_ROOT, "backend", "chat_users.db"),
     os.path.join(REPO_ROOT, "backend", "chat_user.db"),
@@ -71,11 +80,25 @@ class ServerController(QMainWindow):
         self.info_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.info_box)
 
+        # Buttons next to each other
+        copy_admin_layout = QHBoxLayout()
         self.copy_key_btn = QPushButton("📋 COPY ADMIN KEY")
         self.copy_key_btn.setObjectName("StartBtn")
         self.copy_key_btn.setCursor(Qt.PointingHandCursor)
         self.copy_key_btn.clicked.connect(self.copy_admin_key)
-        layout.addWidget(self.copy_key_btn)
+
+        self.open_admin_btn = QPushButton("⚙️ OPEN ADMIN PANEL")
+        self.open_admin_btn.setStyleSheet("""
+            QPushButton { background-color: #cba6f7; color: #11111b; font-weight: bold; font-size: 16px; padding: 12px; border-radius: 8px; }
+            QPushButton:hover { background-color: #b4befe; }
+            QPushButton:disabled { background-color: #45475a; color: #a6adc8; }
+        """)
+        self.open_admin_btn.setCursor(Qt.PointingHandCursor)
+        self.open_admin_btn.clicked.connect(self.open_admin_panel)
+
+        copy_admin_layout.addWidget(self.copy_key_btn)
+        copy_admin_layout.addWidget(self.open_admin_btn)
+        layout.addLayout(copy_admin_layout)
 
         # 3. Buttons
         btn_layout = QHBoxLayout()
@@ -115,6 +138,9 @@ class ServerController(QMainWindow):
 
         # Initial trigger
         self.check_service_status()
+
+        # Keep reference to admin window
+        self.admin_window = None
 
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -170,6 +196,28 @@ class ServerController(QMainWindow):
             return
         QApplication.clipboard().setText(self.current_admin_key)
         self.console.append("<span style='color: #a6e3a1;'>[INFO] Admin key clipboard me copy ho gaya.</span>")
+
+    def open_admin_panel(self):
+        if not self.current_admin_key:
+            self.console.append("<span style='color: #f38ba8;'>[INFO] Admin key abhi available nahi hai. Cannot open Admin Panel.</span>")
+            return
+
+        if AdminWindow is None:
+            self.console.append("<span style='color: #f38ba8;'>[ERROR] AdminWindow could not be imported from intra_admin.</span>")
+            return
+
+        # Always use the IP where the server is running (host machine).
+        # We can try to use localhost, or use the local IP if localhost doesn't respond correctly,
+        # but 127.0.0.1 is safe since it's running locally.
+        # Alternatively, use get_local_ip() which is the network IP.
+        url = f"http://127.0.0.1:8000"
+
+        try:
+            self.admin_window = AdminWindow(url, self.current_admin_key)
+            self.admin_window.show()
+            self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel opened with URL: {url}</span>")
+        except Exception as e:
+            self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to open Admin Panel: {str(e)}</span>")
 
     def check_service_status(self):
         """Runs 'systemctl is-active lanserver' silently to check status"""

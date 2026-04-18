@@ -162,6 +162,9 @@ fun SettingsScreen(
     // 🤖 LUMIR STATE
     var isLumirEnabled by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
 
+    // 📍 LOCATION STATE
+    var isLocationEnabled by remember { mutableStateOf(settingsManager.isLocationEnabled()) }
+
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -394,6 +397,32 @@ fun SettingsScreen(
                         onCheckedChange = { enabled ->
                             isLumirEnabled = enabled
                             settingsManager.setShowLumir(enabled)
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 📍 LOCATION TOGGLE
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Enable Location Services", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Allow access to your location for better weather results.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isLocationEnabled,
+                        onCheckedChange = { enabled ->
+                            isLocationEnabled = enabled
+                            settingsManager.setLocationEnabled(enabled)
                         }
                     )
                 }

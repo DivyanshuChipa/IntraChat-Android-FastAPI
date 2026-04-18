@@ -99,13 +99,13 @@ def get_environment_settings():
         "alert_wind": 40.0,
         "alert_rain": 5.0
     }
-
+    
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT key, value FROM config WHERE key IN ('env_mode', 'alert_temp', 'alert_wind', 'alert_rain')")
     rows = cursor.fetchall()
     conn.close()
-
+    
     for key, value in rows:
         try:
             if key == "env_mode":
@@ -114,7 +114,7 @@ def get_environment_settings():
                 settings[key] = float(value)
         except ValueError:
             pass
-
+            
     return settings
 
 def set_environment_settings(mode: str, temp: float, wind: float, rain: float):

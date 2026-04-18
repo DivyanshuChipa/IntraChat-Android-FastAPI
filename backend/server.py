@@ -79,13 +79,13 @@ from tasks import sync_weather_data, hourly_sentinel_check
 async def lifespan(app: FastAPI):
     # Setup Scheduler
     scheduler = AsyncIOScheduler(timezone='Asia/Kolkata')
-
+    
     # Run data sync daily at 07:00 AM
     scheduler.add_job(sync_weather_data, 'cron', hour=7, minute=0)
-
+    
     # Run smart environment monitor every hour at minute 5 (offset to avoid race condition with sync)
     scheduler.add_job(hourly_sentinel_check, 'cron', minute=5)
-
+    
     scheduler.start()
     print("🌅 Level 5 Smart Environment Monitor scheduler started.")
     yield
