@@ -488,8 +488,117 @@ class AdminWindow(QMainWindow):
         card_layout.addWidget(self.settings_status)
         card_layout.addWidget(save_btn)
 
+        # Environment Monitor Settings Card
+        env_card = QFrame()
+        env_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
+        env_layout = QFormLayout(env_card)
+        env_layout.setContentsMargins(30, 30, 30, 30)
+        env_layout.setSpacing(15)
+
+        self.env_mode_dropdown = QComboBox()
+        self.env_mode_dropdown.addItems(["Auto-Pilot (Smart Mode)", "Normal (7 AM Only)"])
+        self.env_mode_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
+        self.env_temp_input = QLineEdit()
+        self.env_temp_input.setPlaceholderText("e.g. 40.0")
+        self.env_wind_input = QLineEdit()
+        self.env_wind_input.setPlaceholderText("e.g. 40.0")
+        self.env_rain_input = QLineEdit()
+        self.env_rain_input.setPlaceholderText("e.g. 5.0")
+
+        self.env_status = QLabel("")
+        self.env_status.setStyleSheet("font-weight: bold; font-size: 14px;")
+
+        env_save_btn = QPushButton("💾 SAVE ENVIRONMENT SETTINGS")
+        env_save_btn.setMinimumHeight(50)
+        env_save_btn.setCursor(Qt.PointingHandCursor)
+        env_save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #89b4fa;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover { background-color: #b4befe; }
+        """)
+        env_save_btn.clicked.connect(self.save_environment_settings)
+
+        env_layout.addRow("Mode:", self.env_mode_dropdown)
+        env_layout.addRow("Alert Temp (°C):", self.env_temp_input)
+        env_layout.addRow("Alert Wind (km/h):", self.env_wind_input)
+        env_layout.addRow("Alert Rain (mm):", self.env_rain_input)
+        env_layout.addRow(self.env_status)
+        env_layout.addRow(env_save_btn)
+
+        # Weather Location Card
+        weather_card = QFrame()
+        weather_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
+        weather_layout = QFormLayout(weather_card)
+        weather_layout.setContentsMargins(30, 30, 30, 30)
+        weather_layout.setSpacing(15)
+
+        # -- Search City Row --
+        search_layout = QHBoxLayout()
+        self.city_search_input = QLineEdit()
+        self.city_search_input.setPlaceholderText("e.g. Gwalior, Guna")
+        self.city_search_input.setStyleSheet("padding: 8px;")
+
+        city_search_btn = QPushButton("🔍 Find")
+        city_search_btn.setCursor(Qt.PointingHandCursor)
+        city_search_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #cba6f7;
+                color: #11111b;
+                font-weight: bold;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover { background-color: #f5c2e7; }
+        """)
+        city_search_btn.clicked.connect(self.search_city_coordinates)
+
+        search_layout.addWidget(self.city_search_input)
+        search_layout.addWidget(city_search_btn)
+
+        self.weather_lat_input = QLineEdit()
+        self.weather_lat_input.setPlaceholderText("e.g. 26.2183")
+        self.weather_lon_input = QLineEdit()
+        self.weather_lon_input.setPlaceholderText("e.g. 78.1828")
+
+        self.weather_status = QLabel("")
+        self.weather_status.setStyleSheet("font-weight: bold; font-size: 14px;")
+
+        weather_save_btn = QPushButton("💾 SAVE WEATHER LOCATION")
+        weather_save_btn.setObjectName("SaveBtn")
+        weather_save_btn.setMinimumHeight(50)
+        weather_save_btn.setCursor(Qt.PointingHandCursor)
+        weather_save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #89b4fa;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #b4befe;
+            }
+        """)
+        weather_save_btn.clicked.connect(self.save_weather_location)
+
+        weather_layout.addRow("Search City:", search_layout)
+        weather_layout.addRow("Default Latitude:", self.weather_lat_input)
+        weather_layout.addRow("Default Longitude:", self.weather_lon_input)
+        weather_layout.addRow(self.weather_status)
+        weather_layout.addRow(weather_save_btn)
+
         layout.addWidget(lbl)
         layout.addWidget(card)
+        layout.addSpacing(15)
+        layout.addWidget(env_card)
+        layout.addSpacing(15)
+        layout.addWidget(weather_card)
         layout.addStretch()
         return page
 
@@ -502,6 +611,8 @@ class AdminWindow(QMainWindow):
                 self.chk_approval.blockSignals(True)
                 self.chk_approval.setChecked(bool(data["require_approval"]))
                 self.chk_approval.blockSignals(False)
+            self.load_weather_location()
+            self.load_environment_settings()
         except Exception as e:
             print("load_settings error:", e)
 
@@ -524,6 +635,135 @@ class AdminWindow(QMainWindow):
         except Exception as e:
             self.settings_status.setText(f"❌ Error: {str(e)}")
             self.settings_status.setStyleSheet("color: #f38ba8;")
+
+    def load_environment_settings(self):
+        try:
+            self.env_status.setText("")
+            res = requests.get(f"{self.server_url}/admin/environment_settings", headers=self.headers, timeout=3)
+            data = res.json()
+            if data.get("success"):
+                settings = data.get("settings", {})
+                mode_str = "Auto-Pilot (Smart Mode)" if settings.get("env_mode") == "auto" else "Normal (7 AM Only)"
+                self.env_mode_dropdown.setCurrentText(mode_str)
+                self.env_temp_input.setText(str(settings.get("alert_temp", "")))
+                self.env_wind_input.setText(str(settings.get("alert_wind", "")))
+                self.env_rain_input.setText(str(settings.get("alert_rain", "")))
+        except Exception as e:
+            self.env_status.setText(f"❌ Load failed: {str(e)}")
+            self.env_status.setStyleSheet("color: #f38ba8;")
+
+    def save_environment_settings(self):
+        try:
+            temp = float(self.env_temp_input.text().strip())
+            wind = float(self.env_wind_input.text().strip())
+            rain = float(self.env_rain_input.text().strip())
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Input", "Limits must be valid numbers.")
+            return
+
+        mode_val = "auto" if "Auto-Pilot" in self.env_mode_dropdown.currentText() else "normal"
+
+        try:
+            self.env_status.setText("Saving environment settings...")
+            self.env_status.setStyleSheet("color: #89b4fa;")
+            res = requests.post(
+                f"{self.server_url}/admin/environment_settings",
+                headers=self.headers,
+                params={"mode": mode_val, "temp": temp, "wind": wind, "rain": rain},
+                timeout=3,
+            )
+            if res.status_code == 200:
+                self.env_status.setText("✅ Environment settings saved successfully!")
+                self.env_status.setStyleSheet("color: #a6e3a1;")
+            else:
+                raise Exception(f"Server error: {res.status_code}")
+        except Exception as e:
+            self.env_status.setText(f"❌ Error: {str(e)}")
+            self.env_status.setStyleSheet("color: #f38ba8;")
+
+    def load_weather_location(self):
+        try:
+            self.weather_status.setText("")
+            res = requests.get(f"{self.server_url}/admin/weather_location", headers=self.headers, timeout=3)
+            data = res.json()
+            if data.get("success"):
+                self.weather_lat_input.setText(str(data.get("default_lat", "")))
+                self.weather_lon_input.setText(str(data.get("default_lon", "")))
+        except Exception as e:
+            self.weather_status.setText(f"❌ Load failed: {str(e)}")
+            self.weather_status.setStyleSheet("color: #f38ba8;")
+
+    def search_city_coordinates(self):
+        city = self.city_search_input.text().strip()
+        if not city:
+            QMessageBox.warning(self, "Input Required", "Please enter a city name to search.")
+            return
+
+        try:
+            self.weather_status.setText("Searching...")
+            self.weather_status.setStyleSheet("color: #89b4fa;")
+            url = "https://geocoding-api.open-meteo.com/v1/search"
+            res = requests.get(url, params={"name": city, "count": 1}, timeout=5)
+
+            if res.status_code == 200:
+                data = res.json()
+                results = data.get("results", [])
+                if results:
+                    top = results[0]
+                    lat = top.get("latitude")
+                    lon = top.get("longitude")
+
+                    self.weather_lat_input.setText(str(lat))
+                    self.weather_lon_input.setText(str(lon))
+
+                    location_name_parts = [top.get("name"), top.get("admin1"), top.get("country")]
+                    location_name = ", ".join([part for part in location_name_parts if part])
+                    self.weather_status.setText(f"✅ Found: {location_name}")
+                    self.weather_status.setStyleSheet("color: #a6e3a1;")
+                else:
+                    self.weather_status.setText("❌ City not found.")
+                    self.weather_status.setStyleSheet("color: #f38ba8;")
+            else:
+                self.weather_status.setText(f"❌ API Error: {res.status_code}")
+                self.weather_status.setStyleSheet("color: #f38ba8;")
+        except Exception as e:
+            self.weather_status.setText("❌ Network Error")
+            self.weather_status.setStyleSheet("color: #f38ba8;")
+            QMessageBox.critical(self, "Search Failed", str(e))
+
+    def save_weather_location(self):
+        try:
+            lat = float(self.weather_lat_input.text().strip())
+            lon = float(self.weather_lon_input.text().strip())
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Input", "Latitude/Longitude must be valid numbers.")
+            return
+
+        if not (-90 <= lat <= 90):
+            QMessageBox.warning(self, "Invalid Latitude", "Latitude must be between -90 and 90.")
+            return
+
+        if not (-180 <= lon <= 180):
+            QMessageBox.warning(self, "Invalid Longitude", "Longitude must be between -180 and 180.")
+            return
+
+        try:
+            self.weather_status.setText("Saving weather location...")
+            self.weather_status.setStyleSheet("color: #89b4fa;")
+            res = requests.post(
+                f"{self.server_url}/admin/weather_location",
+                headers=self.headers,
+                params={"lat": lat, "lon": lon},
+                timeout=3,
+            )
+            if res.status_code == 200:
+                self.weather_status.setText("✅ Weather location saved successfully!")
+                self.weather_status.setStyleSheet("color: #a6e3a1;")
+            else:
+                raise Exception(f"Server error: {res.status_code}")
+        except Exception as e:
+            self.weather_status.setText(f"❌ Error: {str(e)}")
+            self.weather_status.setStyleSheet("color: #f38ba8;")
 
 
     # ================= PAGE: AI SETTINGS =================

@@ -87,6 +87,51 @@ def set_default_location(lat: float, lon: float):
     conn.commit()
     conn.close()
 
+# --- Smart Environment Monitor Settings ---
+def get_environment_settings():
+    """
+    Fetches the Smart Environment Monitor settings.
+    Defaults: mode=auto, temp=40.0, wind=40.0, rain=5.0
+    """
+    settings = {
+        "env_mode": "auto",
+        "alert_temp": 40.0,
+        "alert_wind": 40.0,
+        "alert_rain": 5.0
+    }
+    
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT key, value FROM config WHERE key IN ('env_mode', 'alert_temp', 'alert_wind', 'alert_rain')")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    for key, value in rows:
+        try:
+            if key == "env_mode":
+                settings[key] = value
+            else:
+                settings[key] = float(value)
+        except ValueError:
+            pass
+            
+    return settings
+
+def set_environment_settings(mode: str, temp: float, wind: float, rain: float):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.executemany(
+        "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+        [
+            ("env_mode", mode),
+            ("alert_temp", str(temp)),
+            ("alert_wind", str(wind)),
+            ("alert_rain", str(rain))
+        ]
+    )
+    conn.commit()
+    conn.close()
+
 def set_require_approval(enabled: bool):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()

@@ -5,7 +5,6 @@ import os
 import secrets
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,13 +13,13 @@ from pydantic import BaseModel
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 import chat, files, calls, messages
-from tasks import run_proactive_weather_sentinel
 import profiles  # 👈 1. Import profiles module
 from users import init_db, register_user, verify_user, get_admin_key_db, set_admin_key_db
 from messages import init_msg_db
 from users import get_all_users
 from messages import get_recent_messages
 from users import delete_user_data # 👈 Import the new function
+from fastapi.staticfiles import StaticFiles
 
 # ================= JWT CONFIG =================
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_TO_SOMETHING_RANDOM_AND_LONG")
@@ -71,26 +70,27 @@ def verify_admin(x_admin_key: str = Header(None)):
         print(f"🚫 Admin Access Denied: Key mismatch. Received length: {len(clean_key)} (Expected: {len(clean_secret)}), Masked input: {masked_key}")
         print("💡 TIP: Copy the EXACT random secret from the server logs above.")
         raise HTTPException(status_code=403, detail="Admin access denied")
+
 # ================= BACKGROUND TASKS & SCHEDULER =================
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from tasks import sync_weather_data, hourly_sentinel_check
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
-    scheduler.add_job(
-        run_proactive_weather_sentinel,
-        trigger="cron",
-        hour=7,
-        minute=0,
-        id="proactive_weather_sentinel",
-        replace_existing=True,
-    )
+    # Setup Scheduler
+    scheduler = AsyncIOScheduler(timezone='Asia/Kolkata')
+    
+    # Run data sync daily at 07:00 AM
+    scheduler.add_job(sync_weather_data, 'cron', hour=7, minute=0)
+    
+    # Run smart environment monitor every hour at minute 5 (offset to avoid race condition with sync)
+    scheduler.add_job(hourly_sentinel_check, 'cron', minute=5)
+    
     scheduler.start()
-    print("🌅 Weather Sentinel scheduler started (Runs at 07:00 AM IST).")
-    try:
-        yield
-    finally:
-        scheduler.shutdown(wait=False)
-        print("🌅 Weather Sentinel scheduler stopped.")
-
+    print("🌅 Level 5 Smart Environment Monitor scheduler started.")
+    yield
+    scheduler.shutdown()
+    print("🌅 Smart Environment Monitor scheduler stopped.")
 
 # ================= FASTAPI APP =================
 app = FastAPI(title="LAN Chat Server (modular)", lifespan=lifespan)
