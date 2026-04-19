@@ -91,9 +91,10 @@ def set_default_location(lat: float, lon: float):
 def get_environment_settings():
     """
     Fetches the Smart Environment Monitor settings.
-    Defaults: mode=auto, temp=40.0, wind=40.0, rain=5.0
+    Defaults: sentinel_enabled=1, mode=auto, temp=40.0, wind=40.0, rain=5.0
     """
     settings = {
+        "sentinel_enabled": "1",
         "env_mode": "auto",
         "alert_temp": 40.0,
         "alert_wind": 40.0,
@@ -102,13 +103,13 @@ def get_environment_settings():
     
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT key, value FROM config WHERE key IN ('env_mode', 'alert_temp', 'alert_wind', 'alert_rain')")
+    cursor.execute("SELECT key, value FROM config WHERE key IN ('sentinel_enabled', 'env_mode', 'alert_temp', 'alert_wind', 'alert_rain')")
     rows = cursor.fetchall()
     conn.close()
     
     for key, value in rows:
         try:
-            if key == "env_mode":
+            if key in ("env_mode", "sentinel_enabled"):
                 settings[key] = value
             else:
                 settings[key] = float(value)
@@ -117,12 +118,14 @@ def get_environment_settings():
             
     return settings
 
-def set_environment_settings(mode: str, temp: float, wind: float, rain: float):
+def set_environment_settings(enabled: bool, mode: str, temp: float, wind: float, rain: float):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
+    enabled_val = "1" if enabled else "0"
     cursor.executemany(
         "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
         [
+            ("sentinel_enabled", enabled_val),
             ("env_mode", mode),
             ("alert_temp", str(temp)),
             ("alert_wind", str(wind)),

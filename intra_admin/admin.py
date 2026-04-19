@@ -160,17 +160,20 @@ class AdminWindow(QMainWindow):
         self.btn_users = self.create_nav_btn("👥 Users")
         self.btn_settings = self.create_nav_btn("⚙️ Settings")
         self.btn_ai = self.create_nav_btn("🧠 AI & Bot")  # 👈 NAYA BUTTON
+        self.btn_luminal = self.create_nav_btn("🌤️ Luminal") # 👈 NAYA LUMINAL BUTTON
         self.btn_cleanup = self.create_nav_btn("🧹 Cleanup")
 
         # Clicks ko map karo (Dhyan rakhna index change honge)
         self.btn_users.clicked.connect(lambda: self.switch_tab(0))
         self.btn_settings.clicked.connect(lambda: self.switch_tab(1))
         self.btn_ai.clicked.connect(lambda: self.switch_tab(2))      # 👈 NAYA TAB INDEX 2
-        self.btn_cleanup.clicked.connect(lambda: self.switch_tab(3)) # 👈 CLEANUP AB 3 PAR HAI
+        self.btn_luminal.clicked.connect(lambda: self.switch_tab(3)) # 👈 LUMINAL TAB INDEX 3
+        self.btn_cleanup.clicked.connect(lambda: self.switch_tab(4)) # 👈 CLEANUP AB 4 PAR HAI
 
         sidebar_layout.addWidget(self.btn_users)
         sidebar_layout.addWidget(self.btn_settings)
         sidebar_layout.addWidget(self.btn_ai)        # 👈 SIDEBAR MEIN ADD KARO
+        sidebar_layout.addWidget(self.btn_luminal)
         sidebar_layout.addWidget(self.btn_cleanup)
         sidebar_layout.addStretch()
 
@@ -181,12 +184,14 @@ class AdminWindow(QMainWindow):
         self.page_users = self.create_users_page()
         self.page_settings = self.create_settings_page()
         self.page_ai = self.create_ai_page()          # 👈 NAYI PAGE CALL
+        self.page_luminal = self.create_luminal_page()
         self.page_cleanup = self.create_cleanup_page()
 
         self.stack.addWidget(self.page_users)
         self.stack.addWidget(self.page_settings)
         self.stack.addWidget(self.page_ai)             # 👈 STACK MEIN ADD (Index 2)
-        self.stack.addWidget(self.page_cleanup)        # 👈 Index 3
+        self.stack.addWidget(self.page_luminal)        # 👈 Index 3
+        self.stack.addWidget(self.page_cleanup)        # 👈 Index 4
 
         # Add to main layout
         main_layout.addWidget(sidebar)
@@ -211,6 +216,7 @@ class AdminWindow(QMainWindow):
         self.btn_users.setProperty("active", "false")
         self.btn_settings.setProperty("active", "false")
         self.btn_ai.setProperty("active", "false")      # 👈 NAYA RESET
+        self.btn_luminal.setProperty("active", "false")
         self.btn_cleanup.setProperty("active", "false")
 
         self.stack.setCurrentIndex(index)
@@ -229,13 +235,17 @@ class AdminWindow(QMainWindow):
         elif index == 2:                                # 👈 NAYA INDEX LOGIC
             self.btn_ai.setProperty("active", "true")
             self.load_ai_settings()
-        elif index == 3:                                # 👈 CLEANUP AB 3
+        elif index == 3:
+            self.btn_luminal.setProperty("active", "true")
+            self.load_luminal_settings()
+        elif index == 4:                                # 👈 CLEANUP AB 4
             self.btn_cleanup.setProperty("active", "true")
 
         # Update styling
         self.btn_users.setStyle(self.btn_users.style())
         self.btn_settings.setStyle(self.btn_settings.style())
         self.btn_ai.setStyle(self.btn_ai.style())       # 👈 UPDATE STYLE
+        self.btn_luminal.setStyle(self.btn_luminal.style())
         self.btn_cleanup.setStyle(self.btn_cleanup.style())
 
     # ================= PAGE: USERS =================
@@ -445,11 +455,11 @@ class AdminWindow(QMainWindow):
                 background-color: #313244;
             }
             QCheckBox::indicator:checked {
-                background-color: #cba6f7;
-                border-color: #cba6f7;
+                background-color: #a6e3a1;
+                border-color: #a6e3a1;
             }
             QCheckBox::indicator:hover {
-                border-color: #cba6f7;
+                border-color: #a6e3a1;
             }
         """)
 
@@ -488,117 +498,8 @@ class AdminWindow(QMainWindow):
         card_layout.addWidget(self.settings_status)
         card_layout.addWidget(save_btn)
 
-        # Environment Monitor Settings Card
-        env_card = QFrame()
-        env_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
-        env_layout = QFormLayout(env_card)
-        env_layout.setContentsMargins(30, 30, 30, 30)
-        env_layout.setSpacing(15)
-
-        self.env_mode_dropdown = QComboBox()
-        self.env_mode_dropdown.addItems(["Auto-Pilot (Smart Mode)", "Normal (7 AM Only)"])
-        self.env_mode_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
-
-        self.env_temp_input = QLineEdit()
-        self.env_temp_input.setPlaceholderText("e.g. 40.0")
-        self.env_wind_input = QLineEdit()
-        self.env_wind_input.setPlaceholderText("e.g. 40.0")
-        self.env_rain_input = QLineEdit()
-        self.env_rain_input.setPlaceholderText("e.g. 5.0")
-
-        self.env_status = QLabel("")
-        self.env_status.setStyleSheet("font-weight: bold; font-size: 14px;")
-
-        env_save_btn = QPushButton("💾 SAVE ENVIRONMENT SETTINGS")
-        env_save_btn.setMinimumHeight(50)
-        env_save_btn.setCursor(Qt.PointingHandCursor)
-        env_save_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #89b4fa;
-                color: #11111b;
-                font-size: 16px;
-                font-weight: bold;
-                border-radius: 8px;
-            }
-            QPushButton:hover { background-color: #b4befe; }
-        """)
-        env_save_btn.clicked.connect(self.save_environment_settings)
-
-        env_layout.addRow("Mode:", self.env_mode_dropdown)
-        env_layout.addRow("Alert Temp (°C):", self.env_temp_input)
-        env_layout.addRow("Alert Wind (km/h):", self.env_wind_input)
-        env_layout.addRow("Alert Rain (mm):", self.env_rain_input)
-        env_layout.addRow(self.env_status)
-        env_layout.addRow(env_save_btn)
-
-        # Weather Location Card
-        weather_card = QFrame()
-        weather_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
-        weather_layout = QFormLayout(weather_card)
-        weather_layout.setContentsMargins(30, 30, 30, 30)
-        weather_layout.setSpacing(15)
-
-        # -- Search City Row --
-        search_layout = QHBoxLayout()
-        self.city_search_input = QLineEdit()
-        self.city_search_input.setPlaceholderText("e.g. Gwalior, Guna")
-        self.city_search_input.setStyleSheet("padding: 8px;")
-
-        city_search_btn = QPushButton("🔍 Find")
-        city_search_btn.setCursor(Qt.PointingHandCursor)
-        city_search_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #cba6f7;
-                color: #11111b;
-                font-weight: bold;
-                border-radius: 6px;
-                padding: 8px 16px;
-            }
-            QPushButton:hover { background-color: #f5c2e7; }
-        """)
-        city_search_btn.clicked.connect(self.search_city_coordinates)
-
-        search_layout.addWidget(self.city_search_input)
-        search_layout.addWidget(city_search_btn)
-
-        self.weather_lat_input = QLineEdit()
-        self.weather_lat_input.setPlaceholderText("e.g. 26.2183")
-        self.weather_lon_input = QLineEdit()
-        self.weather_lon_input.setPlaceholderText("e.g. 78.1828")
-
-        self.weather_status = QLabel("")
-        self.weather_status.setStyleSheet("font-weight: bold; font-size: 14px;")
-
-        weather_save_btn = QPushButton("💾 SAVE WEATHER LOCATION")
-        weather_save_btn.setObjectName("SaveBtn")
-        weather_save_btn.setMinimumHeight(50)
-        weather_save_btn.setCursor(Qt.PointingHandCursor)
-        weather_save_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #89b4fa;
-                color: #11111b;
-                font-size: 16px;
-                font-weight: bold;
-                border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #b4befe;
-            }
-        """)
-        weather_save_btn.clicked.connect(self.save_weather_location)
-
-        weather_layout.addRow("Search City:", search_layout)
-        weather_layout.addRow("Default Latitude:", self.weather_lat_input)
-        weather_layout.addRow("Default Longitude:", self.weather_lon_input)
-        weather_layout.addRow(self.weather_status)
-        weather_layout.addRow(weather_save_btn)
-
         layout.addWidget(lbl)
         layout.addWidget(card)
-        layout.addSpacing(15)
-        layout.addWidget(env_card)
-        layout.addSpacing(15)
-        layout.addWidget(weather_card)
         layout.addStretch()
         return page
 
@@ -611,8 +512,6 @@ class AdminWindow(QMainWindow):
                 self.chk_approval.blockSignals(True)
                 self.chk_approval.setChecked(bool(data["require_approval"]))
                 self.chk_approval.blockSignals(False)
-            self.load_weather_location()
-            self.load_environment_settings()
         except Exception as e:
             print("load_settings error:", e)
 
@@ -643,6 +542,11 @@ class AdminWindow(QMainWindow):
             data = res.json()
             if data.get("success"):
                 settings = data.get("settings", {})
+
+                self.chk_sentinel_enable.blockSignals(True)
+                self.chk_sentinel_enable.setChecked(settings.get("sentinel_enabled", "1") == "1")
+                self.chk_sentinel_enable.blockSignals(False)
+
                 mode_str = "Auto-Pilot (Smart Mode)" if settings.get("env_mode") == "auto" else "Normal (7 AM Only)"
                 self.env_mode_dropdown.setCurrentText(mode_str)
                 self.env_temp_input.setText(str(settings.get("alert_temp", "")))
@@ -662,6 +566,7 @@ class AdminWindow(QMainWindow):
             return
 
         mode_val = "auto" if "Auto-Pilot" in self.env_mode_dropdown.currentText() else "normal"
+        enabled = self.chk_sentinel_enable.isChecked()
 
         try:
             self.env_status.setText("Saving environment settings...")
@@ -669,7 +574,7 @@ class AdminWindow(QMainWindow):
             res = requests.post(
                 f"{self.server_url}/admin/environment_settings",
                 headers=self.headers,
-                params={"mode": mode_val, "temp": temp, "wind": wind, "rain": rain},
+                params={"enabled": enabled, "mode": mode_val, "temp": temp, "wind": wind, "rain": rain},
                 timeout=3,
             )
             if res.status_code == 200:
@@ -889,6 +794,159 @@ class AdminWindow(QMainWindow):
                 raise Exception(f"Server error {res.status_code}")
         except Exception as e:
             self.ai_status_lbl.setText(f"Status: ❌ Failed: {str(e)}")
+
+    # ================= PAGE: LUMINAL =================
+    def create_luminal_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        lbl = QLabel("Weather Sentinel & Luminal Configurations")
+        lbl.setStyleSheet("font-size: 24px; font-weight: bold; color: #f9e2af; margin-bottom: 10px;")
+
+        # Environment Monitor Settings Card
+        env_card = QFrame()
+        env_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
+        env_layout = QFormLayout(env_card)
+        env_layout.setContentsMargins(30, 30, 30, 30)
+        env_layout.setSpacing(15)
+
+        self.chk_sentinel_enable = QCheckBox("Enable Weather Sentinel (Smart Environment Monitor)")
+        self.chk_sentinel_enable.setTristate(False)
+        self.chk_sentinel_enable.setChecked(True)
+        self.chk_sentinel_enable.setCursor(Qt.PointingHandCursor)
+        self.chk_sentinel_enable.setStyleSheet("""
+            QCheckBox {
+                font-size: 18px;
+                color: #cdd6f4;
+                font-weight: 500;
+                margin-bottom: 10px;
+            }
+            QCheckBox::indicator {
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                border: 2px solid #45475a;
+                background-color: #313244;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #f9e2af;
+                border-color: #f9e2af;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #f9e2af;
+            }
+        """)
+
+        self.env_mode_dropdown = QComboBox()
+        self.env_mode_dropdown.addItems(["Auto-Pilot (Smart Mode)", "Normal (7 AM Only)"])
+        self.env_mode_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
+        self.env_temp_input = QLineEdit()
+        self.env_temp_input.setPlaceholderText("e.g. 40.0")
+        self.env_wind_input = QLineEdit()
+        self.env_wind_input.setPlaceholderText("e.g. 40.0")
+        self.env_rain_input = QLineEdit()
+        self.env_rain_input.setPlaceholderText("e.g. 5.0")
+
+        self.env_status = QLabel("")
+        self.env_status.setStyleSheet("font-weight: bold; font-size: 14px;")
+
+        env_save_btn = QPushButton("💾 SAVE ENVIRONMENT SETTINGS")
+        env_save_btn.setMinimumHeight(50)
+        env_save_btn.setCursor(Qt.PointingHandCursor)
+        env_save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f9e2af;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover { background-color: #f2cd8a; }
+        """)
+        env_save_btn.clicked.connect(self.save_environment_settings)
+
+        env_layout.addRow(self.chk_sentinel_enable)
+        env_layout.addRow("Mode:", self.env_mode_dropdown)
+        env_layout.addRow("Alert Temp (°C):", self.env_temp_input)
+        env_layout.addRow("Alert Wind (km/h):", self.env_wind_input)
+        env_layout.addRow("Alert Rain (mm):", self.env_rain_input)
+        env_layout.addRow(self.env_status)
+        env_layout.addRow(env_save_btn)
+
+        # Weather Location Card
+        weather_card = QFrame()
+        weather_card.setStyleSheet("background-color: #181825; border: 1px solid #313244; border-radius: 12px;")
+        weather_layout = QFormLayout(weather_card)
+        weather_layout.setContentsMargins(30, 30, 30, 30)
+        weather_layout.setSpacing(15)
+
+        # -- Search City Row --
+        search_layout = QHBoxLayout()
+        self.city_search_input = QLineEdit()
+        self.city_search_input.setPlaceholderText("e.g. Gwalior, Guna")
+        self.city_search_input.setStyleSheet("padding: 8px;")
+
+        city_search_btn = QPushButton("🔍 Find")
+        city_search_btn.setCursor(Qt.PointingHandCursor)
+        city_search_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #cba6f7;
+                color: #11111b;
+                font-weight: bold;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover { background-color: #f5c2e7; }
+        """)
+        city_search_btn.clicked.connect(self.search_city_coordinates)
+
+        search_layout.addWidget(self.city_search_input)
+        search_layout.addWidget(city_search_btn)
+
+        self.weather_lat_input = QLineEdit()
+        self.weather_lat_input.setPlaceholderText("e.g. 26.2183")
+        self.weather_lon_input = QLineEdit()
+        self.weather_lon_input.setPlaceholderText("e.g. 78.1828")
+
+        self.weather_status = QLabel("")
+        self.weather_status.setStyleSheet("font-weight: bold; font-size: 14px;")
+
+        weather_save_btn = QPushButton("💾 SAVE WEATHER LOCATION")
+        weather_save_btn.setObjectName("SaveBtn")
+        weather_save_btn.setMinimumHeight(50)
+        weather_save_btn.setCursor(Qt.PointingHandCursor)
+        weather_save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f9e2af;
+                color: #11111b;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #f2cd8a;
+            }
+        """)
+        weather_save_btn.clicked.connect(self.save_weather_location)
+
+        weather_layout.addRow("Search City:", search_layout)
+        weather_layout.addRow("Default Latitude:", self.weather_lat_input)
+        weather_layout.addRow("Default Longitude:", self.weather_lon_input)
+        weather_layout.addRow(self.weather_status)
+        weather_layout.addRow(weather_save_btn)
+
+        layout.addWidget(lbl)
+        layout.addWidget(env_card)
+        layout.addSpacing(15)
+        layout.addWidget(weather_card)
+        layout.addStretch()
+        return page
+
+    def load_luminal_settings(self):
+        self.load_environment_settings()
+        self.load_weather_location()
 
     # ================= PAGE: CLEANUP =================
     def create_cleanup_page(self):
