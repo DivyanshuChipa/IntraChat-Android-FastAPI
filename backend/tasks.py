@@ -58,11 +58,6 @@ async def sync_weather_data() -> None:
     Fetches the hourly weather data for today and tomorrow and saves it to a local cache.
     Runs at 7 AM. (Also acts as the daily trigger if in Normal mode).
     """
-    settings = get_environment_settings()
-    if settings.get("sentinel_enabled", "1") == "0":
-        LOGGER.debug("Weather Sentinel is disabled. Skipping sync.")
-        return
-
     try:
         lat, lon = _get_default_coordinates()
         
