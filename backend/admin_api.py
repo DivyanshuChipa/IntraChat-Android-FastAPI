@@ -124,9 +124,9 @@ def admin_get_environment_settings(admin=Depends(verify_admin)):
 
 @router.post("/environment_settings")
 def admin_set_environment_settings(
-    mode: str, temp: float, wind: float, rain: float, admin=Depends(verify_admin)
+    enabled: bool, mode: str, temp: float, wind: float, rain: float, admin=Depends(verify_admin)
 ):
-    set_environment_settings(mode, temp, wind, rain)
+    set_environment_settings(enabled, mode, temp, wind, rain)
     return {"success": True, "message": "Smart Environment settings updated successfully!"}
 
 # ================= AI SETTINGS =================

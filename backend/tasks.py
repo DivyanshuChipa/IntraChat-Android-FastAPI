@@ -89,12 +89,16 @@ async def hourly_sentinel_check() -> None:
     If mode is Normal, it only actually alerts at 7 AM (handled by only checking at 7 AM).
     If mode is Auto, checks the NEXT 3 hours for extreme data based on admin settings.
     """
+    settings = get_environment_settings()
+    if settings.get("sentinel_enabled", "1") == "0":
+        LOGGER.debug("Weather Sentinel is disabled. Skipping hourly check.")
+        return
+
     try:
         if not os.path.exists(CACHE_FILE):
             LOGGER.debug("No weather cache found. Skipping hourly check.")
             return
 
-        settings = get_environment_settings()
         mode = settings.get("env_mode", "auto")
         
         # If normal mode, and it's not 7 AM, do nothing. (Strictly 7 AM alerts only)
