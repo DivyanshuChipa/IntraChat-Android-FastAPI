@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
                             } else intentPhoto
 
                             Log.d("MAIN", "📞 Opening call screen for: $intentSender with photo: $fullPhotoUrl")
+                            // Note: For background intent handling we default to audio right now unless we extract it from intent
                             callViewModel.onIncomingCall(intentSender, fullPhotoUrl)
 
                             if (MyApplication.AppState.pendingCallOffer != null) {
@@ -172,11 +173,12 @@ class MainActivity : ComponentActivity() {
                                     "call_request" -> {
                                         val sender = json.optString("sender")
                                         val rawPhoto = json.optString("profile_photo")
+                                        val isVideoCall = json.optBoolean("is_video_call", false)
                                         val fullPhotoUrl = if (!rawPhoto.isNullOrEmpty() && rawPhoto != "null") {
                                             settingsManager.getBaseUrl().removeSuffix("/") + rawPhoto
                                         } else null
 
-                                        callViewModel.onIncomingCall(sender, fullPhotoUrl)
+                                        callViewModel.onIncomingCall(sender, fullPhotoUrl, isVideoCall)
                                     }
 
                                     "call_rejected", "call_ended" -> {
@@ -285,7 +287,8 @@ class MainActivity : ComponentActivity() {
 
                                         webRTCClient.answerCall(
                                             callViewModel.callState.value.targetUser,
-                                            offer
+                                            offer,
+                                            callViewModel.callState.value.isVideoCall
                                         )
                                         callViewModel.onCallConnected()
                                         proximitySensor.deactivate()
@@ -304,7 +307,21 @@ class MainActivity : ComponentActivity() {
                                         callViewModel.updateSpeakerState(newState)
                                         if (newState) proximitySensor.deactivate()
                                         else proximitySensor.activate()
-                                    }
+                                    },
+
+                                    onToggleVideo = {
+                                        val newVideo = !callViewModel.callState.value.isVideoEnabled
+                                        webRTCClient.toggleVideo(newVideo)
+                                        callViewModel.updateVideoState(newVideo)
+                                    },
+
+                                    onSwitchCamera = {
+                                        val isFront = !callViewModel.callState.value.isFrontCamera
+                                        webRTCClient.switchCamera()
+                                        callViewModel.switchCamera(isFront)
+                                    },
+
+                                    webRTCClient = webRTCClient
                                 )
                             }
 
@@ -330,7 +347,7 @@ class MainActivity : ComponentActivity() {
                                     currentChatReceiver = null
                                 },
 
-                                onStartCall = {
+                                onStartCall = { isVideoCall ->
                                     val target = currentChatReceiver!!
                                     val contact =
                                         contactViewModel.contacts.find { it.username == target }
@@ -341,9 +358,9 @@ class MainActivity : ComponentActivity() {
                                                 .removeSuffix("/") + it
                                         }
 
-                                        chatViewModel.sendCallRequest(target)
-                                        callViewModel.onStartOutgoingCall(target, photo)
-                                        webRTCClient.startCall(target)
+                                        chatViewModel.sendCallRequest(target, isVideoCall)
+                                        callViewModel.onStartOutgoingCall(target, photo, isVideoCall)
+                                        webRTCClient.startCall(target, isVideoCall)
                                         proximitySensor.deactivate()
                                     }
                                 )
@@ -443,6 +460,7 @@ class MainActivity : ComponentActivity() {
 
         // Audio for Calls
         permissions.add(android.Manifest.permission.RECORD_AUDIO)
+        permissions.add(android.Manifest.permission.CAMERA) // Video Calls
 
         // Notifications (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

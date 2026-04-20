@@ -20,25 +20,28 @@ class CallViewModel : ViewModel() {
 
     // --- Actions ---
 
-    fun onIncomingCall(sender: String, profilePhotoUrl: String? = null) {
+    fun onIncomingCall(sender: String, profilePhotoUrl: String? = null, isVideoCall: Boolean = false) {
         if (callActive) return
         callActive = true
         isRinging.value = true
         callState.value = CallState(
             status = CallStatus.INCOMING,
             targetUser = sender,
-            profilePhotoUrl = profilePhotoUrl
+            profilePhotoUrl = profilePhotoUrl,
+            isVideoCall = isVideoCall,
+            isSpeakerOn = isVideoCall // Video call mein by default speaker ON hota hai
         )
         isRinging.value = true // 🔔 Start Ringing
     }
 
-    fun onStartOutgoingCall(target: String, profilePhotoUrl: String? = null) {
+    fun onStartOutgoingCall(target: String, profilePhotoUrl: String? = null, isVideoCall: Boolean = false) {
         callActive = true
         callState.value = CallState(
             status = CallStatus.OUTGOING,
             targetUser = target,
             profilePhotoUrl = profilePhotoUrl,
-            isSpeakerOn = true
+            isSpeakerOn = true, // By default keeping it true, WebRTCClient handles it
+            isVideoCall = isVideoCall
         )
         // Outgoing me ringtone nahi bajti, tone bajti hai (wo baad me dekhenge)
     }
@@ -65,5 +68,13 @@ class CallViewModel : ViewModel() {
 
     fun updateSpeakerState(isSpeakerOn: Boolean) {
         callState.value = callState.value.copy(isSpeakerOn = isSpeakerOn)
+    }
+
+    fun updateVideoState(isVideoEnabled: Boolean) {
+        callState.value = callState.value.copy(isVideoEnabled = isVideoEnabled)
+    }
+
+    fun switchCamera(isFrontCamera: Boolean) {
+        callState.value = callState.value.copy(isFrontCamera = isFrontCamera)
     }
 }

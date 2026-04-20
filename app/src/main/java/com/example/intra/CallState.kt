@@ -13,5 +13,8 @@ data class CallState(
     val targetUser: String = "", // Kisse baat ho rahi hai
     val profilePhotoUrl: String? = null, // ✅ ADD THIS
     val isMuted: Boolean = false,
-    val isSpeakerOn: Boolean = true
+    val isSpeakerOn: Boolean = true,
+    val isVideoCall: Boolean = false, // Video call indicator
+    val isVideoEnabled: Boolean = true, // Track if camera is ON/OFF
+    val isFrontCamera: Boolean = true // Track which camera is active
 )
