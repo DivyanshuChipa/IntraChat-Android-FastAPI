@@ -862,8 +862,26 @@ function handleOptionClick(option) {
         const size = prompt("Enter target size in KB (e.g. 500):");
         if (!size) return;
         command = `###compress<${size}>###`;
-    } else if (option === "Passport + Date" || option === "📅 Passport + Date") {
-        // Create hidden date input
+    } else if (
+        option === "Passport + Date" ||
+        option === "📅 Passport + Date" ||
+        option === "📅 Passport + Date/Name"
+    ) {
+        const choice = prompt("Choose option:\n1 = Date\n2 = Name");
+        if (!choice) return;
+
+        if (choice.trim() === "2") {
+            const rawName = prompt("Enter name for passport:");
+            if (!rawName) return;
+            const cleanedName = rawName.trim();
+            if (!cleanedName) return;
+            const safeName = cleanedName.replace(/[<>]/g, "");
+            const finalCmd = `###passport9### ###passportname<${safeName}>###`;
+            sendText(finalCmd);
+            return;
+        }
+
+        // Default Date flow (choice 1)
         const dateInput = document.createElement("input");
         dateInput.type = "date";
         dateInput.style.display = "none";
@@ -880,13 +898,12 @@ function handleOptionClick(option) {
             dateInput.remove();
         };
 
-        // Trigger picker
         if (dateInput.showPicker) {
             dateInput.showPicker();
         } else {
             dateInput.click(); // Fallback
         }
-        return; // Early return to wait for input
+        return;
     }
 
     sendText(command);
