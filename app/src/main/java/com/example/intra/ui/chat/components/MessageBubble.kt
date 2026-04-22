@@ -67,6 +67,9 @@ fun MessageBubble(
     var showCompressDialog by remember { mutableStateOf(false) }
     var showVideoCompressDialog by remember { mutableStateOf(false) }
     var showRotateDialog by remember { mutableStateOf(false) }
+    var showPassportMetaDialog by remember { mutableStateOf(false) }
+    var showNameDialog by remember { mutableStateOf(false) }
+    var passportNameInput by remember { mutableStateOf("") }
 
     // 🗓️ Date Picker logic
     val showDatePicker = {
@@ -106,6 +109,58 @@ fun MessageBubble(
             onDismiss = { showRotateDialog = false },
             onConfirm = { rotationType ->
                 onOptionSelected("###rotatevideo:${rotationType}###")
+            }
+        )
+    }
+
+    if (showPassportMetaDialog) {
+        AlertDialog(
+            onDismissRequest = { showPassportMetaDialog = false },
+            title = { Text("Passport + Details") },
+            text = { Text("Choose what you want to add to passport photos.") },
+            confirmButton = {
+                Button(onClick = {
+                    showPassportMetaDialog = false
+                    showDatePicker()
+                }) { Text("Add Date") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showPassportMetaDialog = false
+                    showNameDialog = true
+                }) { Text("Add Name") }
+            }
+        )
+    }
+
+    if (showNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showNameDialog = false },
+            title = { Text("Add Name to Passport") },
+            text = {
+                OutlinedTextField(
+                    value = passportNameInput,
+                    onValueChange = { passportNameInput = it },
+                    label = { Text("Enter Name") },
+                    placeholder = { Text("e.g. Rahul Kumar") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val cleanedName = passportNameInput.trim()
+                    if (cleanedName.isNotEmpty()) {
+                        onOptionSelected("###passport9### ###passportname<$cleanedName>###")
+                        passportNameInput = ""
+                        showNameDialog = false
+                    }
+                }) { Text("Create") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    passportNameInput = ""
+                    showNameDialog = false
+                }) { Text("Cancel") }
             }
         )
     }
@@ -455,8 +510,9 @@ fun MessageBubble(
                                     "🛂 Passport A6 (6 Photos)" -> onOptionSelected("###passport###")
                                     "🛂 Passport A6 (9 Photos)" -> onOptionSelected("###passport9###")
                                     "📄 Extract Text (OCR)" -> onOptionSelected("###ocr###")
-                                    "📅 Passport + Date" -> {
-                                        showDatePicker()
+                                    "📅 Passport + Date",
+                                    "📅 Passport + Date/Name" -> {
+                                        showPassportMetaDialog = true
                                     }
                                     "🗜️ Compress Image" -> {
                                         showCompressDialog = true

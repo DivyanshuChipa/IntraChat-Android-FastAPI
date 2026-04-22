@@ -20,7 +20,12 @@ if sys.platform == "win32":
             pytesseract.pytesseract.tesseract_cmd = expanded_path
             break
 
-def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str = None):
+def generate_passport_layout(
+    image_url: str,
+    grid_size: int = 6,
+    date_text: str = None,
+    name_text: str = None
+):
     try:
         file_path = image_url.lstrip("/")
         if not os.path.exists(file_path):
@@ -40,9 +45,15 @@ def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str 
 
             img = ImageOps.fit(img, (pass_w, pass_h), method=Image.Resampling.LANCZOS)
 
-            # 2. Add White Strip and Date (Agar user ne date bheji hai)
+            # 2. Add White Strip and Meta Text (Name/Date)
+            meta_lines = []
+            if name_text:
+                meta_lines.append(name_text.strip())
             if date_text:
-                strip_height = 50
+                meta_lines.append(date_text.strip())
+
+            if meta_lines:
+                strip_height = 22 + (30 * len(meta_lines))
                 new_img = Image.new('RGB', (pass_w, pass_h + strip_height), 'white')
                 new_img.paste(img, (0, 0))
 
@@ -57,13 +68,13 @@ def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str 
                 except:
                     font = ImageFont.load_default() # Fallback
 
-                # Center the text
-                text_bbox = draw.textbbox((0, 0), date_text, font=font)
-                text_w = text_bbox[2] - text_bbox[0]
-                text_x = (pass_w - text_w) / 2
-                text_y = pass_h + 10
-
-                draw.text((text_x, text_y), date_text, fill="black", font=font)
+                # Center each line
+                for i, line in enumerate(meta_lines):
+                    text_bbox = draw.textbbox((0, 0), line, font=font)
+                    text_w = text_bbox[2] - text_bbox[0]
+                    text_x = (pass_w - text_w) / 2
+                    text_y = pass_h + 8 + (i * 28)
+                    draw.text((text_x, text_y), line, fill="black", font=font)
 
                 pass_h += strip_height
                 img = new_img

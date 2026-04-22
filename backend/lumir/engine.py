@@ -193,7 +193,7 @@ class LumirEngine:
                             "🛂 Passport A6 (6 Photos)",
                             "🛂 Passport A6 (9 Photos)",
                             "📄 Extract Text (OCR)",
-                            "📅 Passport + Date",
+                            "📅 Passport + Date/Name",
                             "🗜️ Compress Image",
                             "📄 Convert to PDF",
                             "🧠 Analyze Image (AI)"
@@ -432,8 +432,19 @@ class LumirEngine:
             if date_match:
                 date_text = date_match.group(1).strip()
 
+            # Detect Name using Regex
+            name_text = None
+            name_match = re.search(r'###passportname<(.*?)>###', text)
+            if name_match:
+                name_text = name_match.group(1).strip()
+
             # Process the image
-            res = generate_passport_layout(target_image, grid_size=grid_size, date_text=date_text)
+            res = generate_passport_layout(
+                target_image,
+                grid_size=grid_size,
+                date_text=date_text,
+                name_text=name_text
+            )
 
             if sender in self.user_context:
                 del self.user_context[sender]
