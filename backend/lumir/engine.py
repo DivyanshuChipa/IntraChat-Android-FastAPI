@@ -194,7 +194,6 @@ class LumirEngine:
                             "🛂 Passport A6 (9 Photos)",
                             "🛂 Master Passport",
                             "📄 Extract Text (OCR)",
-                            "📅 Passport + Date/Name",
                             "🗜️ Compress Image",
                             "📄 Convert to PDF",
                             "🧠 Analyze Image (AI)"
