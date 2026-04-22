@@ -192,6 +192,7 @@ class LumirEngine:
                         "options": [
                             "🛂 Passport A6 (6 Photos)",
                             "🛂 Passport A6 (9 Photos)",
+                            "🛂 Master Passport",
                             "📄 Extract Text (OCR)",
                             "📅 Passport + Date/Name",
                             "🗜️ Compress Image",
@@ -438,12 +439,26 @@ class LumirEngine:
             if name_match:
                 name_text = name_match.group(1).strip()
 
+            # Detect Page Size
+            page_size = "A6"
+            page_match = re.search(r'###passportpage<(.*?)>###', text)
+            if page_match:
+                page_size = page_match.group(1).strip().upper()
+
+            # Detect Layout (e.g. 3x1, 3x2, 3x3)
+            layout = None
+            layout_match = re.search(r'###passportlayout<(.*?)>###', text)
+            if layout_match:
+                layout = layout_match.group(1).strip().lower()
+
             # Process the image
             res = generate_passport_layout(
                 target_image,
                 grid_size=grid_size,
                 date_text=date_text,
-                name_text=name_text
+                name_text=name_text,
+                page_size=page_size,
+                layout=layout
             )
 
             if sender in self.user_context:

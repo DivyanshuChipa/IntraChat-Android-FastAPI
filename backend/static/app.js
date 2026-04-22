@@ -863,45 +863,63 @@ function handleOptionClick(option) {
         if (!size) return;
         command = `###compress<${size}>###`;
     } else if (
+        option === "🛂 Master Passport" ||
         option === "Passport + Date" ||
         option === "📅 Passport + Date" ||
         option === "📅 Passport + Date/Name"
     ) {
-        const choice = prompt("Choose option:\n1 = Date\n2 = Name");
-        if (!choice) return;
+        const pageInput = prompt("Page Size? (A6/B4)", "A6");
+        if (!pageInput) return;
+        const page = pageInput.trim().toUpperCase() === "B4" ? "b4" : "a6";
 
-        if (choice.trim() === "2") {
-            const rawName = prompt("Enter name for passport:");
-            if (!rawName) return;
-            const cleanedName = rawName.trim();
-            if (!cleanedName) return;
-            const safeName = cleanedName.replace(/[<>]/g, "");
-            const finalCmd = `###passport9### ###passportname<${safeName}>###`;
-            sendText(finalCmd);
-            return;
-        }
+        const defaultLayout = page === "b4" ? "3x2" : "3x3";
+        const layoutHelp = page === "b4"
+            ? "Layout? (3x1 / 3x2 / 3x3 / 4x3)"
+            : "Layout? (3x1 / 3x2 / 3x3)";
+        const layoutInput = prompt(layoutHelp, defaultLayout);
+        if (!layoutInput) return;
+        const layout = layoutInput.trim().toLowerCase();
 
-        // Default Date flow (choice 1)
+        const rawName = prompt("Name (optional):", "") || "";
+        const safeName = rawName.trim().replace(/[<>]/g, "");
+
+        // Date picker (optional)
         const dateInput = document.createElement("input");
         dateInput.type = "date";
         dateInput.style.display = "none";
         document.body.appendChild(dateInput);
 
-        dateInput.onchange = () => {
-            const val = dateInput.value; // yyyy-mm-dd
-            if (val) {
-                const [y, m, d] = val.split("-");
-                const formatted = `${d}/${m}/${y}`;
-                const finalCmd = `###passport9### ###passportdate<${formatted}>###`;
-                sendText(finalCmd);
+        const submitPassportCommand = (formattedDate = "") => {
+            let finalCmd = `###passport### ###passportpage<${page}>### ###passportlayout<${layout}>###`;
+            if (formattedDate) {
+                finalCmd += ` ###passportdate<${formattedDate}>###`;
             }
+            if (safeName) {
+                finalCmd += ` ###passportname<${safeName}>###`;
+            }
+            sendText(finalCmd);
             dateInput.remove();
         };
 
-        if (dateInput.showPicker) {
-            dateInput.showPicker();
+        dateInput.onchange = () => {
+            const val = dateInput.value; // yyyy-mm-dd
+            if (!val) {
+                submitPassportCommand("");
+                return;
+            }
+            const [y, m, d] = val.split("-");
+            submitPassportCommand(`${d}/${m}/${y}`);
+        };
+
+        const addDate = confirm("Add Date bhi chahiye?");
+        if (addDate) {
+            if (dateInput.showPicker) {
+                dateInput.showPicker();
+            } else {
+                dateInput.click();
+            }
         } else {
-            dateInput.click(); // Fallback
+            submitPassportCommand("");
         }
         return;
     }

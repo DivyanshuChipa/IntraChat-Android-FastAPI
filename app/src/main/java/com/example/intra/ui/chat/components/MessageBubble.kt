@@ -67,18 +67,26 @@ fun MessageBubble(
     var showCompressDialog by remember { mutableStateOf(false) }
     var showVideoCompressDialog by remember { mutableStateOf(false) }
     var showRotateDialog by remember { mutableStateOf(false) }
-    var showPassportMetaDialog by remember { mutableStateOf(false) }
-    var showNameDialog by remember { mutableStateOf(false) }
+    var showPassportDialog by remember { mutableStateOf(false) }
+    var passportPageSize by remember { mutableStateOf("A6") }
+    var passportLayout by remember { mutableStateOf("3x1") }
+    var passportDateInput by remember { mutableStateOf("") }
     var passportNameInput by remember { mutableStateOf("") }
 
-    // 🗓️ Date Picker logic
+    val a6Layouts = listOf("3x1", "3x2", "3x3")
+    val b4Layouts = listOf("3x1", "3x2", "3x3", "4x3")
+    val activeLayouts = if (passportPageSize == "B4") b4Layouts else a6Layouts
+    if (passportLayout !in activeLayouts) {
+        passportLayout = activeLayouts.first()
+    }
+
+    // 🗓️ Date Picker logic (dialog input update only)
     val showDatePicker = {
         DatePickerDialog(
             context,
             { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
                 val formattedDate = String.format(Locale.US, "%02d/%02d/%04d", dayOfMonth, month + 1, year)
-                val finalCommand = "###passport9### ###passportdate<$formattedDate>###"
-                onOptionSelected(finalCommand)
+                passportDateInput = formattedDate
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -113,54 +121,86 @@ fun MessageBubble(
         )
     }
 
-    if (showPassportMetaDialog) {
+    if (showPassportDialog) {
         AlertDialog(
-            onDismissRequest = { showPassportMetaDialog = false },
-            title = { Text("Passport + Details") },
-            text = { Text("Choose what you want to add to passport photos.") },
-            confirmButton = {
-                Button(onClick = {
-                    showPassportMetaDialog = false
-                    showDatePicker()
-                }) { Text("Add Date") }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = {
-                    showPassportMetaDialog = false
-                    showNameDialog = true
-                }) { Text("Add Name") }
-            }
-        )
-    }
-
-    if (showNameDialog) {
-        AlertDialog(
-            onDismissRequest = { showNameDialog = false },
-            title = { Text("Add Name to Passport") },
+            onDismissRequest = { showPassportDialog = false },
+            title = { Text("Master Passport") },
             text = {
-                OutlinedTextField(
-                    value = passportNameInput,
-                    onValueChange = { passportNameInput = it },
-                    label = { Text("Enter Name") },
-                    placeholder = { Text("e.g. Rahul Kumar") },
-                    singleLine = true
-                )
+                Column {
+                    Text("Page Size")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = passportPageSize == "A6",
+                            onClick = { passportPageSize = "A6" }
+                        )
+                        Text("A6", modifier = Modifier.clickable { passportPageSize = "A6" })
+                        Spacer(Modifier.width(12.dp))
+                        RadioButton(
+                            selected = passportPageSize == "B4",
+                            onClick = { passportPageSize = "B4" }
+                        )
+                        Text("B4", modifier = Modifier.clickable { passportPageSize = "B4" })
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Text("Layout Presets")
+                    activeLayouts.forEach { layout ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { passportLayout = layout }
+                        ) {
+                            RadioButton(
+                                selected = passportLayout == layout,
+                                onClick = { passportLayout = layout }
+                            )
+                            Text(layout)
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = passportNameInput,
+                        onValueChange = { passportNameInput = it },
+                        label = { Text("Name (optional)") },
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = passportDateInput,
+                        onValueChange = { passportDateInput = it },
+                        label = { Text("Date (optional)") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth().clickable { showDatePicker() }
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedButton(onClick = { showDatePicker() }) {
+                        Text(if (passportDateInput.isBlank()) "Pick Date" else "Change Date")
+                    }
+                }
             },
             confirmButton = {
                 Button(onClick = {
-                    val cleanedName = passportNameInput.trim()
-                    if (cleanedName.isNotEmpty()) {
-                        onOptionSelected("###passport9### ###passportname<$cleanedName>###")
-                        passportNameInput = ""
-                        showNameDialog = false
+                    val safeName = passportNameInput.trim().replace("<", "").replace(">", "")
+                    val safeDate = passportDateInput.trim().replace("<", "").replace(">", "")
+
+                    val finalCommand = buildString {
+                        append("###passport###")
+                        append(" ###passportpage<${passportPageSize.lowercase(Locale.US)}>###")
+                        append(" ###passportlayout<$passportLayout>###")
+                        if (safeDate.isNotEmpty()) {
+                            append(" ###passportdate<$safeDate>###")
+                        }
+                        if (safeName.isNotEmpty()) {
+                            append(" ###passportname<$safeName>###")
+                        }
                     }
+
+                    onOptionSelected(finalCommand)
+                    showPassportDialog = false
                 }) { Text("Create") }
             },
             dismissButton = {
-                OutlinedButton(onClick = {
-                    passportNameInput = ""
-                    showNameDialog = false
-                }) { Text("Cancel") }
+                OutlinedButton(onClick = { showPassportDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -509,10 +549,13 @@ fun MessageBubble(
                                 when (optionText) {
                                     "🛂 Passport A6 (6 Photos)" -> onOptionSelected("###passport###")
                                     "🛂 Passport A6 (9 Photos)" -> onOptionSelected("###passport9###")
+                                    "🛂 Master Passport" -> {
+                                        showPassportDialog = true
+                                    }
                                     "📄 Extract Text (OCR)" -> onOptionSelected("###ocr###")
                                     "📅 Passport + Date",
                                     "📅 Passport + Date/Name" -> {
-                                        showPassportMetaDialog = true
+                                        showPassportDialog = true
                                     }
                                     "🗜️ Compress Image" -> {
                                         showCompressDialog = true
