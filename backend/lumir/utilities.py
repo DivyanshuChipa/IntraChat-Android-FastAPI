@@ -39,8 +39,8 @@ def generate_passport_layout(
 
             # 1. Page + Layout Selection
             page_size = (page_size or "A6").strip().upper()
-            if page_size == "B4":
-                canvas_w, canvas_h = 2953, 4169
+            if page_size == "A4":
+                canvas_w, canvas_h = 2480, 3508
             else:
                 canvas_w, canvas_h = 1240, 1748
                 page_size = "A6"

@@ -868,14 +868,14 @@ function handleOptionClick(option) {
         option === "📅 Passport + Date" ||
         option === "📅 Passport + Date/Name"
     ) {
-        const pageInput = prompt("Page Size? (A6/B4)", "A6");
+        const pageInput = prompt("Page Size? (A6/A4)", "A6");
         if (!pageInput) return;
-        const page = pageInput.trim().toUpperCase() === "B4" ? "b4" : "a6";
+        const page = pageInput.trim().toUpperCase() === "A4" ? "a4" : "a6";
 
-        const defaultLayout = page === "b4" ? "3x2" : "3x3";
-        const layoutHelp = page === "b4"
-            ? "Layout? (3x1 / 3x2 / 3x3 / 4x3)"
-            : "Layout? (3x1 / 3x2 / 3x3)";
+        const defaultLayout = page === "a4" ? "1x6" : "1x3";
+        const layoutHelp = page === "a4"
+            ? "Layout? (1x6 / 2x6 / 3x6)"
+            : "Layout? (1x3 / 2x3 / 3x3)";
         const layoutInput = prompt(layoutHelp, defaultLayout);
         if (!layoutInput) return;
         const layout = layoutInput.trim().toLowerCase();

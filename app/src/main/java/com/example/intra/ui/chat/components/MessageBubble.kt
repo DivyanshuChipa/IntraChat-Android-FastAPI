@@ -73,9 +73,9 @@ fun MessageBubble(
     var passportDateInput by remember { mutableStateOf("") }
     var passportNameInput by remember { mutableStateOf("") }
 
-    val a6Layouts = listOf("3x1", "3x2", "3x3")
-    val b4Layouts = listOf("3x1", "3x2", "3x3", "4x3")
-    val activeLayouts = if (passportPageSize == "B4") b4Layouts else a6Layouts
+    val a6Layouts = listOf("1x3", "2x3", "3x3")
+    val a4Layouts = listOf("1x6", "2x6", "3x6")
+    val activeLayouts = if (passportPageSize == "A4") a4Layouts else a6Layouts
     if (passportLayout !in activeLayouts) {
         passportLayout = activeLayouts.first()
     }
@@ -136,10 +136,10 @@ fun MessageBubble(
                         Text("A6", modifier = Modifier.clickable { passportPageSize = "A6" })
                         Spacer(Modifier.width(12.dp))
                         RadioButton(
-                            selected = passportPageSize == "B4",
-                            onClick = { passportPageSize = "B4" }
+                            selected = passportPageSize == "A4",
+                            onClick = { passportPageSize = "A4" }
                         )
-                        Text("B4", modifier = Modifier.clickable { passportPageSize = "B4" })
+                        Text("A4", modifier = Modifier.clickable { passportPageSize = "A4" })
                     }
 
                     Spacer(Modifier.height(8.dp))
