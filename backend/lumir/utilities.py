@@ -122,9 +122,9 @@ def generate_passport_layout(
             pass_h += (border_width * 2)
             canvas = Image.new('RGB', (canvas_w, canvas_h), 'white')
 
-            # 5. Grid paste (centered in each cell)
+            # 5. Grid paste (X centered, Y starts near top for paper-print workflow)
             start_x = max(0, (canvas_w - ((cell_w * cols) + (gap_x * (cols - 1)))) // 2)
-            start_y = max(0, (canvas_h - ((cell_h * rows) + (gap_y * (rows - 1)))) // 2)
+            start_y = outer_margin_y
 
             for row in range(rows):
                 for col in range(cols):
