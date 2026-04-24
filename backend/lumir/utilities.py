@@ -20,7 +20,14 @@ if sys.platform == "win32":
             pytesseract.pytesseract.tesseract_cmd = expanded_path
             break
 
-def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str = None):
+def generate_passport_layout(
+    image_url: str,
+    grid_size: int = 6,
+    date_text: str = None,
+    name_text: str = None,
+    page_size: str = "A6",
+    layout: str = None
+):
     try:
         file_path = image_url.lstrip("/")
         if not os.path.exists(file_path):
@@ -30,63 +37,101 @@ def generate_passport_layout(image_url: str, grid_size: int = 6, date_text: str 
             img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
 
-            # 1. Size Decide karo (9 ke liye thoda chhota taaki fit aaye)
-            if grid_size == 9:
-                pass_w, pass_h = 350, 450
-                cols, rows = 3, 3
+            # 1. Page + Layout Selection
+            page_size = (page_size or "A6").strip().upper()
+            if page_size == "A4":
+                canvas_w, canvas_h = 2480, 3508
             else:
-                pass_w, pass_h = 413, 531
-                cols, rows = 2, 3
+                canvas_w, canvas_h = 1240, 1748
+                page_size = "A6"
+
+            if layout and "x" in layout.lower():
+                try:
+                    rows, cols = [int(x) for x in layout.lower().split("x")]
+                except Exception:
+                    rows, cols = (3, 3) if grid_size == 9 else (3, 2)
+            else:
+                rows, cols = (3, 3) if grid_size == 9 else (3, 2)
+
+            rows = max(1, rows)
+            cols = max(1, cols)
+
+            # 2. Add White Strip and Meta Text (Name/Date)
+            meta_lines = []
+            if name_text:
+                meta_lines.append(name_text.strip())
+            if date_text:
+                meta_lines.append(date_text.strip())
+
+            strip_height = 0
+            if meta_lines:
+                strip_height = 22 + (30 * len(meta_lines))
+            border_width = 3
+
+            # 3. Fit calc by selected page + rows/cols
+            outer_margin_x = 36 if page_size == "A6" else 48
+            outer_margin_y = 36 if page_size == "A6" else 48
+            gap_x = 24 if page_size == "A6" else 30
+            gap_y = 24 if page_size == "A6" else 30
+
+            available_w = max(120, canvas_w - (outer_margin_x * 2) - ((cols - 1) * gap_x))
+            available_h = max(140, canvas_h - (outer_margin_y * 2) - ((rows - 1) * gap_y))
+
+            # Width/Height cap per tile for requested rows/cols
+            tile_w_cap = max(100, available_w // cols)
+            tile_h_cap = max(120, available_h // rows)
+
+            usable_w = max(80, tile_w_cap - (border_width * 2))
+            usable_h = max(100, tile_h_cap - strip_height - (border_width * 2))
+
+            # Passport aspect ratio ~35x45
+            ratio = 35 / 45
+            pass_w = min(usable_w, int(usable_h * ratio))
+            pass_h = int(pass_w / ratio)
+            if pass_h > usable_h:
+                pass_h = usable_h
+                pass_w = int(pass_h * ratio)
 
             img = ImageOps.fit(img, (pass_w, pass_h), method=Image.Resampling.LANCZOS)
 
-            # 2. Add White Strip and Date (Agar user ne date bheji hai)
-            if date_text:
-                strip_height = 50
+            if meta_lines:
                 new_img = Image.new('RGB', (pass_w, pass_h + strip_height), 'white')
                 new_img.paste(img, (0, 0))
 
                 draw = ImageDraw.Draw(new_img)
                 try:
                     if sys.platform == "win32":
-                        # Windows common fonts
                         font = ImageFont.truetype("arial.ttf", 24)
                     else:
-                        # Ubuntu/Linux common fonts
                         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
                 except:
-                    font = ImageFont.load_default() # Fallback
+                    font = ImageFont.load_default()
 
-                # Center the text
-                text_bbox = draw.textbbox((0, 0), date_text, font=font)
-                text_w = text_bbox[2] - text_bbox[0]
-                text_x = (pass_w - text_w) / 2
-                text_y = pass_h + 10
-
-                draw.text((text_x, text_y), date_text, fill="black", font=font)
+                for i, line in enumerate(meta_lines):
+                    text_bbox = draw.textbbox((0, 0), line, font=font)
+                    text_w = text_bbox[2] - text_bbox[0]
+                    text_x = (pass_w - text_w) / 2
+                    text_y = pass_h + 8 + (i * 28)
+                    draw.text((text_x, text_y), line, fill="black", font=font)
 
                 pass_h += strip_height
                 img = new_img
 
-            # 3. Add Black Border
-            border_width = 3
+            # 4. Add Black Border + Canvas
             img = ImageOps.expand(img, border=border_width, fill='black')
             pass_w += (border_width * 2)
             pass_h += (border_width * 2)
+            canvas = Image.new('RGB', (canvas_w, canvas_h), 'white')
 
-            # 4. A6 Canvas create karo
-            a6_w, a6_h = 1240, 1748
-            canvas = Image.new('RGB', (a6_w, a6_h), 'white')
+            # 5. Packed grid placement (tight rows/cols, top aligned)
+            total_w = (pass_w * cols) + (gap_x * (cols - 1))
+            start_x = max(0, (canvas_w - total_w) // 2)
+            start_y = outer_margin_y
 
-            # 5. Margins calculate karo
-            margin_x = (a6_w - (pass_w * cols)) // (cols + 1)
-            margin_y = (a6_h - (pass_h * rows)) // (rows + 1)
-
-            # 6. Grid pe paste karo
             for row in range(rows):
                 for col in range(cols):
-                    x = margin_x + col * (pass_w + margin_x)
-                    y = margin_y + row * (pass_h + margin_y)
+                    x = start_x + col * (pass_w + gap_x)
+                    y = start_y + row * (pass_h + gap_y)
                     canvas.paste(img, (x, y))
 
         # 7. Output save karo

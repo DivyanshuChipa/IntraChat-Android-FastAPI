@@ -67,15 +67,26 @@ fun MessageBubble(
     var showCompressDialog by remember { mutableStateOf(false) }
     var showVideoCompressDialog by remember { mutableStateOf(false) }
     var showRotateDialog by remember { mutableStateOf(false) }
+    var showPassportDialog by remember { mutableStateOf(false) }
+    var passportPageSize by remember { mutableStateOf("A6") }
+    var passportLayout by remember { mutableStateOf("3x1") }
+    var passportDateInput by remember { mutableStateOf("") }
+    var passportNameInput by remember { mutableStateOf("") }
 
-    // 🗓️ Date Picker logic
+    val a6Layouts = listOf("1x3", "2x3", "3x3")
+    val a4Layouts = listOf("1x6", "2x6", "3x6")
+    val activeLayouts = if (passportPageSize == "A4") a4Layouts else a6Layouts
+    if (passportLayout !in activeLayouts) {
+        passportLayout = activeLayouts.first()
+    }
+
+    // 🗓️ Date Picker logic (dialog input update only)
     val showDatePicker = {
         DatePickerDialog(
             context,
             { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
                 val formattedDate = String.format(Locale.US, "%02d/%02d/%04d", dayOfMonth, month + 1, year)
-                val finalCommand = "###passport9### ###passportdate<$formattedDate>###"
-                onOptionSelected(finalCommand)
+                passportDateInput = formattedDate
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -106,6 +117,90 @@ fun MessageBubble(
             onDismiss = { showRotateDialog = false },
             onConfirm = { rotationType ->
                 onOptionSelected("###rotatevideo:${rotationType}###")
+            }
+        )
+    }
+
+    if (showPassportDialog) {
+        AlertDialog(
+            onDismissRequest = { showPassportDialog = false },
+            title = { Text("Master Passport") },
+            text = {
+                Column {
+                    Text("Page Size")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = passportPageSize == "A6",
+                            onClick = { passportPageSize = "A6" }
+                        )
+                        Text("A6", modifier = Modifier.clickable { passportPageSize = "A6" })
+                        Spacer(Modifier.width(12.dp))
+                        RadioButton(
+                            selected = passportPageSize == "A4",
+                            onClick = { passportPageSize = "A4" }
+                        )
+                        Text("A4", modifier = Modifier.clickable { passportPageSize = "A4" })
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Text("Layout Presets")
+                    activeLayouts.forEach { layout ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { passportLayout = layout }
+                        ) {
+                            RadioButton(
+                                selected = passportLayout == layout,
+                                onClick = { passportLayout = layout }
+                            )
+                            Text(layout)
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = passportNameInput,
+                        onValueChange = { passportNameInput = it },
+                        label = { Text("Name (optional)") },
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = passportDateInput,
+                        onValueChange = { passportDateInput = it },
+                        label = { Text("Date (optional)") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth().clickable { showDatePicker() }
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedButton(onClick = { showDatePicker() }) {
+                        Text(if (passportDateInput.isBlank()) "Pick Date" else "Change Date")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val safeName = passportNameInput.trim().replace("<", "").replace(">", "")
+                    val safeDate = passportDateInput.trim().replace("<", "").replace(">", "")
+
+                    val finalCommand = buildString {
+                        append("###passport###")
+                        append(" ###passportpage<${passportPageSize.lowercase(Locale.US)}>###")
+                        append(" ###passportlayout<$passportLayout>###")
+                        if (safeDate.isNotEmpty()) {
+                            append(" ###passportdate<$safeDate>###")
+                        }
+                        if (safeName.isNotEmpty()) {
+                            append(" ###passportname<$safeName>###")
+                        }
+                    }
+
+                    onOptionSelected(finalCommand)
+                    showPassportDialog = false
+                }) { Text("Create") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showPassportDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -454,9 +549,13 @@ fun MessageBubble(
                                 when (optionText) {
                                     "🛂 Passport A6 (6 Photos)" -> onOptionSelected("###passport###")
                                     "🛂 Passport A6 (9 Photos)" -> onOptionSelected("###passport9###")
+                                    "🛂 Master Passport" -> {
+                                        showPassportDialog = true
+                                    }
                                     "📄 Extract Text (OCR)" -> onOptionSelected("###ocr###")
-                                    "📅 Passport + Date" -> {
-                                        showDatePicker()
+                                    "📅 Passport + Date",
+                                    "📅 Passport + Date/Name" -> {
+                                        showPassportDialog = true
                                     }
                                     "🗜️ Compress Image" -> {
                                         showCompressDialog = true
