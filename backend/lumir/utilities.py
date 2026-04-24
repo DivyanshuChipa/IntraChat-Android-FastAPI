@@ -131,7 +131,7 @@ def generate_passport_layout(
                     cell_x = start_x + col * (cell_w + gap_x)
                     cell_y = start_y + row * (cell_h + gap_y)
                     x = cell_x + max(0, (cell_w - pass_w) // 2)
-                    y = cell_y + max(0, (cell_h - pass_h) // 2)
+                    y = cell_y
                     canvas.paste(img, (x, y))
 
         # 7. Output save karo
