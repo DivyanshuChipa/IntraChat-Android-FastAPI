@@ -74,14 +74,15 @@ def generate_passport_layout(
             gap_x = 24 if page_size == "A6" else 30
             gap_y = 24 if page_size == "A6" else 30
 
-            available_w = canvas_w - (outer_margin_x * 2) - ((cols - 1) * gap_x)
-            available_h = canvas_h - (outer_margin_y * 2) - ((rows - 1) * gap_y)
+            available_w = max(120, canvas_w - (outer_margin_x * 2) - ((cols - 1) * gap_x))
+            available_h = max(140, canvas_h - (outer_margin_y * 2) - ((rows - 1) * gap_y))
 
-            cell_w = max(120, available_w // cols)
-            cell_h = max(140, available_h // rows)
+            # Width/Height cap per tile for requested rows/cols
+            tile_w_cap = max(100, available_w // cols)
+            tile_h_cap = max(120, available_h // rows)
 
-            usable_w = max(80, cell_w - (border_width * 2))
-            usable_h = max(100, cell_h - strip_height - (border_width * 2))
+            usable_w = max(80, tile_w_cap - (border_width * 2))
+            usable_h = max(100, tile_h_cap - strip_height - (border_width * 2))
 
             # Passport aspect ratio ~35x45
             ratio = 35 / 45
@@ -122,16 +123,15 @@ def generate_passport_layout(
             pass_h += (border_width * 2)
             canvas = Image.new('RGB', (canvas_w, canvas_h), 'white')
 
-            # 5. Grid paste (X centered, Y starts near top for paper-print workflow)
-            start_x = max(0, (canvas_w - ((cell_w * cols) + (gap_x * (cols - 1)))) // 2)
+            # 5. Packed grid placement (tight rows/cols, top aligned)
+            total_w = (pass_w * cols) + (gap_x * (cols - 1))
+            start_x = max(0, (canvas_w - total_w) // 2)
             start_y = outer_margin_y
 
             for row in range(rows):
                 for col in range(cols):
-                    cell_x = start_x + col * (cell_w + gap_x)
-                    cell_y = start_y + row * (cell_h + gap_y)
-                    x = cell_x + max(0, (cell_w - pass_w) // 2)
-                    y = cell_y
+                    x = start_x + col * (pass_w + gap_x)
+                    y = start_y + row * (pass_h + gap_y)
                     canvas.paste(img, (x, y))
 
         # 7. Output save karo
