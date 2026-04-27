@@ -257,8 +257,11 @@ async function deleteAccount() {
  * LOAD USERS
  ***********************/
 async function loadUsers() {
+  const token = localStorage.getItem("token");
   try {
-    const res = await fetch("/users");
+    const res = await fetch("/users", {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
     const data = await res.json();
 
     if (!data.success || !Array.isArray(data.users)) {
@@ -302,7 +305,9 @@ async function loadUsers() {
     // Attempt to load history to determine sorting right after loading users
     // This will hit /messages and update latestMessageTimes, then re-render
     try {
-        const msgRes = await fetch("/messages");
+        const msgRes = await fetch("/messages", {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
         const msgData = await msgRes.json();
 
         msgData.forEach(m => {
@@ -460,8 +465,11 @@ async function selectUser(name) {
 }
 
 async function loadHistory() {
+  const token = localStorage.getItem("token");
   try {
-    const res = await fetch("/messages");
+    const res = await fetch("/messages", {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
     const data = await res.json();
 
     // The backend returns messages in descending order (newest first)

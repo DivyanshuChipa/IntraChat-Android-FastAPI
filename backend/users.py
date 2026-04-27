@@ -57,7 +57,9 @@ def get_default_location():
 
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT key, value FROM config WHERE key IN ('default_lat', 'default_lon')")
+    cursor.execute(
+        "SELECT key, value FROM config WHERE key IN ('default_lat', 'default_lon')"
+    )
     rows = cursor.fetchall()
     conn.close()
 
@@ -87,6 +89,26 @@ def set_default_location(lat: float, lon: float):
     conn.commit()
     conn.close()
 
+
+def get_jwt_secret_db():
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM config WHERE key='jwt_secret'")
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def set_jwt_secret_db(secret: str):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('jwt_secret', ?)", (secret,)
+    )
+    conn.commit()
+    conn.close()
+
+
 # --- Smart Environment Monitor Settings ---
 def get_environment_settings():
     """
@@ -98,15 +120,17 @@ def get_environment_settings():
         "env_mode": "auto",
         "alert_temp": 40.0,
         "alert_wind": 40.0,
-        "alert_rain": 5.0
+        "alert_rain": 5.0,
     }
-    
+
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT key, value FROM config WHERE key IN ('sentinel_enabled', 'env_mode', 'alert_temp', 'alert_wind', 'alert_rain')")
+    cursor.execute(
+        "SELECT key, value FROM config WHERE key IN ('sentinel_enabled', 'env_mode', 'alert_temp', 'alert_wind', 'alert_rain')"
+    )
     rows = cursor.fetchall()
     conn.close()
-    
+
     for key, value in rows:
         try:
             if key in ("env_mode", "sentinel_enabled"):
@@ -115,10 +139,13 @@ def get_environment_settings():
                 settings[key] = float(value)
         except ValueError:
             pass
-            
+
     return settings
 
-def set_environment_settings(enabled: bool, mode: str, temp: float, wind: float, rain: float):
+
+def set_environment_settings(
+    enabled: bool, mode: str, temp: float, wind: float, rain: float
+):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     enabled_val = "1" if enabled else "0"
@@ -129,11 +156,12 @@ def set_environment_settings(enabled: bool, mode: str, temp: float, wind: float,
             ("env_mode", mode),
             ("alert_temp", str(temp)),
             ("alert_wind", str(wind)),
-            ("alert_rain", str(rain))
-        ]
+            ("alert_rain", str(rain)),
+        ],
     )
     conn.commit()
     conn.close()
+
 
 def set_require_approval(enabled: bool):
     conn = sqlite3.connect(DATABASE_NAME)
