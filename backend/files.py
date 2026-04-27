@@ -10,7 +10,10 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 def _safe_filename(filename: str) -> str:
     # basic sanitization — keep only base name
-    return os.path.basename(filename)
+    name = os.path.basename(filename).strip()
+    if name in ("..", ".", ""):
+        return ""
+    return name
 
 @router.post("/upload")
 async def upload_file(file: UploadFile):
