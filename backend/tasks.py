@@ -10,22 +10,48 @@ import httpx
 from chat import connected_clients, send_to_user
 from lumir.ai_engine import ask_ai
 from messages import create_delivery_entries, save_message
-from users import get_ai_config, get_all_users, get_default_location, get_environment_settings
+from users import (
+    get_ai_config,
+    get_all_usernames_except,
+    get_default_location,
+    get_environment_settings,
+)
 
 LOGGER = logging.getLogger(__name__)
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DEFAULT_LAT = 26.2183
 DEFAULT_LON = 78.1828
-CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weather_cache.json")
-TRACKER_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alert_tracker.json")
+CACHE_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "weather_cache.json"
+)
+TRACKER_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "alert_tracker.json"
+)
+
 
 def _get_default_coordinates() -> Tuple[float, float]:
     try:
         return get_default_location()
     except Exception:
-        LOGGER.debug("Weather sentinel could not read configured coordinates.", exc_info=True)
+        LOGGER.debug(
+            "Weather sentinel could not read configured coordinates.", exc_info=True
+        )
         return DEFAULT_LAT, DEFAULT_LON
+
+
+def _process_broadcast_db_work(message_text: str):
+    """Handles synchronous database operations for broadcasting."""
+    msg_id = save_message(
+        text=message_text,
+        sender="Lumir",
+        receiver="Family Group",
+        msg_type="text",
+    )
+    recipients = get_all_usernames_except("Lumir")
+    if recipients:
+        create_delivery_entries(msg_id, recipients)
+
 
 async def _broadcast_family_warning(message_text: str) -> None:
     timestamp = int(datetime.now(IST).timestamp() * 1000)
@@ -37,16 +63,8 @@ async def _broadcast_family_warning(message_text: str) -> None:
         "timestamp": timestamp,
     }
 
-    msg_id = save_message(
-        text=message_text,
-        sender="Lumir",
-        receiver="Family Group",
-        msg_type="text",
-    )
-
-    recipients = [u["username"] for u in get_all_users() if u.get("username") != "Lumir"]
-    if recipients:
-        create_delivery_entries(msg_id, recipients)
+    # Offload synchronous DB work to a separate thread
+    await asyncio.to_thread(_process_broadcast_db_work, message_text)
 
     payload_json = json.dumps(payload)
     for username in list(connected_clients.keys()):
@@ -60,7 +78,7 @@ async def sync_weather_data() -> None:
     """
     try:
         lat, lon = _get_default_coordinates()
-        
+
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
                 "https://api.open-meteo.com/v1/forecast",
@@ -69,19 +87,20 @@ async def sync_weather_data() -> None:
                     "longitude": lon,
                     "hourly": "temperature_2m,precipitation,wind_speed_10m",
                     "timezone": "Asia/Kolkata",
-                    "forecast_days": 2, # Today and tomorrow to be safe for late night checks
+                    "forecast_days": 2,  # Today and tomorrow to be safe for late night checks
                 },
             )
             response.raise_for_status()
             data = response.json()
-            
+
             # Save to cache
             with open(CACHE_FILE, "w") as f:
                 json.dump(data, f)
-                
+
             LOGGER.info("✅ Weather data successfully synced and cached.")
     except Exception as e:
         LOGGER.error(f"Failed to sync weather data: {e}", exc_info=True)
+
 
 async def hourly_sentinel_check() -> None:
     """
@@ -100,7 +119,7 @@ async def hourly_sentinel_check() -> None:
             return
 
         mode = settings.get("env_mode", "auto")
-        
+
         # If normal mode, and it's not 7 AM, do nothing. (Strictly 7 AM alerts only)
         now_ist = datetime.now(IST)
         if mode == "normal" and now_ist.hour != 7:
@@ -120,17 +139,17 @@ async def hourly_sentinel_check() -> None:
 
         # Find the index corresponding to the current hour
         current_time_str = now_ist.strftime("%Y-%m-%dT%H:00")
-        
+
         try:
             start_index = times.index(current_time_str)
         except ValueError:
-            # If exactly current hour is not found, we might have passed the forecast window. 
+            # If exactly current hour is not found, we might have passed the forecast window.
             # Re-sync could be needed, but we skip for now.
             return
 
         # Look at the next 3 hours (including current hour)
         end_index = start_index + 3
-        
+
         slice_times = times[start_index:end_index]
         slice_temps = temps[start_index:end_index]
         slice_rains = rains[start_index:end_index]
@@ -148,12 +167,12 @@ async def hourly_sentinel_check() -> None:
         if max_t >= alert_temp:
             trigger = True
             reasons.append(f"Temperature hitting {max_t}°C")
-            
+
         max_w = max(slice_winds) if slice_winds else 0
         if max_w >= alert_wind:
             trigger = True
             reasons.append(f"Wind speed hitting {max_w}km/h")
-            
+
         sum_r = sum(slice_rains) if slice_rains else 0
         if sum_r >= alert_rain:
             trigger = True
@@ -168,7 +187,7 @@ async def hourly_sentinel_check() -> None:
         # Compare current time against last exact timestamp to prevent block-boundary race conditions.
         now_ts = now_ist.timestamp()
         reason_key = "|".join(sorted(reasons))
-        
+
         tracker = {}
         if os.path.exists(TRACKER_FILE):
             try:
@@ -176,19 +195,23 @@ async def hourly_sentinel_check() -> None:
                     tracker = json.load(tf)
             except:
                 pass
-                
+
         # If we already sent this EXACT reason profile within the last 3 hours (10800 seconds), skip it.
         last_time = tracker.get(reason_key, 0)
         if now_ts - last_time < 10800:
-            LOGGER.debug("Identical alert already sent within the last 3 hours. Skipping to prevent spam.")
+            LOGGER.debug(
+                "Identical alert already sent within the last 3 hours. Skipping to prevent spam."
+            )
             return
 
         # Prepare summary for AI
         summary_lines = []
         for i in range(len(slice_times)):
             t_fmt = slice_times[i].split("T")[1]
-            summary_lines.append(f"At {t_fmt}: Temp {slice_temps[i]}°C, Wind {slice_winds[i]}km/h, Rain {slice_rains[i]}mm")
-            
+            summary_lines.append(
+                f"At {t_fmt}: Temp {slice_temps[i]}°C, Wind {slice_winds[i]}km/h, Rain {slice_rains[i]}mm"
+            )
+
         json_slice = " | ".join(summary_lines)
         reason_str = ", ".join(reasons)
 
@@ -210,7 +233,7 @@ async def hourly_sentinel_check() -> None:
 
         if generated_message:
             await _broadcast_family_warning(generated_message.strip())
-            
+
             # Update tracker
             tracker[reason_key] = now_ts
             with open(TRACKER_FILE, "w") as tf:
@@ -218,4 +241,3 @@ async def hourly_sentinel_check() -> None:
 
     except Exception:
         LOGGER.error("Hourly sentinel check failed.", exc_info=True)
-
