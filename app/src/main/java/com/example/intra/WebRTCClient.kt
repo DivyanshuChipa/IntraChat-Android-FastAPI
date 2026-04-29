@@ -301,16 +301,20 @@ class WebRTCClient(
         peerConnection?.addTrack(localAudioTrack, listOf(streamId))
     }
 
-    // 🔥 FIX 1: Call end karne par signal bhejo
+    // 🔥 FIX 1: Send 'call_ended' signal to peer
     fun endCall() {
-        // 📢 Signal bhejo dusre phone ko
+        // Notify the peer about call termination
         if (currentTarget.isNotEmpty()) {
-            val json = JSONObject().apply {
-                put("type", "call_ended")
-                put("receiver", currentTarget)
+            try {
+                val json = JSONObject().apply {
+                    put("type", "call_ended")
+                    put("receiver", currentTarget)
+                }
+                sendSignal(json.toString())
+                Log.d("WebRTC", "📞 Call ended signal sent to $currentTarget")
+            } catch (e: Exception) {
+                Log.e("WebRTC", "Failed to send call_ended signal", e)
             }
-            sendSignal(json.toString())
-            Log.d("WebRTC", "📞 Call ended signal sent to $currentTarget")
         }
         // Cleanup Audio Mode
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
