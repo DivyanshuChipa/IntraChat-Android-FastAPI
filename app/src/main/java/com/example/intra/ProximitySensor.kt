@@ -38,9 +38,9 @@ class ProximitySensor(private val activity: Activity) {
         activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
-    // 🔊 Speaker Mode / Call End -> Screen should stay ON
-    fun deactivate() {
-        Log.d("ProximitySensor", "Deactivating proximity sensor")
+    // 🔊 Speaker Mode / Call End -> Manage screen status
+    fun deactivate(keepScreenOn: Boolean = false) {
+        Log.d("ProximitySensor", "Deactivating proximity sensor (keepScreenOn: $keepScreenOn)")
         try {
             if (wakeLock?.isHeld == true) {
                 wakeLock.release()
@@ -50,7 +50,12 @@ class ProximitySensor(private val activity: Activity) {
             Log.e("ProximitySensor", "Error releasing WakeLock", e)
         }
 
-        // Agar user speaker pe hai, to screen ON rakho (Video call style)
-        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (keepScreenOn) {
+            // Agar user speaker pe hai, to screen ON rakho (Video call style)
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            // Call end hone par screen band hone do
+            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 }
