@@ -90,25 +90,6 @@ def set_default_location(lat: float, lon: float):
     conn.close()
 
 
-def get_jwt_secret_db():
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT value FROM config WHERE key='jwt_secret'")
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
-
-
-def set_jwt_secret_db(secret: str):
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO config (key, value) VALUES ('jwt_secret', ?)", (secret,)
-    )
-    conn.commit()
-    conn.close()
-
-
 # --- Smart Environment Monitor Settings ---
 def get_environment_settings():
     """
@@ -274,6 +255,20 @@ def get_all_users():
             }
             for row in cursor
         ]
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
+def get_all_usernames_except(exclude_username: str):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT username FROM users WHERE username != ?", (exclude_username,)
+        )
+        return [row[0] for row in cursor]
     except Exception:
         return []
     finally:
