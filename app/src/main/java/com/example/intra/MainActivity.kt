@@ -288,7 +288,7 @@ class MainActivity : ComponentActivity() {
                                             offer
                                         )
                                         callViewModel.onCallConnected()
-                                        proximitySensor.deactivate()
+                                        proximitySensor.deactivate(true)
                                     },
 
                                     onToggleMute = {
@@ -302,7 +302,7 @@ class MainActivity : ComponentActivity() {
                                             !callViewModel.callState.value.isSpeakerOn
                                         webRTCClient.toggleSpeaker(newState)
                                         callViewModel.updateSpeakerState(newState)
-                                        if (newState) proximitySensor.deactivate()
+                                        if (newState) proximitySensor.deactivate(true)
                                         else proximitySensor.activate()
                                     }
                                 )
@@ -344,7 +344,7 @@ class MainActivity : ComponentActivity() {
                                         chatViewModel.sendCallRequest(target)
                                         callViewModel.onStartOutgoingCall(target, photo)
                                         webRTCClient.startCall(target)
-                                        proximitySensor.deactivate()
+                                        proximitySensor.deactivate(true)
                                     }
                                 )
                             }
@@ -430,7 +430,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        proximitySensor.deactivate()
+        proximitySensor.deactivate(false)
         ringtoneManager.stop()
         super.onDestroy()
     }
@@ -479,7 +479,7 @@ class MainActivity : ComponentActivity() {
             webRTCClient.endCall()
         } catch (_: Exception) {}
         callViewModel.onCallEnded()
-        proximitySensor.deactivate()
+        proximitySensor.deactivate(false)
         ringtoneManager.stop()
     }
 
