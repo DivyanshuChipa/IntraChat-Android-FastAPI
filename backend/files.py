@@ -38,7 +38,16 @@ async def upload_file(file: UploadFile):
 @router.get("/uploads/{filename}")
 async def get_uploaded_file(filename: str):
     filename = _safe_filename(filename)
-    path = UPLOAD_DIR / filename
-    if not path.exists():
+    if not filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    path = (UPLOAD_DIR / filename).resolve()
+    base = UPLOAD_DIR.resolve()
+
+    if not path.is_relative_to(base) or path == base:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="Not found")
+
     return FileResponse(path)
