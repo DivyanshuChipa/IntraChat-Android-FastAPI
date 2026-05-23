@@ -1,5 +1,5 @@
 import pytest
-from backend.users import register_user
+from backend.users import register_user, verify_user, set_require_approval
 
 def test_register_user_success():
     """Test that a new user can be registered successfully."""
@@ -28,8 +28,6 @@ def test_register_user_duplicate():
 
 def test_register_user_approval_needed(monkeypatch):
     """Test registration when admin approval is required."""
-    from backend.users import set_require_approval
-
     # Enable require approval
     set_require_approval(True)
 
@@ -40,3 +38,36 @@ def test_register_user_approval_needed(monkeypatch):
 
     assert response["success"] is True
     assert response["message"] == "Registration successful! Wait for Admin approval."
+
+def test_verify_user_success():
+    """Test verify_user with valid credentials and approved user."""
+    username = "test_user_ok"
+    password = "test_password"
+    register_user(username, password)
+
+    response = verify_user(username, password)
+    assert response == {"status": "OK"}
+
+def test_verify_user_pending():
+    """Test verify_user with valid credentials but pending approval."""
+    set_require_approval(True)
+    username = "test_user_pending"
+    password = "test_password"
+    register_user(username, password)
+
+    response = verify_user(username, password)
+    assert response == {"status": "PENDING"}
+
+def test_verify_user_invalid_password():
+    """Test verify_user with an incorrect password."""
+    username = "test_user_wrong_pw"
+    password = "test_password"
+    register_user(username, password)
+
+    response = verify_user(username, "wrong_password")
+    assert response == {"status": "INVALID"}
+
+def test_verify_user_nonexistent():
+    """Test verify_user with a non-existent username."""
+    response = verify_user("nonexistent_user", "any_password")
+    assert response == {"status": "INVALID"}
