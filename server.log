@@ -1,0 +1,27 @@
+ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'
+=======================================
+   INTRA - BACKEND SERVER STARTER
+=======================================
+
+🚀 Server starting on: http://192.168.0.2:8000
+📱 Android App me ye IP daalein: 192.168.0.2
+---------------------------------------
+📦 Installing missing libraries... please wait.
+Traceback (most recent call last):
+  File "/app/backend/run_server.py", line 23, in ensure_dependencies
+    import uvicorn  # noqa: F401
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'uvicorn'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/backend/run_server.py", line 70, in <module>
+    main()
+  File "/app/backend/run_server.py", line 62, in main
+    ensure_dependencies()
+  File "/app/backend/run_server.py", line 26, in ensure_dependencies
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/subprocess.py", line 413, in check_call
+    raise CalledProcessError(retcode, cmd)
+subprocess.CalledProcessError: Command '['/home/jules/.pyenv/versions/3.12.13/bin/python3', '-m', 'pip', 'install', '-r', 'requirements.txt']' returned non-zero exit status 1.
