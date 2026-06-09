@@ -427,6 +427,7 @@ async function selectUser(name) {
   currentReceiver = name;
   document.getElementById("chat-title").innerText = name;
   document.getElementById("messages").innerHTML = "";
+  lastRenderedDateStr = null;
 
   // Mobile navigation
   document.body.classList.add("chat-open");
@@ -476,13 +477,15 @@ async function loadHistory() {
       }
     }).reverse();
 
+    lastRenderedDateStr = null;
     filteredMsgs.forEach(m => {
+      const ts = m.timestamp || Date.now();
       displayMessage(
         m.sender,
         m.text || "📎 Shared File: " + (m.fileName || "file"),
         m.sender === myUsername ? "sent" : "received",
         m.fileUrl,
-        null, false, null, "", m.options
+        null, false, null, "", m.options, ts
       );
     });
   } catch (e) {
@@ -548,7 +551,7 @@ function connectWS() {
             msg.sender,
             msg.text || msg.message || "",
             msg.sender === myUsername ? "sent" : "received",
-            null, null, false, null, "", msg.options
+            null, null, false, null, "", msg.options, msg.timestamp || Date.now()
           );
         }
         break;
@@ -566,7 +569,7 @@ function connectWS() {
             msg.text || "📎 Shared File: " + (msg.filename || "received"),
             msg.sender === myUsername ? "sent" : "received",
             msg.url,
-            null, false, null, "", msg.options
+            null, false, null, "", msg.options, msg.timestamp || Date.now()
           );
         }
         break;
@@ -646,7 +649,7 @@ function sendMsg() {
 
   ws.send(JSON.stringify(payload));
 
-  displayMessage(myUsername, text, "sent");
+  displayMessage(myUsername, text, "sent", null, null, false, null, "", null, Date.now());
   input.value = "";
 }
 
@@ -665,7 +668,7 @@ async function sendFile() {
   const localThumbnail = isVideoFile ? await createVideoThumbnail(localUrl) : null;
 
   // Show message with loader
-  displayMessage(myUsername, "Uploading...", "sent", localUrl, tempId, true, localThumbnail, file.type);
+  displayMessage(myUsername, "Uploading...", "sent", localUrl, tempId, true, localThumbnail, file.type, null, Date.now());
 
   try {
     const res = await fetch("/upload", {
@@ -740,7 +743,41 @@ async function sendFile() {
 /***********************
  * DISPLAY MESSAGE
  ***********************/
-function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoading = false, videoThumbnail = null, mimeType = "", options = null) {
+
+function formatDateSeparator(ts) {
+    if (!ts) return "Unknown";
+    const date = new Date(ts);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+
+    const options = { day: 'numeric', month: 'short', year: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+}
+
+// Global state to track last date shown
+let lastRenderedDateStr = null;
+
+function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoading = false, videoThumbnail = null, mimeType = "", options = null, timestamp = null) {
+
+  // Check and insert date separator
+  if (timestamp) {
+      const currentDateStr = formatDateSeparator(timestamp);
+      if (currentDateStr !== lastRenderedDateStr) {
+          const dateRow = document.createElement("div");
+          dateRow.className = "date-separator-wrapper";
+          dateRow.innerHTML = `<span class="date-separator">${currentDateStr}</span>`;
+          document.getElementById("messages").appendChild(dateRow);
+          lastRenderedDateStr = currentDateStr;
+      }
+  }
+
   const row = document.createElement("div");
   row.className = `msg-row ${type}`;
   if (msgId) row.id = msgId;
@@ -935,7 +972,7 @@ function sendText(text) {
         text: text
     };
     ws.send(JSON.stringify(payload));
-    displayMessage(myUsername, text, "sent");
+    displayMessage(myUsername, text, "sent", null, null, false, null, "", null, Date.now());
 }
 
 /***********************

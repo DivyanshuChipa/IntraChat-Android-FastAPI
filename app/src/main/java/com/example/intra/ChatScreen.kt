@@ -53,6 +53,8 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.CachePolicy
+import com.example.intra.ui.chat.components.DateSeparatorBubble
+import com.example.intra.ui.chat.components.formatDateSeparator
 import com.example.intra.ui.chat.components.MessageBubble
 import com.example.intra.ui.chat.components.MessageInputBar
 import com.example.intra.ui.chat.components.TypingIndicatorUI
@@ -246,8 +248,17 @@ fun ChatScreen(
                     top = 8.dp
                 )
             ) {
-                items(viewModel.messages) { msg ->
-                    // 👈 YE LINE UPDATE HUI
+                items(viewModel.messages.size) { index ->
+                    val msg = viewModel.messages[index]
+                    val previousMsg = if (index > 0) viewModel.messages[index - 1] else null
+
+                    val currentDateStr = formatDateSeparator(msg.timestamp ?: 0L)
+                    val previousDateStr = previousMsg?.let { formatDateSeparator(it.timestamp ?: 0L) }
+
+                    if (currentDateStr != previousDateStr) {
+                        DateSeparatorBubble(dateStr = currentDateStr)
+                    }
+
                     MessageBubble(
                         message = msg,
                         onVideoClick = { url -> videoUrlToPlay = url },
