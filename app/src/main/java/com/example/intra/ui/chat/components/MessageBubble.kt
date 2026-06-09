@@ -633,3 +633,60 @@ fun ServerStatRow(label: String, value: String, icon: androidx.compose.ui.graphi
         }
     }
 }
+
+
+@Composable
+fun DateSeparatorBubble(dateStr: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Text(
+                text = dateStr,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+fun formatDateSeparator(ts: Long): String {
+    if (ts == 0L) return "Unknown"
+
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = System.currentTimeMillis()
+
+    val currentYear = calendar.get(Calendar.YEAR)
+    val currentDayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
+
+    val msgCalendar = Calendar.getInstance()
+    msgCalendar.timeInMillis = ts
+
+    val msgYear = msgCalendar.get(Calendar.YEAR)
+    val msgDayOfYear = msgCalendar.get(Calendar.DAY_OF_YEAR)
+
+    val today = Calendar.getInstance()
+    today.timeInMillis = System.currentTimeMillis()
+
+    val yesterday = Calendar.getInstance()
+    yesterday.timeInMillis = System.currentTimeMillis() - 24 * 60 * 60 * 1000
+
+    val isToday = today.get(Calendar.YEAR) == msgYear && today.get(Calendar.DAY_OF_YEAR) == msgDayOfYear
+    val isYesterday = yesterday.get(Calendar.YEAR) == msgYear && yesterday.get(Calendar.DAY_OF_YEAR) == msgDayOfYear
+
+    if (isToday) return "Today"
+    if (isYesterday) return "Yesterday"
+
+    val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+    return sdf.format(Date(ts))
+}
