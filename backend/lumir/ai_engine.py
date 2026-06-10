@@ -30,13 +30,35 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
             system_prompt += f"- {fact}\n"
         system_prompt += "\nUse these facts to personalize your responses, but DO NOT mention that you are reading from a memory list."
 
-    messages = [{"role": "system", "content": system_prompt}]
+    # 🧠 GEMMA-SPECIFIC HISTORY FIX
+    # Gemma models sometimes ignore the 'system' role. 
+    # For Gemma, we merge the system prompt into the first user message for better context/history injection.
+    is_gemma = "gemma" in main_model.lower()
+    
+    if is_gemma:
+        messages = [] # Start empty, we'll merge system prompt into the first user msg
+    else:
+        messages = [{"role": "system", "content": system_prompt}]
 
     if history:
         messages.extend(history)
 
-    # 👁️ VISION LOGIC: Agar image aayi hai, toh use Base64 mein encode karke message mein jodo
+    # Prepare the current user message
     user_message = {"role": "user", "content": prompt}
+
+    if is_gemma and len(messages) == 0:
+        # No history, merge system prompt directly into this first message
+        user_message["content"] = f"{system_prompt}\n\nUser: {prompt}"
+    elif is_gemma and len(messages) > 0:
+        # History exists, merge system prompt into the very first message of the history
+        if messages[0]["role"] == "user":
+            messages[0]["content"] = f"{system_prompt}\n\n{messages[0]['content']}"
+        elif messages[0]["role"] == "system":
+            # If history already started with a system msg, just keep it, but Gemma prefers user
+            messages[0]["role"] = "user"
+            messages[0]["content"] = f"{system_prompt}\n\n{messages[0]['content']}"
+
+    # 👁️ VISION LOGIC: Agar image aayi hai, toh use Base64 mein encode karke message mein jodo
 
     if image_path and os.path.exists(image_path):
         try:
