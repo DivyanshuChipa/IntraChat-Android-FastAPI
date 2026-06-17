@@ -200,6 +200,58 @@ class LumirEngine:
                         ]
                     }
 
+        # 🟢 NAYA CODE: YouTube Downloader Router Logic
+        if text.startswith("/yt "):
+            yt_link = text.split("/yt ", 1)[1].strip()
+            # Basic validation
+            if "youtube.com" in yt_link or "youtu.be" in yt_link:
+                # Save link to context
+                if sender not in self.user_context:
+                    self.user_context[sender] = []
+                self.user_context[sender].append(yt_link)
+
+                return {
+                    "type": "utility_options",
+                    "text": "🎥 YouTube Link detected! Choose download format:",
+                    "options": [
+                        "🎵 YT MP3",
+                        "🎬 YT MP4 - 480p",
+                        "🎬 YT MP4 - 720p",
+                        "🎬 YT MP4 - Highest"
+                    ]
+                }
+            else:
+                return {"type": "text", "text": "⚠️ Invalid YouTube link. Please provide a valid link."}
+
+        # 🎬 YouTube Download Commands (Fired by utility options)
+        if text.startswith("###ytdownload:"):
+            yt_urls = self.user_context.get(sender, [])
+            if not yt_urls:
+                return {"type": "text", "text": "⚠️ No YouTube link found in context! Please send a link again."}
+
+            target_url = yt_urls[-1]
+            fmt_choice = text.split(":", 1)[1].replace("###", "")
+
+            # Map choice to yt_downloader choices
+            format_map = {
+                "mp3": "mp3",
+                "480p": "480p",
+                "720p": "720p",
+                "best": "best"
+            }
+            mapped_fmt = format_map.get(fmt_choice, "best")
+
+            from .yt_downloader import download_youtube_video
+            res = download_youtube_video(target_url, mapped_fmt)
+
+            if sender in self.user_context:
+                del self.user_context[sender]
+
+            if res["success"]:
+                return {"type": "file", "text": res["message"], "file_url": res["file_url"], "file_name": res["file_name"]}
+            else:
+                return {"type": "text", "text": res["message"]}
+
         # 2. Basic Utility Commands
         if text in ["hi", "hello", "hey"]:
             return {"type": "text", "text": "👋 Hello! I am Lumir, your LAN assistant. Type /help to see what I can do."}

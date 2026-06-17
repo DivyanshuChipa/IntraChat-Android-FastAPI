@@ -888,7 +888,11 @@ function handleOptionClick(option) {
         "🎵 Extract Audio (MP3)": "###extractaudio###",
         "🗜️ Compress Video": "###compressvideo:28:mp4###",
         "🔄 Rotate Video": "###rotatevideo:90###",
-        "🎞️ Convert to MP4": "###convertmp4###"
+        "🎞️ Convert to MP4": "###convertmp4###",
+        "🎵 YT MP3": "###ytdownload:mp3###",
+        "🎬 YT MP4 - 480p": "###ytdownload:480p###",
+        "🎬 YT MP4 - 720p": "###ytdownload:720p###",
+        "🎬 YT MP4 - Highest": "###ytdownload:best###"
     };
 
     if (commandMap[option]) {
@@ -959,6 +963,10 @@ function handleOptionClick(option) {
             submitPassportCommand("");
         }
         return;
+    }
+
+    if (command.startsWith("###ytdownload:")) {
+        displayMessage("System", "Downloading... Please wait ⏳", "received", null, null, false, null, "", null, Date.now());
     }
 
     sendText(command);

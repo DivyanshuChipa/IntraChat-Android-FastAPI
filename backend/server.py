@@ -73,7 +73,7 @@ def verify_admin(x_admin_key: str = Header(None)):
 
 # ================= BACKGROUND TASKS & SCHEDULER =================
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from tasks import sync_weather_data, hourly_sentinel_check
+from tasks import sync_weather_data, hourly_sentinel_check, cleanup_yt_downloads
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -85,6 +85,9 @@ async def lifespan(app: FastAPI):
     
     # Run smart environment monitor every hour at minute 5 (offset to avoid race condition with sync)
     scheduler.add_job(hourly_sentinel_check, 'cron', minute=5)
+
+    # Run YouTube download cleaner every minute
+    scheduler.add_job(cleanup_yt_downloads, 'cron', minute='*')
     
     scheduler.start()
     print("🌅 Level 5 Smart Environment Monitor scheduler started.")

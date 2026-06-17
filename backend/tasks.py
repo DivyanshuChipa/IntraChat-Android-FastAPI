@@ -102,6 +102,36 @@ async def sync_weather_data() -> None:
         LOGGER.error(f"Failed to sync weather data: {e}", exc_info=True)
 
 
+async def cleanup_yt_downloads() -> None:
+    """
+    Background task to clean up YouTube downloaded files older than 10 minutes.
+    Runs every minute.
+    """
+    try:
+        import os
+        import time
+        from lumir.yt_downloader import DOWNLOAD_DIR
+
+        if not os.path.exists(DOWNLOAD_DIR):
+            return
+
+        current_time = time.time()
+        # 10 minutes in seconds
+        max_age_seconds = 10 * 60
+
+        for filename in os.listdir(DOWNLOAD_DIR):
+            file_path = os.path.join(DOWNLOAD_DIR, filename)
+            if os.path.isfile(file_path):
+                # Get the last modification time
+                file_mtime = os.path.getmtime(file_path)
+                # If older than 10 minutes, delete it
+                if (current_time - file_mtime) > max_age_seconds:
+                    os.remove(file_path)
+                    print(f"🧹 Cleaned up old YouTube download: {filename}")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to cleanup YouTube downloads: {e}")
+
 async def hourly_sentinel_check() -> None:
     """
     Runs every hour. Reads the cache.
