@@ -574,6 +574,11 @@ fun MessageBubble(
                                         showRotateDialog = true
                                     }
                                     "🎞️ Convert to MP4" -> onOptionSelected("###convertmp4###")
+                                    // YouTube Download Tools
+                                    "🎵 YT MP3" -> onOptionSelected("###ytdownload:mp3###")
+                                    "🎬 YT MP4 - 480p" -> onOptionSelected("###ytdownload:480p###")
+                                    "🎬 YT MP4 - 720p" -> onOptionSelected("###ytdownload:720p###")
+                                    "🎬 YT MP4 - Highest" -> onOptionSelected("###ytdownload:best###")
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
