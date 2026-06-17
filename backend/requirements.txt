@@ -12,3 +12,4 @@ chromadb
 psutil
 apscheduler
 httpx
+yt-dlp

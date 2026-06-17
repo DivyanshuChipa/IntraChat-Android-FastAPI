@@ -24,8 +24,8 @@ function toggleAuthMode() {
 
   // Clear error when switching modes
   if (errorEl) {
-      errorEl.innerText = "";
-      errorEl.style.color = "var(--error-color)"; // Reset color
+    errorEl.innerText = "";
+    errorEl.style.color = "var(--error-color)"; // Reset color
   }
 }
 
@@ -43,8 +43,8 @@ async function login() {
 
   if (!username || !password) {
     if (errorEl) {
-        errorEl.innerText = "Please fill all fields";
-        errorEl.style.color = "var(--error-color)";
+      errorEl.innerText = "Please fill all fields";
+      errorEl.style.color = "var(--error-color)";
     }
     return;
   }
@@ -80,28 +80,28 @@ async function login() {
     } else {
       // ❌ FAILURE / PENDING STATUS
       if (errorEl) {
-          errorEl.innerText = data.message || "Operation failed";
+        errorEl.innerText = data.message || "Operation failed";
 
-          // Agar Pending hai toh Orange color, warna Red
-          if (res.status === 403 || (data.message && data.message.toLowerCase().includes("pending"))) {
-              errorEl.style.color = "#FF9800"; // Orange
-          } else {
-              errorEl.style.color = "var(--error-color)"; // Red
-          }
+        // Agar Pending hai toh Orange color, warna Red
+        if (res.status === 403 || (data.message && data.message.toLowerCase().includes("pending"))) {
+          errorEl.style.color = "#FF9800"; // Orange
+        } else {
+          errorEl.style.color = "var(--error-color)"; // Red
+        }
       }
     }
   } catch (e) {
     console.error("Auth error:", e);
     if (errorEl) {
-        errorEl.innerText = "Server connection error";
-        errorEl.style.color = "var(--error-color)";
+      errorEl.innerText = "Server connection error";
+      errorEl.style.color = "var(--error-color)";
     }
   } finally {
-      // Re-enable button
-      if (btn) {
-        btn.disabled = false;
-        btn.innerText = isLoginMode ? "LOGIN" : "REGISTER";
-      }
+    // Re-enable button
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = isLoginMode ? "LOGIN" : "REGISTER";
+    }
   }
 }
 
@@ -141,17 +141,17 @@ if (window.location.pathname.includes("chat.html")) {
 }
 
 function initSettings() {
-    const lumirVisible = localStorage.getItem("lumirVisible") !== "false"; // Default true
-    const lumirToggle = document.getElementById("lumir-toggle");
-    if (lumirToggle) {
-        lumirToggle.checked = lumirVisible;
-    }
+  const lumirVisible = localStorage.getItem("lumirVisible") !== "false"; // Default true
+  const lumirToggle = document.getElementById("lumir-toggle");
+  if (lumirToggle) {
+    lumirToggle.checked = lumirVisible;
+  }
 }
 
 function toggleLumirVisibility() {
-    const lumirToggle = document.getElementById("lumir-toggle");
-    localStorage.setItem("lumirVisible", lumirToggle.checked);
-    loadUsers(); // Refresh list
+  const lumirToggle = document.getElementById("lumir-toggle");
+  localStorage.setItem("lumirVisible", lumirToggle.checked);
+  loadUsers(); // Refresh list
 }
 
 function initTheme() {
@@ -277,10 +277,10 @@ async function loadUsers() {
     // Lumir AI (if enabled)
     const lumirVisible = localStorage.getItem("lumirVisible") !== "false";
     if (lumirVisible) {
-        allUsersList.push({
-            username: "Lumir",
-            profile_photo: "/assets/lumir5.svg"
-        });
+      allUsersList.push({
+        username: "Lumir",
+        profile_photo: "/assets/lumir5.svg"
+      });
     }
 
     data.users.forEach(user => {
@@ -302,29 +302,29 @@ async function loadUsers() {
     // Attempt to load history to determine sorting right after loading users
     // This will hit /messages and update latestMessageTimes, then re-render
     try {
-        const msgRes = await fetch("/messages");
-        const msgData = await msgRes.json();
+      const msgRes = await fetch("/messages");
+      const msgData = await msgRes.json();
 
-        msgData.forEach(m => {
-            // Figure out who the conversation is with
-            let otherUser = null;
-            if (m.receiver === "Family Group") {
-                otherUser = "Family Group";
-            } else if (m.sender === myUsername) {
-                otherUser = m.receiver;
-            } else if (m.receiver === myUsername) {
-                otherUser = m.sender;
-            }
+      msgData.forEach(m => {
+        // Figure out who the conversation is with
+        let otherUser = null;
+        if (m.receiver === "Family Group") {
+          otherUser = "Family Group";
+        } else if (m.sender === myUsername) {
+          otherUser = m.receiver;
+        } else if (m.receiver === myUsername) {
+          otherUser = m.sender;
+        }
 
-            if (otherUser) {
-                if (!latestMessageTimes[otherUser] || m.timestamp > latestMessageTimes[otherUser]) {
-                    latestMessageTimes[otherUser] = m.timestamp;
-                }
-            }
-        });
-        renderUserList(); // Re-render sorted
+        if (otherUser) {
+          if (!latestMessageTimes[otherUser] || m.timestamp > latestMessageTimes[otherUser]) {
+            latestMessageTimes[otherUser] = m.timestamp;
+          }
+        }
+      });
+      renderUserList(); // Re-render sorted
     } catch (err) {
-        console.error("Failed to load history for sorting:", err);
+      console.error("Failed to load history for sorting:", err);
     }
 
   } catch (e) {
@@ -341,48 +341,48 @@ function filterUsers() {
     // Or we can just filter everything. Let's filter everything based on name.
     const nameSpan = item.querySelector(".user-info-wrapper span");
     if (nameSpan) {
-        const name = nameSpan.innerText.toLowerCase();
-        if (name.includes(searchInput)) {
-            item.style.display = "flex";
-        } else {
-            item.style.display = "none";
-        }
+      const name = nameSpan.innerText.toLowerCase();
+      if (name.includes(searchInput)) {
+        item.style.display = "flex";
+      } else {
+        item.style.display = "none";
+      }
     }
   });
 }
 
 function renderUserList() {
-    const list = document.getElementById("user-list");
-    list.innerHTML = "";
+  const list = document.getElementById("user-list");
+  list.innerHTML = "";
 
-    // Determine sorting:
-    // Pinned at top: Family Group, then Lumir
-    // Then rest of users sorted by latest message time
+  // Determine sorting:
+  // Pinned at top: Family Group, then Lumir
+  // Then rest of users sorted by latest message time
 
-    let pinnedUsers = allUsersList.filter(u => u.username === "Family Group" || u.username === "Lumir");
-    let normalUsers = allUsersList.filter(u => u.username !== "Family Group" && u.username !== "Lumir");
+  let pinnedUsers = allUsersList.filter(u => u.username === "Family Group" || u.username === "Lumir");
+  let normalUsers = allUsersList.filter(u => u.username !== "Family Group" && u.username !== "Lumir");
 
-    // Sort pinned: Family Group first
-    pinnedUsers.sort((a, b) => {
-        if (a.username === "Family Group") return -1;
-        if (b.username === "Family Group") return 1;
-        return 0;
-    });
+  // Sort pinned: Family Group first
+  pinnedUsers.sort((a, b) => {
+    if (a.username === "Family Group") return -1;
+    if (b.username === "Family Group") return 1;
+    return 0;
+  });
 
-    // Sort normal users by latest message time descending
-    normalUsers.sort((a, b) => {
-        const timeA = latestMessageTimes[a.username] ? new Date(latestMessageTimes[a.username]).getTime() : 0;
-        const timeB = latestMessageTimes[b.username] ? new Date(latestMessageTimes[b.username]).getTime() : 0;
-        return timeB - timeA;
-    });
+  // Sort normal users by latest message time descending
+  normalUsers.sort((a, b) => {
+    const timeA = latestMessageTimes[a.username] ? new Date(latestMessageTimes[a.username]).getTime() : 0;
+    const timeB = latestMessageTimes[b.username] ? new Date(latestMessageTimes[b.username]).getTime() : 0;
+    return timeB - timeA;
+  });
 
-    const sortedUsers = [...pinnedUsers, ...normalUsers];
+  const sortedUsers = [...pinnedUsers, ...normalUsers];
 
-    sortedUsers.forEach(user => {
-        addUserToList(user);
-    });
+  sortedUsers.forEach(user => {
+    addUserToList(user);
+  });
 
-    filterUsers(); // Re-apply search filter if there's any text
+  filterUsers(); // Re-apply search filter if there's any text
 }
 
 function addUserToList(user) {
@@ -395,9 +395,9 @@ function addUserToList(user) {
 
   // 🔥 AVATAR OVERRIDES
   if (user.username === "Lumir") {
-      imgUrl = "/assets/lumir5.svg";
+    imgUrl = "/assets/lumir5.svg";
   } else if (user.username === "Family Group") {
-      imgUrl = "/assets/family_group.svg";
+    imgUrl = "/assets/family_group.svg";
   }
 
   userAvatars[user.username] = imgUrl;
@@ -406,7 +406,7 @@ function addUserToList(user) {
   let badgeClass = count > 0 ? "badge active" : "badge";
 
   if (currentReceiver === user.username) {
-      div.classList.add("active");
+    div.classList.add("active");
   }
 
   div.innerHTML = `
@@ -443,8 +443,8 @@ async function selectUser(name) {
 
   // Clear unread count when opening a chat
   if (unreadCounts[name]) {
-      unreadCounts[name] = 0;
-      renderUserList(); // Re-render to update badges
+    unreadCounts[name] = 0;
+    renderUserList(); // Re-render to update badges
   }
 
   // Highlight active user
@@ -473,7 +473,7 @@ async function loadHistory() {
       } else {
         // Private chat: either (Me -> Him) or (Him -> Me)
         return (m.sender === myUsername && m.receiver === currentReceiver) ||
-               (m.sender === currentReceiver && m.receiver === myUsername);
+          (m.sender === currentReceiver && m.receiver === myUsername);
       }
     }).reverse();
 
@@ -514,19 +514,19 @@ function connectWS() {
 
     // 🔥 SECURITY CHECK HANDLER 🔥
     if (msg.type === "error") {
-        alert("Session Error: " + msg.text);
-        logout(); // Kick user out if server rejects connection
-        return;
+      alert("Session Error: " + msg.text);
+      logout(); // Kick user out if server rejects connection
+      return;
     }
 
     // Determine the logical conversation partner
     let chatPartner = null;
     if (msg.receiver === "Family Group") {
-        chatPartner = "Family Group";
+      chatPartner = "Family Group";
     } else if (msg.sender === myUsername) {
-        chatPartner = msg.receiver;
+      chatPartner = msg.receiver;
     } else if (msg.receiver === myUsername) {
-        chatPartner = msg.sender;
+      chatPartner = msg.sender;
     }
 
     // Only display if relevant to current chat
@@ -534,12 +534,12 @@ function connectWS() {
 
     // Update latest message time for sorting
     if (chatPartner && ["text", "file", "utility_options"].includes(msg.type)) {
-        latestMessageTimes[chatPartner] = msg.timestamp || Date.now();
-        // If message is for another chat, increase unread count
-        if (!isRelevant && msg.sender !== myUsername) {
-            unreadCounts[chatPartner] = (unreadCounts[chatPartner] || 0) + 1;
-        }
-        renderUserList(); // Re-render to sort and show badges
+      latestMessageTimes[chatPartner] = msg.timestamp || Date.now();
+      // If message is for another chat, increase unread count
+      if (!isRelevant && msg.sender !== myUsername) {
+        unreadCounts[chatPartner] = (unreadCounts[chatPartner] || 0) + 1;
+      }
+      renderUserList(); // Re-render to sort and show badges
     }
 
     switch (msg.type) {
@@ -598,7 +598,7 @@ function connectWS() {
 
       case "webrtc_offer":
         if (document.getElementById("call-overlay").style.display === "flex" &&
-            document.getElementById("accept-call").style.display === "block") {
+          document.getElementById("accept-call").style.display === "block") {
           // If we are showing the incoming call screen, wait for user to accept
           pendingOffer = msg;
         } else {
@@ -692,21 +692,21 @@ async function sendFile() {
         // Update image click to open real URL
         const img = msgElement.querySelector('img');
         if (img) {
-            img.onclick = () => window.open(data.url);
+          img.onclick = () => window.open(data.url);
         }
 
         // Update video source for fallback previews that rendered <video src="blob:...">
         const video = msgElement.querySelector('video');
         if (video) {
-            video.src = data.url;
-            video.load();
+          video.src = data.url;
+          video.load();
         }
 
         // Update file link if it's not an image
         const link = msgElement.querySelector('a');
         if (link) {
-            link.href = data.url;
-            link.innerText = "📎 Shared File: " + data.filename;
+          link.href = data.url;
+          link.innerText = "📎 Shared File: " + data.filename;
         }
       }
 
@@ -720,19 +720,19 @@ async function sendFile() {
       ws.send(JSON.stringify(payload));
 
     } else {
-       throw new Error("Upload failed");
+      throw new Error("Upload failed");
     }
   } catch (e) {
     console.error("File upload error:", e);
     const msgElement = document.getElementById(tempId);
     if (msgElement) {
-        const bubble = msgElement.querySelector('.msg-bubble');
-        if (bubble) {
-             bubble.classList.remove('loading');
-             bubble.innerHTML += `<br><span style="color:red; font-size: 12px;">❌ Upload Failed</span>`;
-        }
-        const loader = msgElement.querySelector('.loader-overlay');
-        if (loader) loader.remove();
+      const bubble = msgElement.querySelector('.msg-bubble');
+      if (bubble) {
+        bubble.classList.remove('loading');
+        bubble.innerHTML += `<br><span style="color:red; font-size: 12px;">❌ Upload Failed</span>`;
+      }
+      const loader = msgElement.querySelector('.loader-overlay');
+      if (loader) loader.remove();
     }
   } finally {
     URL.revokeObjectURL(localUrl);
@@ -745,20 +745,20 @@ async function sendFile() {
  ***********************/
 
 function formatDateSeparator(ts) {
-    if (!ts) return "Unknown";
-    const date = new Date(ts);
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
+  if (!ts) return "Unknown";
+  const date = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
 
-    const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
-    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+  const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+  const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
 
-    if (isToday) return "Today";
-    if (isYesterday) return "Yesterday";
+  if (isToday) return "Today";
+  if (isYesterday) return "Yesterday";
 
-    const options = { day: 'numeric', month: 'short', year: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
+  const options = { day: 'numeric', month: 'short', year: 'numeric' };
+  return date.toLocaleDateString('en-US', options);
 }
 
 // Global state to track last date shown
@@ -768,14 +768,14 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
 
   // Check and insert date separator
   if (timestamp) {
-      const currentDateStr = formatDateSeparator(timestamp);
-      if (currentDateStr !== lastRenderedDateStr) {
-          const dateRow = document.createElement("div");
-          dateRow.className = "date-separator-wrapper";
-          dateRow.innerHTML = `<span class="date-separator">${currentDateStr}</span>`;
-          document.getElementById("messages").appendChild(dateRow);
-          lastRenderedDateStr = currentDateStr;
-      }
+    const currentDateStr = formatDateSeparator(timestamp);
+    if (currentDateStr !== lastRenderedDateStr) {
+      const dateRow = document.createElement("div");
+      dateRow.className = "date-separator-wrapper";
+      dateRow.innerHTML = `<span class="date-separator">${currentDateStr}</span>`;
+      document.getElementById("messages").appendChild(dateRow);
+      lastRenderedDateStr = currentDateStr;
+    }
   }
 
   const row = document.createElement("div");
@@ -794,7 +794,7 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
     const colors = ['#E53935', '#D81B60', '#8E24AA', '#3949AB', '#039BE5', '#00897B', '#43A047', '#F4511E'];
     let hash = 0;
     for (let i = 0; i < sender.length; i++) {
-        hash = sender.charCodeAt(i) + ((hash << 5) - hash);
+      hash = sender.charCodeAt(i) + ((hash << 5) - hash);
     }
     const colorIndex = Math.abs(hash) % colors.length;
     const senderColor = colors[colorIndex];
@@ -848,18 +848,18 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
 
   // 🔥 RENDER OPTIONS
   if (options && Array.isArray(options) && options.length > 0) {
-      const optionsContainer = document.createElement("div");
-      optionsContainer.className = "msg-options";
+    const optionsContainer = document.createElement("div");
+    optionsContainer.className = "msg-options";
 
-      options.forEach(opt => {
-          const btn = document.createElement("button");
-          btn.className = "option-btn";
-          btn.innerText = opt;
-          btn.onclick = () => handleOptionClick(opt);
-          optionsContainer.appendChild(btn);
-      });
+    options.forEach(opt => {
+      const btn = document.createElement("button");
+      btn.className = "option-btn";
+      btn.innerText = opt;
+      btn.onclick = () => handleOptionClick(opt);
+      optionsContainer.appendChild(btn);
+    });
 
-      bubble.appendChild(optionsContainer);
+    bubble.appendChild(optionsContainer);
   }
 
   row.appendChild(bubble);
@@ -870,120 +870,128 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
 }
 
 function handleOptionClick(option) {
-    if (!ws) return;
+  if (!ws) return;
 
-    let command = option; // Default: send the button text
+  let command = option; // Default: send the button text
 
-    // Mapping of interactive options to internal commands
-    const commandMap = {
-        "🛂 Passport A6 (6 Photos)": "###passport###",
-        "🛂 Passport A6 (9 Photos)": "###passport9###",
-        "📄 Extract Text (OCR)": "###ocr###",
-        "🗜️ Compress Image": "PROMPT_SIZE",
-        "📄 Convert to PDF": "###topdf###",
-        "🧠 Analyze Image (AI)": "###analyzeimage###",
-        "📄 Extract PDF Text": "###pdf2text###",
-        "🔗 Merge PDFs": "###mergepdfs###",
-        "🗜️ Compress PDF": "###compresspdf###",
-        "🎵 Extract Audio (MP3)": "###extractaudio###",
-        "🗜️ Compress Video": "###compressvideo:28:mp4###",
-        "🔄 Rotate Video": "###rotatevideo:90###",
-        "🎞️ Convert to MP4": "###convertmp4###"
+  // Mapping of interactive options to internal commands
+  const commandMap = {
+    "🛂 Passport A6 (6 Photos)": "###passport###",
+    "🛂 Passport A6 (9 Photos)": "###passport9###",
+    "📄 Extract Text (OCR)": "###ocr###",
+    "🗜️ Compress Image": "PROMPT_SIZE",
+    "📄 Convert to PDF": "###topdf###",
+    "🧠 Analyze Image (AI)": "###analyzeimage###",
+    "📄 Extract PDF Text": "###pdf2text###",
+    "🔗 Merge PDFs": "###mergepdfs###",
+    "🗜️ Compress PDF": "###compresspdf###",
+    "🎵 Extract Audio (MP3)": "###extractaudio###",
+    "🗜️ Compress Video": "###compressvideo:28:mp4###",
+    "🔄 Rotate Video": "###rotatevideo:90###",
+    "🎞️ Convert to MP4": "###convertmp4###",
+    "🎵 YT MP3": "###ytdownload:mp3###",
+    "🎬 YT MP4 - 480p": "###ytdownload:480p###",
+    "🎬 YT MP4 - 720p": "###ytdownload:720p###",
+    "🎬 YT MP4 - Highest": "###ytdownload:best###"
+  };
+
+  if (commandMap[option]) {
+    command = commandMap[option];
+  }
+
+  if (command === "PROMPT_SIZE" || option === "Compress Image") {
+    const size = prompt("Enter target size in KB (e.g. 500):");
+    if (!size) return;
+    command = `###compress<${size}>###`;
+  } else if (
+    option === "🛂 Master Passport" ||
+    option === "Passport + Date" ||
+    option === "📅 Passport + Date" ||
+    option === "📅 Passport + Date/Name"
+  ) {
+    const pageInput = prompt("Page Size? (A6/A4)", "A6");
+    if (!pageInput) return;
+    const page = pageInput.trim().toUpperCase() === "A4" ? "a4" : "a6";
+
+    const defaultLayout = page === "a4" ? "1x6" : "1x3";
+    const layoutHelp = page === "a4"
+      ? "Layout? (1x6 / 2x6 / 3x6)"
+      : "Layout? (1x3 / 2x3 / 3x3)";
+    const layoutInput = prompt(layoutHelp, defaultLayout);
+    if (!layoutInput) return;
+    const layout = layoutInput.trim().toLowerCase();
+
+    const rawName = prompt("Name (optional):", "") || "";
+    const safeName = rawName.trim().replace(/[<>]/g, "");
+
+    // Date picker (optional)
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.style.display = "none";
+    document.body.appendChild(dateInput);
+
+    const submitPassportCommand = (formattedDate = "") => {
+      let finalCmd = `###passport### ###passportpage<${page}>### ###passportlayout<${layout}>###`;
+      if (formattedDate) {
+        finalCmd += ` ###passportdate<${formattedDate}>###`;
+      }
+      if (safeName) {
+        finalCmd += ` ###passportname<${safeName}>###`;
+      }
+      sendText(finalCmd);
+      dateInput.remove();
     };
 
-    if (commandMap[option]) {
-        command = commandMap[option];
-    }
-
-    if (command === "PROMPT_SIZE" || option === "Compress Image") {
-        const size = prompt("Enter target size in KB (e.g. 500):");
-        if (!size) return;
-        command = `###compress<${size}>###`;
-    } else if (
-        option === "🛂 Master Passport" ||
-        option === "Passport + Date" ||
-        option === "📅 Passport + Date" ||
-        option === "📅 Passport + Date/Name"
-    ) {
-        const pageInput = prompt("Page Size? (A6/A4)", "A6");
-        if (!pageInput) return;
-        const page = pageInput.trim().toUpperCase() === "A4" ? "a4" : "a6";
-
-        const defaultLayout = page === "a4" ? "1x6" : "1x3";
-        const layoutHelp = page === "a4"
-            ? "Layout? (1x6 / 2x6 / 3x6)"
-            : "Layout? (1x3 / 2x3 / 3x3)";
-        const layoutInput = prompt(layoutHelp, defaultLayout);
-        if (!layoutInput) return;
-        const layout = layoutInput.trim().toLowerCase();
-
-        const rawName = prompt("Name (optional):", "") || "";
-        const safeName = rawName.trim().replace(/[<>]/g, "");
-
-        // Date picker (optional)
-        const dateInput = document.createElement("input");
-        dateInput.type = "date";
-        dateInput.style.display = "none";
-        document.body.appendChild(dateInput);
-
-        const submitPassportCommand = (formattedDate = "") => {
-            let finalCmd = `###passport### ###passportpage<${page}>### ###passportlayout<${layout}>###`;
-            if (formattedDate) {
-                finalCmd += ` ###passportdate<${formattedDate}>###`;
-            }
-            if (safeName) {
-                finalCmd += ` ###passportname<${safeName}>###`;
-            }
-            sendText(finalCmd);
-            dateInput.remove();
-        };
-
-        dateInput.onchange = () => {
-            const val = dateInput.value; // yyyy-mm-dd
-            if (!val) {
-                submitPassportCommand("");
-                return;
-            }
-            const [y, m, d] = val.split("-");
-            submitPassportCommand(`${d}/${m}/${y}`);
-        };
-
-        const addDate = confirm("Add Date bhi chahiye?");
-        if (addDate) {
-            if (dateInput.showPicker) {
-                dateInput.showPicker();
-            } else {
-                dateInput.click();
-            }
-        } else {
-            submitPassportCommand("");
-        }
+    dateInput.onchange = () => {
+      const val = dateInput.value; // yyyy-mm-dd
+      if (!val) {
+        submitPassportCommand("");
         return;
-    }
+      }
+      const [y, m, d] = val.split("-");
+      submitPassportCommand(`${d}/${m}/${y}`);
+    };
 
-    sendText(command);
+    const addDate = confirm("Add Date bhi chahiye?");
+    if (addDate) {
+      if (dateInput.showPicker) {
+        dateInput.showPicker();
+      } else {
+        dateInput.click();
+      }
+    } else {
+      submitPassportCommand("");
+    }
+    return;
+  }
+
+  if (command.startsWith("###ytdownload:")) {
+    displayMessage("System", "Downloading... Please wait ⏳", "received", null, null, false, null, "", null, Date.now());
+  }
+
+  sendText(command);
 }
 
 function sendText(text) {
-    if (!text || !ws) return;
-    const payload = {
-        type: "text",
-        receiver: currentReceiver,
-        text: text
-    };
-    ws.send(JSON.stringify(payload));
-    displayMessage(myUsername, text, "sent", null, null, false, null, "", null, Date.now());
+  if (!text || !ws) return;
+  const payload = {
+    type: "text",
+    receiver: currentReceiver,
+    text: text
+  };
+  ws.send(JSON.stringify(payload));
+  displayMessage(myUsername, text, "sent", null, null, false, null, "", null, Date.now());
 }
 
 /***********************
  * HELPERS
  ***********************/
 function linkify(text) {
-    // Regex for URLs starting with http:// or https://
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.replace(urlRegex, function(url) {
-        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline;">${url}</a>`;
-    });
+  // Regex for URLs starting with http:// or https://
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, function (url) {
+    return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline;">${url}</a>`;
+  });
 }
 
 function isImage(url, mimeType = "") {
@@ -1062,8 +1070,8 @@ function handleTyping() {
 function handleEnter(e) {
   const now = Date.now();
   if (now - lastTypingSent > 2000 && ws && currentReceiver !== "Family Group") {
-      ws.send(JSON.stringify({ type: "typing", receiver: currentReceiver }));
-      lastTypingSent = now;
+    ws.send(JSON.stringify({ type: "typing", receiver: currentReceiver }));
+    lastTypingSent = now;
   }
   if (e.key === "Enter") sendMsg();
 }

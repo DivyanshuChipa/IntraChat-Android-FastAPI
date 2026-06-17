@@ -34,7 +34,7 @@ Instead of hardcoding every utility into Lumir, introduce a modular "Addon" syst
 ### 1. YouTube Downloader Addon (`/yt`)
 - **How it works:** A user sends a YouTube link with a command like `/yt [link]`.
 - **Backend Logic:** Lumir triggers an addon utilizing tools like `yt-dlp` to download the video or extract the audio.
-- **Delivery:** Once downloaded, Lumir either sends the file directly in the chat or saves it to the local SMB Network Storage and replies with the local file path/link.
+- **Delivery:** Once downloaded, Lumir either sends the file directly in the chat or saves it to the uploads's folder profile it there another folder like yt download.
 - **Why it's great:** Highly requested utility, saves users from visiting ad-ridden downloader websites.
 
 ### 2. Personal Financial Tracker Addon (`/money`)
