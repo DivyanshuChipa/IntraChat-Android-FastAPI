@@ -112,11 +112,26 @@ def search_facts_in_chroma(sender: str, query_text: str, n_results: int = 2):
         results = facts_collection.query(
             query_texts=[query_text],
             n_results=n_results,
-            where={"sender": sender}
+            where={"sender": sender},
+            include=["documents", "distances", "metadatas"]
         )
+
+        valid_facts = []
         if results['documents'] and results['documents'][0]:
-            print(f"🧠 [CHROMA RECALL]: Found facts relevant to '{query_text}'")
-            return results['documents'][0] # Returns a list of matched fact strings
+            # Distance threshold for relevance (lower distance = higher similarity)
+            # Threshold of 1.2 is a good starting point for L2 distance in typical embedding models.
+            threshold = 1.2
+
+            for doc, distance in zip(results['documents'][0], results['distances'][0]):
+                print(f"🧠 [CHROMA RECALL]: Evaluated fact: '{doc}' with distance: {distance}")
+                if distance < threshold:
+                    valid_facts.append(doc)
+                else:
+                    print(f"🤷‍♂️ [CHROMA RECALL]: Fact ignored due to high distance (not relevant enough).")
+
+            if valid_facts:
+                print(f"🎯 [CHROMA RECALL]: Returning {len(valid_facts)} relevant facts.")
+            return valid_facts
         return []
     except Exception as e:
         print(f"❌ Chroma Fact Search Error: {e}")
