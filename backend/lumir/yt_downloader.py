@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import yt_dlp
 from datetime import datetime
@@ -17,7 +18,7 @@ def download_youtube_video(url: str, format_choice: str):
     ensure_dir_exists()
     
     unique_id = uuid.uuid4().hex[:8]
-    output_template = f"{DOWNLOAD_DIR}/yt_{unique_id}_%(title)s.%(ext)s"
+    output_template = f"{DOWNLOAD_DIR}/yt_{unique_id}_temp.%(ext)s"
     
     ydl_opts = {
         'outtmpl': output_template,
@@ -74,9 +75,26 @@ def download_youtube_video(url: str, format_choice: str):
             if not os.path.exists(file_name):
                  file_name = ydl.prepare_filename(info_dict)
                  
+            # Sanitize the video title to be extremely safe (ASCII only, no special characters, replace spaces with underscores)
+            title = info_dict.get('title', 'video')
+            clean_title = re.sub(r'[^a-zA-Z0-9]', ' ', title)
+            clean_title = ' '.join(clean_title.split())
+            clean_title = clean_title.replace(' ', '_')
+            if not clean_title:
+                clean_title = "video"
+                
+            # Extract actual extension and rename the temp file to the safe filename
+            ext = file_name.rsplit('.', 1)[-1]
+            final_file_name = f"{DOWNLOAD_DIR}/yt_{unique_id}_{clean_title}.{ext}"
+            
+            try:
+                os.rename(file_name, final_file_name)
+            except Exception:
+                final_file_name = file_name  # Fallback to temp file name if rename fails
+                
             # Convert to relative URL like /uploads/yt_downloads/...
-            relative_url = "/" + file_name.replace('\\', '/')
-            just_name = os.path.basename(file_name)
+            relative_url = "/" + final_file_name.replace('\\', '/')
+            just_name = os.path.basename(final_file_name)
             
             return {
                 "success": True, 
