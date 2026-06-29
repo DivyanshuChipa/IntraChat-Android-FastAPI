@@ -6,12 +6,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -53,7 +57,9 @@ fun ContactListScreen(
     typingStatuses: Map<String, Boolean>,
     activeChatUser: String? = null,
     onChatClick: (String) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onSmbClick: () -> Unit,
+    onIntraHomeClick: () -> Unit
 ) {
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
@@ -87,24 +93,84 @@ fun ContactListScreen(
 
     // State for Profile Dialog
     var selectedProfileForDialog by remember { mutableStateOf<ProfileDialogData?>(null) }
+    var isHubExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "Intra Chats",
-                        color = topBarTextColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        AnimatedVisibility(
+                            visible = !isHubExpanded,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            Text(
+                                "Intra Chats",
+                                color = topBarTextColor,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = isHubExpanded,
+                            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(end = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 1. Settings Icon
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    onSettingsClick()
+                                }) {
+                                    Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = topBarTextColor)
+                                }
+                                // 2. SMB Browser Icon
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    onSmbClick()
+                                }) {
+                                    Icon(Icons.Filled.Storage, contentDescription = "SMB Network", tint = topBarTextColor)
+                                }
+                                // 3. Smart Home Icon
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    onIntraHomeClick()
+                                }) {
+                                    Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarTextColor)
+                                }
+                                // 4. Placeholder
+                                IconButton(onClick = {}) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = "Placeholder",
+                                        tint = topBarTextColor.copy(alpha = 0.4f)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = topBarColor
                 ),
                 actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Filled.Settings, null, tint = topBarTextColor)
+                    IconButton(onClick = { isHubExpanded = !isHubExpanded }) {
+                        Icon(
+                            imageVector = if (isHubExpanded) Icons.Filled.Clear else Icons.Filled.Apps,
+                            contentDescription = "Toggle Hub",
+                            tint = topBarTextColor
+                        )
                     }
                 }
             )

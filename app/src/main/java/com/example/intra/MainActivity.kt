@@ -156,6 +156,8 @@ class MainActivity : ComponentActivity() {
                     val isAuthenticated by authViewModel.isAuthenticated
                     var showSettings by rememberSaveable { mutableStateOf(false) }
                     var showAbout by rememberSaveable { mutableStateOf(false) }
+                    var showSmbBrowser by rememberSaveable { mutableStateOf(false) }
+                    var showIntraHome by rememberSaveable { mutableStateOf(false) }
                     var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
 
                     LaunchedEffect(callViewModel.isRinging.value) {
@@ -242,6 +244,10 @@ class MainActivity : ComponentActivity() {
                             }
 
                             showAbout -> AboutScreen { showAbout = false }
+
+                            showSmbBrowser -> SmbBrowserScreen(onBack = { showSmbBrowser = false })
+
+                            showIntraHome -> IntraHomeScreen(onBack = { showIntraHome = false })
 
                             showSettings -> SettingsScreen(
                                 onLogoutConfirmed = {
@@ -354,7 +360,9 @@ class MainActivity : ComponentActivity() {
                                 typingStatuses = chatViewModel.typingStatuses,
                                 activeChatUser = chatViewModel.activeChatUser, // 🆕 STEP 6: Pass active chat
                                 onChatClick = { currentChatReceiver = it },
-                                onSettingsClick = { showSettings = true }
+                                onSettingsClick = { showSettings = true },
+                                onSmbClick = { showSmbBrowser = true },
+                                onIntraHomeClick = { showIntraHome = true }
                             )
                         }
                     }
