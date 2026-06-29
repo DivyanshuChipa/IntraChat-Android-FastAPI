@@ -25,6 +25,7 @@ def download_youtube_video(url: str, format_choice: str):
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
+        'format_sort': ['vcodec:h264', 'acodec:m4a'],
         'extractor_args': {
             'youtube': {
                 'player_client': ['default', 'web_safari'],
@@ -44,17 +45,17 @@ def download_youtube_video(url: str, format_choice: str):
             })
         elif format_choice == '480p':
             ydl_opts.update({
-                'format': 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best',
+                'format': 'bestvideo[height<=480][vcodec^=avc]+bestaudio[ext=m4a]/best[height<=480][vcodec^=avc]/best[height<=480]/best',
                 'merge_output_format': 'mp4',
             })
         elif format_choice == '720p':
             ydl_opts.update({
-                'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best',
+                'format': 'bestvideo[height<=720][vcodec^=avc]+bestaudio[ext=m4a]/best[height<=720][vcodec^=avc]/best[height<=720]/best',
                 'merge_output_format': 'mp4',
             })
         elif format_choice == 'best':
             ydl_opts.update({
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'format': 'bestvideo[vcodec^=avc]+bestaudio[ext=m4a]/best[vcodec^=avc]/best',
                 'merge_output_format': 'mp4',
             })
         else:
