@@ -74,6 +74,7 @@ class LumirEngine:
         self.user_context = {}
 
     def process(self, text: str, file_url: str = None, sender: str = "Unknown", lat: float = None, lon: float = None):
+        original_text = text.strip()
         text = text.lower().strip()
         # ==========================================
         # 🧠 RAPHAEL'S AGENT ROUTER (Vector DB Search)
@@ -201,8 +202,8 @@ class LumirEngine:
                     }
 
         # 🟢 NAYA CODE: YouTube Downloader Router Logic
-        if text.startswith("/yt "):
-            yt_link = text.split("/yt ", 1)[1].strip()
+        if original_text.startswith("/yt "):
+            yt_link = original_text.split("/yt ", 1)[1].strip()
             # Basic validation
             if "youtube.com" in yt_link or "youtu.be" in yt_link:
                 # Save link to context

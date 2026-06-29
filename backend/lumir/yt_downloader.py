@@ -24,6 +24,11 @@ def download_youtube_video(url: str, format_choice: str):
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['default', 'web_safari'],
+            }
+        }
     }
     
     try:
