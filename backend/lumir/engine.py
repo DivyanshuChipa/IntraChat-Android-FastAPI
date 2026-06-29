@@ -74,6 +74,7 @@ class LumirEngine:
         self.user_context = {}
 
     def process(self, text: str, file_url: str = None, sender: str = "Unknown", lat: float = None, lon: float = None):
+        original_text = text.strip()
         text = text.lower().strip()
         # ==========================================
         # 🧠 RAPHAEL'S AGENT ROUTER (Vector DB Search)
@@ -201,8 +202,8 @@ class LumirEngine:
                     }
 
         # 🟢 NAYA CODE: YouTube Downloader Router Logic
-        if text.startswith("/yt "):
-            yt_link = text.split("/yt ", 1)[1].strip()
+        if original_text.startswith("/yt "):
+            yt_link = original_text.split("/yt ", 1)[1].strip()
             # Basic validation
             if "youtube.com" in yt_link or "youtu.be" in yt_link:
                 # Save link to context
@@ -552,13 +553,15 @@ class LumirEngine:
                 # ==========================================
                 # 🕵️‍♂️ THE FACT DIGGER (Background Memory Extractor)
                 # ==========================================
-                trigger_words = ["i like", "mera naam", "mujhe pasand", "i am", "remember", "mera plan", "mai", "mera", "mujhe", "love", "hate"]
+                # Expanded triggers to catch slightly less obvious declarations (e.g. "bhi pasand", "is my favorite")
+                trigger_words = ["i like", "mera naam", "mujhe pasand", "i am", "remember", "mera plan", "mai", "mera", "mujhe", "love", "hate", "favorite", "bhi pasand", "hamesha", "kabhi nahi"]
                 
                 # Sirf tab extract karo jab Smart Model ho aur trigger word use hua ho
                 if is_smart and any(tw in text.lower() for tw in trigger_words):
                     try:
                         print(f"🕵️‍♂️ [FACT DIGGER] Triggered for {sender}...")
-                        extract_prompt = f"Extract a single, concise factual statement about the user from this message: '{text}'. If no clear personal fact exists, reply with exactly 'NONE'."
+                        # Improved prompt to ensure it captures preferences properly
+                        extract_prompt = f"Analyze the following message and extract any personal fact, preference, or declaration about the user. Return ONLY the factual statement. If the message does not contain any personal fact or preference, reply with exactly 'NONE'. Message: '{text}'"
                         fact = ask_ai(prompt=extract_prompt, config=config, history=[], sender=sender)
                         
                         if fact and "NONE" not in fact.upper() and len(fact) < 150:
@@ -570,9 +573,16 @@ class LumirEngine:
 
                 # 🌟 THE MAGIC: Ab saare facts nahi nikalenge!
                 # Sirf wo facts nikalenge jo user ke current question ('text') se match karte hain!
-                if is_smart:
+
+                # 🚪 THE INTENT GATEWAY: Agar user ka message bahut chota ya generic hai, toh DB mat dhoondho.
+                generic_chitchat = ["hi", "hello", "hey", "kya chal raha hai", "ok", "acha", "hmm", "bye", "good morning", "good night", "kaisi ho", "kaise ho"]
+                is_generic = text.strip().lower() in generic_chitchat or len(text.split()) < 3
+
+                if is_smart and not is_generic:
+                    print("🚪 [INTENT GATEWAY]: Query seems substantive, searching long-term memory...")
                     user_facts_list = search_facts_in_chroma(sender, text)
                 else:
+                    print("🚪 [INTENT GATEWAY]: Query is generic/chit-chat. Bypassing long-term memory search.")
                     user_facts_list = None
 
                 if not is_smart:
