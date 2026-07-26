@@ -128,12 +128,13 @@ fun ContactListScreen(
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 1. Settings Icon
-                                IconButton(onClick = {
-                                    isHubExpanded = false
-                                    onSettingsClick()
-                                }) {
-                                    Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = topBarTextColor)
+                                // 1. Placeholder (Reserved)
+                                IconButton(onClick = {}) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = "Placeholder",
+                                        tint = topBarTextColor.copy(alpha = 0.4f)
+                                    )
                                 }
                                 // 2. SMB Browser Icon
                                 IconButton(onClick = {
@@ -149,13 +150,12 @@ fun ContactListScreen(
                                 }) {
                                     Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarTextColor)
                                 }
-                                // 4. Placeholder
-                                IconButton(onClick = {}) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Person,
-                                        contentDescription = "Placeholder",
-                                        tint = topBarTextColor.copy(alpha = 0.4f)
-                                    )
+                                // 4. Settings Icon
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    onSettingsClick()
+                                }) {
+                                    Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = topBarTextColor)
                                 }
                             }
                         }
