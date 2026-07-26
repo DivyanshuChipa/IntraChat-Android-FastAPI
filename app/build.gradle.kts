@@ -62,7 +62,7 @@ dependencies {
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
 
-        // ... (पहले से मौजूद dependencies)
+    // ... (पहले से मौजूद dependencies)
     //Sabse pehle image load karne ke liye Coil library add karni hogi. Ye wahi library hai jo automatic caching karegi
     implementation("io.coil-kt:coil-compose:2.4.0")
     // 🔥 YE ADD KARO: Video Thumbnails ke liye (Version same hona chahiye)
@@ -70,34 +70,36 @@ dependencies {
 
 
 
-        // Networking (Retrofit for POST /upload, OkHttp for WebSocket)
-        implementation("com.squareup.okhttp3:okhttp:4.11.0") // तुमने यह जोड़ दिया है, इसे रहने दें।
-        implementation("com.squareup.retrofit2:retrofit:2.9.0")
-        implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    // Networking (Retrofit for POST /upload, OkHttp for WebSocket)
+    implementation("com.squareup.okhttp3:okhttp:4.11.0") // तुमने यह जोड़ दिया है, इसे रहने दें।
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
-        // Kotlin Coroutines (Async operations के लिए)
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // Kotlin Coroutines (Async operations के लिए)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-        // Compose: Lifecycle ViewModel
-        implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    // Compose: Lifecycle ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
 
-        // Compose: Material Icons
-        implementation("androidx.compose.material:material-icons-extended")
-       // 📞 WebRTC Library
-        //implementation("com.mesibo.api:webrtc:1.0.5")
-       //Ya fir ye wala (jo standard hai):
-       implementation("com.mesibo.api:webrtc:1.0.5")
+    // Compose: Material Icons
+    implementation("androidx.compose.material:material-icons-extended")
+    // 🌐 SMB Network Sharing Client Library
+    implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
+    // 📞 WebRTC Library
+    //implementation("com.mesibo.api:webrtc:1.0.5")
+    //Ya fir ye wala (jo standard hai):
+    implementation("com.mesibo.api:webrtc:1.0.5")
 
-       // Video Player (Media3 ExoPlayer)
-       implementation("androidx.media3:media3-exoplayer:1.2.0")
-       implementation("androidx.media3:media3-ui:1.2.0")
-       implementation("androidx.media3:media3-common:1.2.0")
+    // Video Player (Media3 ExoPlayer)
+    implementation("androidx.media3:media3-exoplayer:1.2.0")
+    implementation("androidx.media3:media3-ui:1.2.0")
+    implementation("androidx.media3:media3-common:1.2.0")
 
-        //gps
-       implementation("com.google.android.gms:play-services-location:21.2.0")
+    //gps
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 
-        // ... (बाकी libs.androidx.core.ktx, etc.)
+    // ... (बाकी libs.androidx.core.ktx, etc.)
     val room_version = "2.6.1"
     // Room Libraries
     implementation("androidx.room:room-runtime:$room_version")
