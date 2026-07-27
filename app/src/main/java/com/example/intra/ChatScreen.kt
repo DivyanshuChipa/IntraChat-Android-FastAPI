@@ -161,7 +161,7 @@ fun ChatScreen(
                                     model = ImageRequest.Builder(LocalContext.current)
                                         .data(receiverPhotoUrl)
                                         .crossfade(true)
-                                        .diskCachePolicy(CachePolicy.DISABLED)
+                                        .diskCachePolicy(CachePolicy.ENABLED) //COIL SE TEMP MAI DALNE KELIYE HAI BC😈😈😈
                                         .memoryCachePolicy(CachePolicy.ENABLED)
                                         .build(),
                                     contentDescription = "Profile Photo",

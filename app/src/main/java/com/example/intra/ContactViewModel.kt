@@ -62,6 +62,12 @@ class ContactViewModel : ViewModel() {
 
                     // 🆕 STEP 3E: Sort karo - Recent messages wale upar
                     val sortedUsers = usersList.sortedByDescending { it.lastMessageTime }
+                    Log.d("ContactVM", "✅ Contacts fetched and sorted")
+
+                    // 🆕 Restore current user's profile photo to settings after login/reset
+                    usersList.find { it.username == currentUsername }?.profilePhoto?.let { photoPath ->
+                        settingsManager.saveMyPhoto(photoPath)
+                    }
 
                     // 🆕 STEP 3F: UI list update karo
                     contacts.clear()

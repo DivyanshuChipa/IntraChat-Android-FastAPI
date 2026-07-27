@@ -456,7 +456,7 @@ fun ContactItem(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(fullPhotoUrl)
                         .crossfade(true)
-                        .diskCachePolicy(CachePolicy.DISABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = null,
