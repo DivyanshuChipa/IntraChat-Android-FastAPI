@@ -29,6 +29,11 @@ class CallActionReceiver : BroadcastReceiver() {
                 }
                 WsManager.send(json.toString())
             }
+            "CALL_DISMISS" -> {
+                // User ne notification swipe karke hata di, toh ringtone band kar do
+                ringtoneManager.stop()
+            }
+
         }
     }
 }

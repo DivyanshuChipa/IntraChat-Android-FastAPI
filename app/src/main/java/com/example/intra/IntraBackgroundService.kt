@@ -95,7 +95,10 @@ class IntraBackgroundService : Service(), WsManager.Listener {
                     // Start Ringtone
                     ringtoneManager.start()
 
-                    showIncomingCallNotification(sender, rawPhoto)
+                    if (!MyApplication.AppState.isForeground) {
+                        showIncomingCallNotification(sender, rawPhoto)
+                    }
+
                 }
 
                 "call_ended", "call_rejected", "call_accept" -> {
@@ -158,6 +161,15 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             this, 1, rejectIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val dismissIntent = Intent(this, CallActionReceiver::class.java).apply {
+            action = "CALL_DISMISS"
+            putExtra("sender", sender)
+        }
+        val dismissPI = PendingIntent.getBroadcast(
+            this, 2, dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_vec2)
@@ -165,9 +177,10 @@ class IntraBackgroundService : Service(), WsManager.Listener {
             .setContentText("$sender is calling…")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setOngoing(true)
+            .setOngoing(false)// 👈 Changed to false (Swipe
             .setAutoCancel(true)
             .setContentIntent(contentPI)
+            .setDeleteIntent(dismissPI) // 👈 Swipe hone par dismiss intent chalega
             .addAction(0, "Reject", rejectPI)
             .setFullScreenIntent(contentPI, true) // Makes it pop up
             .build()

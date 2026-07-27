@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="intra.app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-01-31T15:49:57.096380100Z">
+        <DropdownSelection timestamp="2026-07-27T07:31:58.649111500Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="PhysicalDevice" identifier="serial=RZ8R8033M5X" />
