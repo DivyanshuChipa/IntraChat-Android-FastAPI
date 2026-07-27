@@ -33,6 +33,11 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.WindowCompat
+import android.os.Build
+
 
 
 @Composable
@@ -44,6 +49,24 @@ fun CallScreen(
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit
 ) {
+    // Set Status Bar Color
+    val view = LocalView.current
+    val statusBarColor = Color(0xFF321954) // Top gradient color of CallScreen
+
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            val insetsController = WindowCompat.getInsetsController(window, view)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                window.statusBarColor = statusBarColor.toArgb()
+                insetsController.isAppearanceLightStatusBars = false // Dark bg -> White icons
+            } else {
+                window.statusBarColor = Color.Black.toArgb()
+            }
+        }
+    }
+
     // 🔥 TIMER STATE - Call duration track karne ke liye
     var callSeconds by remember(state.status) { mutableStateOf(0) }
 
