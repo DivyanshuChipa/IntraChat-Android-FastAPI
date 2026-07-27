@@ -2,26 +2,15 @@
 
 This document serves as a repository for visionary ideas and future feature plans for the application.
 
-## ContactsScreen Top Bar Redesign (The "Hub" Concept)
+## ContactsScreen Top Bar Redesign (The "Hub" Concept) [COMPLETED]
 
 **Concept:**
-Replace the traditional and boring 3-dot settings menu in the `ContactsScreen` top bar with a highly interactive, futuristic "Hub" or "Grid" (Dice-like) icon.
+Replace the traditional and boring 3-dot settings menu in the `ContactsScreen` top bar with a highly interactive, futuristic "Hub" or "Grid" (Dice-like) icon. (Successfully implemented with slide/fade animations, Settings, SMB Network Browser, and Smart Home links).
 
-**Interaction & Animation:**
-- When the user taps the Hub/Grid icon, the standard top bar title (e.g., "Contacts") smoothly fades out.
-- In its place, a set of action icons smoothly slide/glide in horizontally (left-to-right or right-to-left animation) to fill the top bar.
-- This creates a sleek, premium, and unique look compared to standard dropdown menus or pop-out cards.
-- Tapping outside or toggling the Hub icon will collapse the icons back, fading the title back in.
+## SMB Network Browser [COMPLETED]
 
-**Proposed Icons (Max 4 for optimal Space Management):**
-1. **Settings:** The standard gear icon for app preferences.
-2. **SMB Network Browser:** For future local network storage and file browsing capabilities.
-3. **Intra Home (IoT Control):** An icon for controlling smart home devices (like ESP boards, sensors, etc.).
-4. **Placeholder:** Reserved for a future innovative feature.
-
-**Why this approach?**
-- **Unique Identity:** Very few apps utilize a horizontal sliding action bar inside the top bar itself, making the app stand out.
-- **Space Management:** 4 icons fit perfectly within a standard mobile top bar without requiring horizontal scrolling, keeping the UI clean and accessible.
+**Concept:**
+Integrate local network storage (Samba/SMB) sharing directly inside the app, allowing users to scan local IPs, connect (guest/registered), navigate folders, create directories, upload, and download files directly from/to their devices. (Successfully implemented using `jcifs-ng` with network scanning, FAB menu options, image/video local preview dialogs, and cache management).
 - **Scalability:** It leaves room for integrating powerful features like IoT and Local Network management directly from the main hub of the app.
 
 ## Lumir Addon System (Backend/Bot Utilities)
@@ -31,10 +20,10 @@ Instead of hardcoding every utility into Lumir, introduce a modular "Addon" syst
 
 **Top Priority Addon Ideas:**
 
-### 1. YouTube Downloader Addon (`/yt`)
+### 1. YouTube Downloader Addon (`/yt`) [COMPLETED]
 - **How it works:** A user sends a YouTube link with a command like `/yt [link]`.
 - **Backend Logic:** Lumir triggers an addon utilizing tools like `yt-dlp` to download the video or extract the audio.
-- **Delivery:** Once downloaded, Lumir either sends the file directly in the chat or saves it to the uploads's folder profile it there another folder like yt download.
+- **Delivery:** Once downloaded, Lumir sends the file directly in the chat or saves it in the custom local download folder. (Successfully implemented and integrated on the backend!)
 - **Why it's great:** Highly requested utility, saves users from visiting ad-ridden downloader websites.
 
 ### 2. Personal Financial Tracker Addon (`/money`)
