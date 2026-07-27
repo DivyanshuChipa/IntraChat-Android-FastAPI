@@ -9,6 +9,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.intra.database.ChatDatabase
 import kotlinx.coroutines.launch
+import android.content.Context
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class ContactViewModel : ViewModel() {
 
@@ -37,51 +40,78 @@ class ContactViewModel : ViewModel() {
         viewModelScope.launch {
             isRefreshing = true
             try {
-                // ✅ STEP 3C: Server se users fetch karo (same as before)
+                // ✅ Server se fresh users list fetch karo
                 val response = ApiClient.apiService.getUsers()
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val usersList = response.body()?.users ?: emptyList()
 
-                    // 🆕 STEP 3D: Har user ke liye DB se data nikalo
-                    usersList.forEach { user ->
-                        // Last message ka time nikalo
-                        user.lastMessageTime = chatDao.getLastMessageTime(
-                            contactUsername = user.username,
-                            currentUser = currentUsername
-                        ) ?: 0L  // Agar null aaye toh 0L set karo
-
-                        // Unread count nikalo
-                        user.unreadCount = chatDao.getUnreadCount(
-                            contactUsername = user.username,
-                            currentUser = currentUsername
-                        )
-
-                        Log.d("ContactVM", "${user.username}: time=${user.lastMessageTime}, unread=${user.unreadCount}")
+                    // 🆕 Users list ko JSON me convert karke SharedPrefs me cache karo
+                    try {
+                        val json = Gson().toJson(usersList)
+                        val sharedPrefs = MyApplication.instance.getSharedPreferences("contacts_cache", Context.MODE_PRIVATE)
+                        sharedPrefs.edit().putString("cached_users", json).apply()
+                        Log.d("ContactVM", "✅ Cached contacts JSON locally")
+                    } catch (cacheEx: Exception) {
+                        Log.e("ContactVM", "Failed to cache contacts to SharedPreferences", cacheEx)
                     }
 
-                    // 🆕 STEP 3E: Sort karo - Recent messages wale upar
-                    val sortedUsers = usersList.sortedByDescending { it.lastMessageTime }
-                    Log.d("ContactVM", "✅ Contacts fetched and sorted")
-
-                    // 🆕 Restore current user's profile photo to settings after login/reset
-                    usersList.find { it.username == currentUsername }?.profilePhoto?.let { photoPath ->
-                        settingsManager.saveMyPhoto(photoPath)
-                    }
-
-                    // 🆕 STEP 3F: UI list update karo
-                    contacts.clear()
-                    contacts.addAll(sortedUsers)
-
-                    Log.d("ContactVM", "✅ Contacts sorted by recent activity")
+                    // Process and display fresh list
+                    processAndSetContacts(usersList)
                 }
-
             } catch (e: Exception) {
-                Log.e("ContactVM", "Error fetching contacts", e)
+                Log.e("ContactVM", "Error fetching contacts, trying cache...", e)
                 e.printStackTrace()
+
+                // 🆕 Offline Fallback: SharedPreferences se cached users list load karo
+                try {
+                    val sharedPrefs = MyApplication.instance.getSharedPreferences("contacts_cache", Context.MODE_PRIVATE)
+                    val cachedJson = sharedPrefs.getString("cached_users", null)
+                    if (!cachedJson.isNullOrEmpty()) {
+                        val type = object : TypeToken<List<User>>() {}.type
+                        val cachedUsers: List<User> = Gson().fromJson(cachedJson, type)
+                        
+                        // Process and display cached list
+                        processAndSetContacts(cachedUsers)
+                        Log.d("ContactVM", "✅ Loaded cached contacts list offline successfully")
+                    }
+                } catch (cacheEx: Exception) {
+                    Log.e("ContactVM", "Error loading cached contacts offline", cacheEx)
+                }
             } finally {
                 isRefreshing = false
             }
         }
+    }
+
+    // 🆕 Helper function to process DB values (unread counts, last message times) and update UI state
+    // Note: Added 'suspend' modifier because chatDao functions are suspend functions
+    private suspend fun processAndSetContacts(usersList: List<User>) {
+        usersList.forEach { user ->
+            // Last message ka time nikalo
+            user.lastMessageTime = chatDao.getLastMessageTime(
+                contactUsername = user.username,
+                currentUser = currentUsername
+            ) ?: 0L
+
+            // Unread count nikalo
+            user.unreadCount = chatDao.getUnreadCount(
+                contactUsername = user.username,
+                currentUser = currentUsername
+            )
+        }
+
+        // Sort contacts - Recent messages wale upar
+        val sortedUsers = usersList.sortedByDescending { it.lastMessageTime }
+
+        // Restore current user's profile photo in settings
+        usersList.find { it.username == currentUsername }?.profilePhoto?.let { photoPath ->
+            settingsManager.saveMyPhoto(photoPath)
+        }
+
+        // UI state list update karo
+        contacts.clear()
+        contacts.addAll(sortedUsers)
+        Log.d("ContactVM", "✅ UI state updated with ${usersList.size} contacts")
     }
 }
