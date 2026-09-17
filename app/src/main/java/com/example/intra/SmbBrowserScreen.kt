@@ -243,6 +243,13 @@ fun SmbBrowserScreen(
                 if (isImage || isVideo) {
                     activeViewerFile = Pair(destFile.absolutePath, isVideo)
                 } else {
+                    // Trigger MediaScanner so the system Files/Downloads app indexes the file instantly
+                    android.media.MediaScannerConnection.scanFile(
+                        context,
+                        arrayOf(destFile.absolutePath),
+                        null,
+                        null
+                    )
                     Toast.makeText(context, "Downloaded to Downloads/Intra_SMB/${fileItem.name}", Toast.LENGTH_LONG).show()
                 }
             } else {

@@ -653,6 +653,36 @@ function sendMsg() {
   input.value = "";
 }
 
+function renderRetroBlocks(totalBlocks = 16, percent = 0) {
+  const filledCount = Math.floor((percent / 100) * totalBlocks);
+  let html = '';
+  for (let i = 0; i < totalBlocks; i++) {
+    const isFilled = i < filledCount;
+    const isLeading = (i === filledCount - 1) && filledCount > 0 && percent < 100;
+    const classes = ['retro-progress-block'];
+    if (isFilled) classes.push('filled');
+    if (isLeading) classes.push('leading');
+    html += `<div class="${classes.join(' ')}"></div>`;
+  }
+  return html;
+}
+
+function updateUploadProgress(msgElement, percent) {
+  if (!msgElement) return;
+  const clamped = Math.min(100, Math.max(0, percent));
+  
+  const percentEl = msgElement.querySelector('.loader-percent');
+  if (percentEl) percentEl.innerText = `${clamped}%`;
+
+  const retroPercentEl = msgElement.querySelector('.retro-progress-percent');
+  if (retroPercentEl) retroPercentEl.innerText = `${clamped}%`;
+
+  const track = msgElement.querySelector('.retro-progress-track');
+  if (track) {
+    track.innerHTML = renderRetroBlocks(16, clamped);
+  }
+}
+
 async function sendFile() {
   const fileInput = document.getElementById("file-input");
   if (fileInput.files.length === 0) return;
@@ -667,17 +697,38 @@ async function sendFile() {
   const localUrl = URL.createObjectURL(file);
   const localThumbnail = isVideoFile ? await createVideoThumbnail(localUrl) : null;
 
-  // Show message with loader
-  displayMessage(myUsername, "Uploading...", "sent", localUrl, tempId, true, localThumbnail, file.type, null, Date.now());
+  // Show message with loader and retro segmented progress
+  displayMessage(myUsername, "Uploading " + file.name + "...", "sent", localUrl, tempId, true, localThumbnail, file.type, null, Date.now());
+
+  const msgElement = document.getElementById(tempId);
 
   try {
-    const res = await fetch("/upload", {
-      method: "POST",
-      body: formData
-    });
-    const data = await res.json();
+    const data = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/upload");
 
-    const msgElement = document.getElementById(tempId);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          updateUploadProgress(msgElement, percent);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (err) {
+            reject(err);
+          }
+        } else {
+          reject(new Error("Upload failed with status: " + xhr.status));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network upload error"));
+      xhr.send(formData);
+    });
 
     if (data.url) {
       // ✅ UPLOAD SUCCESS
@@ -686,8 +737,14 @@ async function sendFile() {
         const bubble = msgElement.querySelector('.msg-bubble');
         if (bubble) bubble.classList.remove('loading');
 
+        const squareLoader = msgElement.querySelector('.loader-square-container');
+        if (squareLoader) squareLoader.remove();
+
         const loader = msgElement.querySelector('.loader-overlay');
         if (loader) loader.remove();
+
+        const retroProgress = msgElement.querySelector('.retro-progress-wrapper');
+        if (retroProgress) retroProgress.remove();
 
         // Update image click to open real URL
         const img = msgElement.querySelector('img');
@@ -724,15 +781,19 @@ async function sendFile() {
     }
   } catch (e) {
     console.error("File upload error:", e);
-    const msgElement = document.getElementById(tempId);
     if (msgElement) {
       const bubble = msgElement.querySelector('.msg-bubble');
       if (bubble) {
         bubble.classList.remove('loading');
-        bubble.innerHTML += `<br><span style="color:red; font-size: 12px;">❌ Upload Failed</span>`;
       }
+      const squareLoader = msgElement.querySelector('.loader-square-container');
+      if (squareLoader) squareLoader.remove();
       const loader = msgElement.querySelector('.loader-overlay');
       if (loader) loader.remove();
+      const retroProgress = msgElement.querySelector('.retro-progress-wrapper');
+      if (retroProgress) {
+        retroProgress.innerHTML = `<span style="color:red; font-size: 11px; font-weight: bold;">❌ Upload Failed</span>`;
+      }
     }
   } finally {
     URL.revokeObjectURL(localUrl);
@@ -805,12 +866,30 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
   }
 
   if (fileUrl) {
+    const squareLoaderHtml = `
+      <div class="loader-square-container">
+        <div class="loader-square-spinner"></div>
+        <span class="loader-percent">0%</span>
+      </div>`;
+
+    const retroProgressHtml = `
+      <div class="retro-progress-wrapper">
+        <div class="retro-progress-track">
+          ${renderRetroBlocks(16, 0)}
+        </div>
+        <div class="retro-progress-labels">
+          <span>UPLOADING...</span>
+          <span class="retro-progress-percent">0%</span>
+        </div>
+      </div>`;
+
     if (isImage(fileUrl, mimeType)) {
       content += `<br>
         <div class="media-preview-container">
             <img src="${fileUrl}" class="media-preview-image" onclick="window.open('${fileUrl}')">
-            ${isLoading ? '<div class="loader-overlay"></div>' : ''}
+            ${isLoading ? squareLoaderHtml : ''}
         </div>
+        ${isLoading ? retroProgressHtml : ''}
         <br>`;
     } else if (isVideo(fileUrl, mimeType)) {
       if (videoThumbnail) {
@@ -821,22 +900,24 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
               <img src="${videoThumbnail}" class="media-preview-image video-thumbnail" onclick="window.open('${fileUrl}')">
               <span class="video-play-icon">▶</span>
             </div>
-            ${isLoading ? '<div class="loader-overlay"></div>' : ''}
+            ${isLoading ? squareLoaderHtml : ''}
           </div>
+          ${isLoading ? retroProgressHtml : ''}
           <br>`;
       } else {
         // Received video: Use native <video> tag for preview
         content += `<br>
           <div class="media-preview-container">
             <video src="${fileUrl}" class="media-preview-image video-thumbnail video-thumbnail-player" controls preload="metadata"></video>
-            ${isLoading ? '<div class="loader-overlay"></div>' : ''}
+            ${isLoading ? squareLoaderHtml : ''}
           </div>
+          ${isLoading ? retroProgressHtml : ''}
           <br>`;
       }
     } else {
       content += `<div style="position: relative;">
           <a href="${fileUrl}" target="_blank" style="color: inherit;">${text}</a>
-          ${isLoading ? '<div class="loader-overlay" style="width: 20px; height: 20px; border-width: 2px;"></div>' : ''}
+          ${isLoading ? retroProgressHtml : ''}
       </div>`;
     }
   } else {
