@@ -37,6 +37,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -262,7 +263,10 @@ fun TypingIndicatorUI(name: String) {
 }
 
 @Composable
-fun UniqueLoader(modifier: Modifier = Modifier) {
+fun UniqueLoader(
+    modifier: Modifier = Modifier,
+    progress: Float? = null
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "loader")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -276,8 +280,124 @@ fun UniqueLoader(modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
-            .size(40.dp)
-            .rotate(rotation)
-            .border(3.dp, Color.White.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
-    )
+            .size(44.dp)
+            .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        // Outer rotating square border
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .rotate(rotation)
+                .border(2.5.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(5.dp))
+        )
+
+        // Center upright percentage or icon (stationary)
+        if (progress != null) {
+            val pct = (progress.coerceIn(0f, 1f) * 100).toInt()
+            Text(
+                text = "$pct%",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+        }
+    }
 }
+
+/**
+ * Retro Windows XP/98 Style Segmented Block Progress Bar
+ * Displays individual glowing rectangular blocks that fill sequentially.
+ */
+@Composable
+fun RetroSegmentedProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    activeColor: Color = MaterialTheme.colorScheme.primary,
+    inactiveColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+    showPercentageLabel: Boolean = true
+) {
+    val clampedProgress = progress.coerceIn(0f, 1f)
+    val percentInt = (clampedProgress * 100).toInt()
+
+    val infiniteTransition = rememberInfiniteTransition(label = "retro_pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.65f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    Column(modifier = modifier) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(16.dp)
+                .background(
+                    Color.Black.copy(alpha = 0.25f),
+                    RoundedCornerShape(4.dp)
+                )
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                    RoundedCornerShape(4.dp)
+                )
+                .padding(horizontal = 3.dp, vertical = 3.dp)
+        ) {
+            val totalBlocks = 16
+            val filledBlocks = (clampedProgress * totalBlocks).toInt()
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                for (i in 0 until totalBlocks) {
+                    val isFilled = i < filledBlocks
+                    val isLeading = i == (filledBlocks - 1).coerceAtLeast(0) && filledBlocks > 0 && clampedProgress < 1f
+
+                    val color = when {
+                        isLeading -> activeColor.copy(alpha = pulseAlpha)
+                        isFilled -> activeColor
+                        else -> inactiveColor
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(color)
+                    )
+                }
+            }
+        }
+
+        if (showPercentageLabel) {
+            Spacer(Modifier.height(3.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "UPLOADING...",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    letterSpacing = 0.6.sp
+                )
+                Text(
+                    text = "$percentInt%",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = activeColor
+                )
+            }
+        }
+    }
+}
+

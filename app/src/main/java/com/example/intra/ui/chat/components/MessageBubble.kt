@@ -247,30 +247,61 @@ fun MessageBubble(
 
                 if (message.isLoading) {
                     if (message.localUri != null && (isImage || isVideo)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(message.localUri)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Uploading Preview",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 200.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .alpha(0.6f),
-                                contentScale = ContentScale.Crop
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Box(contentAlignment = Alignment.Center) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(message.localUri)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Uploading Preview",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 200.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .alpha(0.6f),
+                                    contentScale = ContentScale.Crop
+                                )
+                                UniqueLoader(
+                                    modifier = Modifier.size(52.dp),
+                                    progress = message.uploadProgress
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            RetroSegmentedProgressBar(
+                                progress = message.uploadProgress ?: 0f,
+                                modifier = Modifier.fillMaxWidth(),
+                                activeColor = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
                             )
-                            UniqueLoader()
                         }
                     } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            UniqueLoader(Modifier.size(24.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "Uploading $fileName...",
-                                fontSize = 12.sp,
-                                color = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                UniqueLoader(
+                                    modifier = Modifier.size(44.dp),
+                                    progress = message.uploadProgress
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = fileName,
+                                        fontSize = 13.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        color = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = "Uploading file...",
+                                        fontSize = 11.sp,
+                                        color = if (message.isSelf) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            RetroSegmentedProgressBar(
+                                progress = message.uploadProgress ?: 0f,
+                                modifier = Modifier.fillMaxWidth(),
+                                activeColor = if (message.isSelf) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
                             )
                         }
                     }

@@ -14,10 +14,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import java.io.File
+import java.net.URLConnection
 
 data class ChatMessage(
     val text: String,
@@ -38,7 +40,8 @@ data class ChatMessage(
     val status: String? = null,
     val location: String? = null,
     val temp: String? = null,
-    val condition: String? = null
+    val condition: String? = null,
+    val uploadProgress: Float? = null
 )
 
 class ChatViewModel(
@@ -240,7 +243,7 @@ class ChatViewModel(
     private suspend fun uploadFileInternal(file: File, receiver: String) {
         val ts = System.currentTimeMillis()
 
-        // 🔥 OPTIMISTIC UI: Show uploading state
+        // 🔥 OPTIMISTIC UI: Show uploading state with initial 0% progress
         val tempMsg = ChatMessage(
             text = "Uploading: ${file.name}",
             isSelf = true,
@@ -250,7 +253,8 @@ class ChatViewModel(
             isLoading = true,
             localUri = file.absolutePath,
             senderName = currentUsername,
-            receiver = receiver
+            receiver = receiver,
+            uploadProgress = 0f
         )
 
         withContext(Dispatchers.Main) {
@@ -258,16 +262,38 @@ class ChatViewModel(
         }
 
         try {
+            val mimeType = URLConnection.guessContentTypeFromName(file.name)?.toMediaTypeOrNull()
+                ?: "application/octet-stream".toMediaTypeOrNull()
+
+            var lastEmittedPct = -1
+            val progressBody = ProgressRequestBody(file, mimeType) { bytesWritten, totalBytes ->
+                if (totalBytes > 0) {
+                    val progress = (bytesWritten.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                    val currentPct = (progress * 100).toInt()
+                    if (currentPct != lastEmittedPct || bytesWritten == totalBytes) {
+                        lastEmittedPct = currentPct
+                        viewModelScope.launch(Dispatchers.Main) {
+                            val idx = messages.indexOfFirst { it.timestamp == ts && it.fileName == file.name }
+                            if (idx != -1) {
+                                messages[idx] = messages[idx].copy(uploadProgress = progress)
+                            }
+                        }
+                    }
+                }
+            }
+
             val part = MultipartBody.Part.createFormData(
                 "file",
                 file.name,
-                file.asRequestBody()
+                progressBody
             )
 
             val response = ApiClient.apiService.uploadFile(part)
             if (!response.isSuccessful) {
                 Log.e(TAG, "❌ Upload failed for ${file.name}: ${response.code()}")
-                withContext(Dispatchers.Main) { messages.remove(tempMsg) }
+                withContext(Dispatchers.Main) {
+                    messages.removeAll { it.timestamp == ts && it.fileName == file.name }
+                }
                 return
             }
 
@@ -288,14 +314,15 @@ class ChatViewModel(
                 timestamp = ts,
                 isLoading = false,
                 senderName = currentUsername,
-                receiver = receiver
+                receiver = receiver,
+                uploadProgress = null
             )
 
             withContext(Dispatchers.Main) {
                 // Replace temp message with final message
-                val index = messages.indexOf(tempMsg)
-                if (index != -1) {
-                    messages[index] = finalMsg
+                val idx = messages.indexOfFirst { it.timestamp == ts && it.fileName == file.name }
+                if (idx != -1) {
+                    messages[idx] = finalMsg
                 } else {
                     messages.add(finalMsg)
                 }
@@ -308,7 +335,9 @@ class ChatViewModel(
             Log.d(TAG, "✅ File uploaded and signal sent: ${file.name}")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error uploading file ${file.name}", e)
-            withContext(Dispatchers.Main) { messages.remove(tempMsg) }
+            withContext(Dispatchers.Main) {
+                messages.removeAll { it.timestamp == ts && it.fileName == file.name }
+            }
         }
     }
 
