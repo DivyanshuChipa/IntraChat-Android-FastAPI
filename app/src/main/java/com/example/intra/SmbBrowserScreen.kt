@@ -100,24 +100,33 @@ fun SmbBrowserScreen(
         }
     }
 
-    // Local File Picker for Uploading
+    // Local File Picker for Uploading (Multiple Files Supported)
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let {
-            var displayName = "upload_${System.currentTimeMillis()}"
-            context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
-                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (nameIndex >= 0 && cursor.moveToFirst()) {
-                    displayName = cursor.getString(nameIndex)
-                }
-            }
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
 
-            val state = uiState
-            if (state is SmbUiState.DirectoryBrowser) {
-                scope.launch {
-                    isUploadingProgress = true
-                    activeDownloadName = displayName
+        val state = uiState
+        if (state is SmbUiState.DirectoryBrowser) {
+            scope.launch {
+                isUploadingProgress = true
+                var successCount = 0
+                val totalCount = uris.size
+
+                for ((index, uri) in uris.withIndex()) {
+                    var displayName = "upload_${System.currentTimeMillis()}"
+                    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex >= 0 && cursor.moveToFirst()) {
+                            displayName = cursor.getString(nameIndex)
+                        }
+                    }
+
+                    activeDownloadName = if (totalCount > 1) {
+                        "(${index + 1}/$totalCount) $displayName"
+                    } else {
+                        displayName
+                    }
                     activeDownloadProgress = 0f
 
                     val success = SmbHelper.uploadFile(
@@ -125,19 +134,26 @@ fun SmbBrowserScreen(
                         targetPath = state.currentPath,
                         fileName = displayName,
                         context = context,
-                        fileUri = it,
+                        fileUri = uri,
                         onProgress = { activeDownloadProgress = it }
                     )
 
-                    activeDownloadProgress = null
-
                     if (success) {
-                        Toast.makeText(context, "Uploaded successfully!", Toast.LENGTH_SHORT).show()
-                        openDirectory(state.shareName, state.currentPath)
-                    } else {
-                        Toast.makeText(context, "Upload failed.", Toast.LENGTH_SHORT).show()
+                        successCount++
                     }
                 }
+
+                activeDownloadProgress = null
+                activeDownloadName = ""
+
+                if (successCount == totalCount) {
+                    val msg = if (totalCount > 1) "$totalCount files uploaded successfully!" else "Uploaded successfully!"
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "$successCount of $totalCount files uploaded.", Toast.LENGTH_SHORT).show()
+                }
+
+                openDirectory(state.shareName, state.currentPath)
             }
         }
     }

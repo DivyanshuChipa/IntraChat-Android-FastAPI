@@ -547,25 +547,7 @@ fun shareVideoLink(context: Context, url: String) {
     context.startActivity(Intent.createChooser(intent, "Share Video Link"))
 }
 
-// Helper: Download Logic (Existing)
+// Helper: Download Logic (Direct LAN via IntraDownloader)
 fun downloadVideo(context: Context, url: String) {
-    try {
-        val fileName = "Intra_${System.currentTimeMillis()}.mp4"
-
-        val request = DownloadManager.Request(Uri.parse(url))
-            .setTitle(fileName)
-            .setDescription("Downloading video from Intra...")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setAllowedOverMetered(true)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Intra/$fileName")
-
-        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        downloadManager.enqueue(request)
-
-        Toast.makeText(context, "Downloading started...", Toast.LENGTH_SHORT).show()
-
-    } catch (e: Exception) {
-        Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
-        e.printStackTrace()
-    }
+    IntraDownloader.downloadMedia(context, url, isVideo = true)
 }

@@ -35,3 +35,6 @@ backend/lumir/chroma_storage/
 *.sqlite3
 weather_cache.json
 alert_tracker.json
+#Intraschool
+INTRASCHOOL_BLUEPRINT.md
+FUTURE_BLUEPRINTS.md
