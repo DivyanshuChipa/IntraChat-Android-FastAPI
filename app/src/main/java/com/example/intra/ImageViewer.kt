@@ -209,26 +209,7 @@ fun shareImageLink(context: Context, url: String) {
     context.startActivity(Intent.createChooser(intent, "Share Image via"))
 }
 
-// Helper Function: Download Logic (Existing)
+// Helper Function: Download Logic (Direct LAN via IntraDownloader)
 fun downloadImage(context: Context, url: String) {
-    try {
-        val extension = url.substringAfterLast('.', "jpg")
-        val fileName = "Intra_Image_${System.currentTimeMillis()}.$extension"
-
-        val request = DownloadManager.Request(Uri.parse(url))
-            .setTitle(fileName)
-            .setDescription("Downloading image from Intra...")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setAllowedOverMetered(true)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Intra/$fileName")
-
-        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        downloadManager.enqueue(request)
-
-        Toast.makeText(context, "Downloading started...", Toast.LENGTH_SHORT).show()
-
-    } catch (e: Exception) {
-        Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
-        e.printStackTrace()
-    }
+    IntraDownloader.downloadMedia(context, url, isVideo = false)
 }
