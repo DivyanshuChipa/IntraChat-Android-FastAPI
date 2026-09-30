@@ -165,6 +165,10 @@ fun SettingsScreen(
     // 📍 LOCATION STATE
     var isLocationEnabled by remember { mutableStateOf(settingsManager.isLocationEnabled()) }
 
+    // 📺 LIVE TV (IPTV) STATE
+    var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
+    var iptvUrlInput by remember { mutableStateOf(settingsManager.getIptvPlaylistUrl()) }
+
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -425,6 +429,59 @@ fun SettingsScreen(
                             settingsManager.setLocationEnabled(enabled)
                         }
                     )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 📺 LIVE TV TOGGLE
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Live TV Hub", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Watch free-to-air TV channels directly in Intra.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isIptvEnabled,
+                        onCheckedChange = { enabled ->
+                            isIptvEnabled = enabled
+                            settingsManager.setIptvEnabled(enabled)
+                        }
+                    )
+                }
+
+                AnimatedVisibility(visible = isIptvEnabled) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                        OutlinedTextField(
+                            value = iptvUrlInput,
+                            onValueChange = {
+                                iptvUrlInput = it
+                                settingsManager.setIptvPlaylistUrl(it)
+                            },
+                            label = { Text("M3U Playlist URL") },
+                            placeholder = { Text(SettingsManager.DEFAULT_IPTV_PLAYLIST_URL) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                if (iptvUrlInput != SettingsManager.DEFAULT_IPTV_PLAYLIST_URL) {
+                                    TextButton(onClick = {
+                                        settingsManager.resetIptvPlaylistUrl()
+                                        iptvUrlInput = SettingsManager.DEFAULT_IPTV_PLAYLIST_URL
+                                    }) {
+                                        Text("Reset", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
             }
 
