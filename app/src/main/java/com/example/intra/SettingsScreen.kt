@@ -167,7 +167,6 @@ fun SettingsScreen(
 
     // 📺 LIVE TV (IPTV) STATE
     var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
-    var iptvUrlInput by remember { mutableStateOf(settingsManager.getIptvPlaylistUrl()) }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -202,7 +201,6 @@ fun SettingsScreen(
     val view = LocalView.current
     val isDark = isSystemInDarkTheme()
     val backgroundColor = MaterialTheme.colorScheme.background
-    val primaryDarkColor = Color(0xFF512DA8) // Dark Purple (Aapka theme color)
 
     if (!view.isInEditMode) {
         SideEffect {
@@ -210,25 +208,14 @@ fun SettingsScreen(
             val insetsController = WindowCompat.getInsetsController(window, view)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                // ✅ CASE 1: Modern Android (6.0+)
-                // Sab kuch waisa hi chalega jaisa abhi F62 me chal raha hai
                 window.statusBarColor = backgroundColor.toArgb()
                 insetsController.isAppearanceLightStatusBars = !isDark
             } else {
-                // ⚠️ CASE 2: Old Android (Lollipop 5.0/5.1)
-                // Yahan hum icons Black nahi kar sakte.
-                // Isliye agar User Light mode mein hai, toh Status Bar ko Dark Color de do
-                // taaki White icons saaf dikhein.
-
                 if (!isDark) {
-                    // Light Mode me bhi Status bar Dark rakho (Black ya Dark Purple)
-                    window.statusBarColor = Color.Black.toArgb() // Ya primaryDarkColor.toArgb() use kar sakte ho
+                    window.statusBarColor = Color.Black.toArgb()
                 } else {
-                    // Dark mode me toh waise hi Dark hai
                     window.statusBarColor = backgroundColor.toArgb()
                 }
-                // Lollipop pe ye flag kaam nahi karta, isliye ise ignore karo
-                // insetsController.isAppearanceLightStatusBars = false
             }
         }
     }
@@ -257,21 +244,20 @@ fun SettingsScreen(
         ) {
 
             // ==========================================
-            // 1. PROFILE PHOTO (FIXED & POLISHED) ✅
+            // 1. PROFILE PHOTO
             // ==========================================
             Box(
-                contentAlignment = Alignment.BottomEnd, // Align Icon to bottom-right
+                contentAlignment = Alignment.BottomEnd,
                 modifier = Modifier
                     .padding(top = 10.dp, bottom = 24.dp)
-                    .size(130.dp) // Total size area
+                    .size(130.dp)
                     .clickable { photoPickerLauncher.launch("image/*") }
             ) {
-                // 1. The Main Image (Clipped inside Circle)
                 Box(
                     modifier = Modifier
-                        .matchParentSize() // Fill the 130dp
-                        .padding(4.dp) // Little gap for border effect
-                        .clip(CircleShape) // Clip ONLY the image
+                        .matchParentSize()
+                        .padding(4.dp)
+                        .clip(CircleShape)
                         .border(4.dp, MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
                 ) {
                     if (uploadedPhotoUri != null) {
@@ -306,12 +292,9 @@ fun SettingsScreen(
                     }
                 }
 
-                // 2. The Floating Camera Icon (OUTSIDE the clip) ✅
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        // No offset needed if alignment is BottomEnd, but let's nudge it slightly
-                        .offset(x = 0.dp, y = 0.dp)
                         .shadow(4.dp, CircleShape)
                         .background(MaterialTheme.colorScheme.primary, CircleShape)
                         .border(2.dp, MaterialTheme.colorScheme.background, CircleShape)
@@ -332,17 +315,16 @@ fun SettingsScreen(
             Spacer(Modifier.height(30.dp))
 
             // ==========================================
-            // 🔥 NEW: GENERAL SETTINGS (Background Service)
+            // 🔥 GENERAL SETTINGS
             // ==========================================
             CollapsibleSection(
                 title = "General",
                 icon = Icons.Default.Settings,
-                iconColor = Color(0xFF4CAF50), // 🟢 Green
-                isExpanded = expandedSection == SettingsSection.GENERAL, // Default open rakh sakte ho ya toggle
-                onToggle = { expandedSection = if (expandedSection == SettingsSection.GENERAL) SettingsSection.NONE else SettingsSection.GENERAL
-                    // Logic thoda adjust kar lena enum ke hisab se
-                }
+                iconColor = Color(0xFF4CAF50),
+                isExpanded = expandedSection == SettingsSection.GENERAL,
+                onToggle = { expandedSection = if (expandedSection == SettingsSection.GENERAL) SettingsSection.NONE else SettingsSection.GENERAL }
             ) {
+                // BACKGROUND SERVICE TOGGLE
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -365,14 +347,12 @@ fun SettingsScreen(
 
                             val serviceIntent = Intent(context, IntraBackgroundService::class.java)
                             if (enabled) {
-                                // Start Service
                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                                     context.startForegroundService(serviceIntent)
                                 } else {
                                     context.startService(serviceIntent)
                                 }
                             } else {
-                                // Stop Service
                                 context.stopService(serviceIntent)
                             }
                         }
@@ -456,36 +436,7 @@ fun SettingsScreen(
                         }
                     )
                 }
-
-                AnimatedVisibility(visible = isIptvEnabled) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                        OutlinedTextField(
-                            value = iptvUrlInput,
-                            onValueChange = {
-                                iptvUrlInput = it
-                                settingsManager.setIptvPlaylistUrl(it)
-                            },
-                            label = { Text("M3U Playlist URL") },
-                            placeholder = { Text(SettingsManager.DEFAULT_IPTV_PLAYLIST_URL) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            trailingIcon = {
-                                if (iptvUrlInput != SettingsManager.DEFAULT_IPTV_PLAYLIST_URL) {
-                                    TextButton(onClick = {
-                                        settingsManager.resetIptvPlaylistUrl()
-                                        iptvUrlInput = SettingsManager.DEFAULT_IPTV_PLAYLIST_URL
-                                    }) {
-                                        Text("Reset", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
             }
-
-            Spacer(Modifier.height(0.dp))
 
             // ==========================================
             // 2. CONNECTION
@@ -508,7 +459,7 @@ fun SettingsScreen(
             }
 
             // ==========================================
-            // 3. ACCOUNT (WITH SHAKE ANIMATION) 🔥
+            // 3. ACCOUNT
             // ==========================================
             CollapsibleSection(
                 title = "Account",
@@ -530,17 +481,14 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // 🔥 BUTTON WITH SHAKE
                 OutlinedButton(
                     onClick = {
                         scope.launch {
-                            // Shake Animation Logic (Left -> Right -> Center)
                             deleteButtonOffset.animateTo(-10f, animationSpec = tween(50))
                             deleteButtonOffset.animateTo(10f, animationSpec = tween(50))
                             deleteButtonOffset.animateTo(-5f, animationSpec = tween(50))
                             deleteButtonOffset.animateTo(5f, animationSpec = tween(50))
                             deleteButtonOffset.animateTo(0f, animationSpec = tween(50))
-                            // Open Dialog after shake
                             authViewModel.passwordInput.value = ""
                             authViewModel.clearError()
                             showDeleteDialog = true
@@ -551,7 +499,7 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset(x = deleteButtonOffset.value.dp) // 👈 Applying the Shake
+                        .offset(x = deleteButtonOffset.value.dp)
                 ) {
                     Icon(Icons.Outlined.Delete, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
