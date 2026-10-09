@@ -70,7 +70,7 @@ fun AboutScreen(
             )
 
             Text(
-                text = "v2.0.0 (Beta)",
+                text = "v3.0.0",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )
