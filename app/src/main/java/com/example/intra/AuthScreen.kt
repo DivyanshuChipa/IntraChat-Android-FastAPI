@@ -28,7 +28,13 @@ import android.app.Activity
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 import android.os.Build
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -51,10 +57,39 @@ fun AuthScreen(
     var isLogin by remember { mutableStateOf(true) }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // ⚙️ ADVANCED OPTIONS STATE
+    // ⚙️ ADVANCED OPTIONS & DISCOVERY STATE
     var showAdvanced by remember { mutableStateOf(false) }
     var ipInput by remember { mutableStateOf(settingsManager.getServerIp()) }
     var portInput by remember { mutableStateOf(settingsManager.getServerPort()) }
+
+    val coroutineScope = rememberCoroutineScope()
+    var isScanning by remember { mutableStateOf(false) }
+    var isServerOnline by remember { mutableStateOf<Boolean?>(null) }
+
+    fun triggerAutoScan() {
+        if (isScanning) return
+        isScanning = true
+        coroutineScope.launch {
+            val port = portInput.toIntOrNull() ?: 8000
+            val foundIp = ServerDiscoveryManager.scanForServer(
+                context = context,
+                port = port,
+                currentSavedIp = ipInput
+            )
+            if (foundIp != null) {
+                ipInput = foundIp
+                settingsManager.saveServerConfig(foundIp, portInput)
+                isServerOnline = true
+            } else {
+                isServerOnline = false
+            }
+            isScanning = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        triggerAutoScan()
+    }
 
     val isDark = isSystemInDarkTheme()
     val neonPurple = Color(0xFF7A00FF)
@@ -149,19 +184,124 @@ fun AuthScreen(
 
                 Spacer(Modifier.height(16.dp))
 
+                // 🌐 SERVER STATUS & AUTO-DETECT CARD
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable(enabled = !isScanning) { triggerAutoScan() },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDark) {
+                            when {
+                                isScanning -> Color(0xFF2C240A)
+                                isServerOnline == true -> Color(0xFF0D2818)
+                                else -> Color(0xFF2B1214)
+                            }
+                        } else {
+                            when {
+                                isScanning -> Color(0xFFFFF8E1)
+                                isServerOnline == true -> Color(0xFFE8F5E9)
+                                else -> Color(0xFFFFEBEE)
+                            }
+                        }
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        when {
+                            isScanning -> Color(0xFFFFB300).copy(alpha = 0.7f)
+                            isServerOnline == true -> Color(0xFF4CAF50).copy(alpha = 0.7f)
+                            else -> Color(0xFFE57373).copy(alpha = 0.7f)
+                        }
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (isScanning) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color(0xFFFFB300)
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .background(
+                                            if (isServerOnline == true) Color(0xFF4CAF50) else Color(0xFFE53935),
+                                            CircleShape
+                                        )
+                                        .clip(CircleShape)
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = when {
+                                        isScanning -> "Scanning Local Wi-Fi..."
+                                        isServerOnline == true -> "Server Connected"
+                                        else -> "Server Not Detected"
+                                    },
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = when {
+                                        isScanning -> Color(0xFFFFB300)
+                                        isServerOnline == true -> Color(0xFF4CAF50)
+                                        else -> Color(0xFFE53935)
+                                    }
+                                )
+                                Text(
+                                    text = when {
+                                        isScanning -> "Searching Intra on subnet..."
+                                        isServerOnline == true -> "$ipInput:$portInput"
+                                        else -> "Tap to scan or set in Advanced Options"
+                                    },
+                                    fontSize = 11.sp,
+                                    color = if (isDark) Color.LightGray else Color.DarkGray,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { triggerAutoScan() },
+                            enabled = !isScanning,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Scan Wi-Fi",
+                                tint = neonPurple,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
                 // ⚙️ ADVANCED OPTIONS TOGGLE
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showAdvanced = !showAdvanced }
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Advanced Options",
+                        "Advanced Options (Manual IP)",
                         color = neonPurple,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Icon(
@@ -212,7 +352,40 @@ fun AuthScreen(
                                 focusedLabelColor = neonPurple
                             )
                         )
-                        Spacer(Modifier.height(20.dp))
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { triggerAutoScan() },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                enabled = !isScanning
+                            ) {
+                                Icon(Icons.Filled.Refresh, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Auto Scan", fontSize = 12.sp)
+                            }
+                            Button(
+                                onClick = {
+                                    settingsManager.saveServerConfig(ipInput, portInput)
+                                    coroutineScope.launch {
+                                        val port = portInput.toIntOrNull() ?: 8000
+                                        isServerOnline = ServerDiscoveryManager.verifyIntraServer(ipInput, port)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = neonPurple)
+                            ) {
+                                Text("Save & Test", fontSize = 12.sp)
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
 

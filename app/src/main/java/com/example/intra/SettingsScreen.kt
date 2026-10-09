@@ -155,6 +155,8 @@ fun SettingsScreen(
     var ipInput by remember { mutableStateOf(settingsManager.getServerIp()) }
     var portInput by remember { mutableStateOf(settingsManager.getServerPort()) }
     var showSaveConfirm by remember { mutableStateOf(false) }
+    var isDetectingServer by remember { mutableStateOf(false) }
+    var detectStatusMessage by remember { mutableStateOf<String?>(null) }
 
     // 🔥 BACKGROUND SERVICE STATE
     var isBackgroundEnabled by remember { mutableStateOf(settingsManager.isBackgroundServiceEnabled()) }
@@ -452,8 +454,63 @@ fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(value = portInput, onValueChange = { portInput = it }, label = { Text("Port") }, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = { settingsManager.saveServerConfig(ipInput, portInput); showSaveConfirm = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                    Text("Save Configuration")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            if (!isDetectingServer) {
+                                isDetectingServer = true
+                                detectStatusMessage = null
+                                showSaveConfirm = false
+                                scope.launch {
+                                    val port = portInput.toIntOrNull() ?: 8000
+                                    val foundIp = ServerDiscoveryManager.scanForServer(context, port, currentSavedIp = ipInput)
+                                    if (foundIp != null) {
+                                        ipInput = foundIp
+                                        settingsManager.saveServerConfig(foundIp, portInput)
+                                        detectStatusMessage = "🟢 Server auto-detected: $foundIp"
+                                    } else {
+                                        detectStatusMessage = "❌ Server not found on Wi-Fi"
+                                    }
+                                    isDetectingServer = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isDetectingServer
+                    ) {
+                        if (isDetectingServer) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Auto Detect")
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            settingsManager.saveServerConfig(ipInput, portInput)
+                            showSaveConfirm = true
+                            detectStatusMessage = null
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Save Config")
+                    }
+                }
+
+                if (detectStatusMessage != null) {
+                    Text(
+                        text = detectStatusMessage ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 10.dp)
+                    )
                 }
                 AnimatedVisibility(showSaveConfirm) { Text("✅ Connection updated successfully", color = Color(0xFF4CAF50), modifier = Modifier.padding(top = 12.dp)) }
             }

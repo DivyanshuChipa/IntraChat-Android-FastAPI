@@ -170,6 +170,10 @@ async def handle_login(user: UserAuth):
             status_code=401,
             content={"success": False, "message": "Invalid credentials"},
         )
+@app.get("/api/ping")
+async def ping_server():
+    return {"status": "ok", "app": "intra_chat", "name": "Intra Server"}
+
 @app.get("/users")
 async def get_users_list():
     users = get_all_users()
