@@ -3,7 +3,7 @@ import os
 import time
 from fastapi import APIRouter, Depends
 from server import verify_admin
-from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location, get_environment_settings, set_environment_settings
+from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location, get_environment_settings, set_environment_settings, set_server_discovery, get_server_discovery
 from messages import cleanup_old_messages
 from chat import connected_clients   # 👈 SOURCE OF TRUTH
 
@@ -34,13 +34,27 @@ def admin_approve_user(username: str, admin=Depends(verify_admin)):
 # ✅ Get Settings
 @router.get("/settings")
 def admin_get_settings(admin=Depends(verify_admin)):
-    return {"success": True, "require_approval": get_require_approval()}
+    return {
+        "success": True,
+        "require_approval": get_require_approval(),
+        "discovery_enabled": get_server_discovery(),
+    }
 
-# ✅ Toggle Settings
+# ✅ Toggle Approval Setting
 @router.post("/toggle_approval")
 def admin_toggle_approval(enabled: bool, admin=Depends(verify_admin)):
     set_require_approval(enabled)
     return {"success": True, "message": "Settings updated"}
+
+# ✅ Toggle LAN Server Discovery Setting
+@router.post("/toggle_discovery")
+def admin_toggle_discovery(enabled: bool, admin=Depends(verify_admin)):
+    set_server_discovery(enabled)
+    return {
+        "success": True,
+        "message": f"Server discovery set to {'ON' if enabled else 'OFF (Stealth)'}",
+        "discovery_enabled": enabled,
+    }
 
 # ================= DELETE USER =================
 @router.post("/delete_user")

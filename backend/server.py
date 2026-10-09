@@ -18,7 +18,7 @@ from users import init_db, register_user, verify_user, get_admin_key_db, set_adm
 from messages import init_msg_db
 from users import get_all_users
 from messages import get_recent_messages
-from users import delete_user_data # 👈 Import the new function
+from users import delete_user_data, get_server_discovery # 👈 Import functions
 from fastapi.staticfiles import StaticFiles
 
 # ================= JWT CONFIG =================
@@ -172,6 +172,11 @@ async def handle_login(user: UserAuth):
         )
 @app.get("/api/ping")
 async def ping_server():
+    if not get_server_discovery():
+        raise HTTPException(
+            status_code=403,
+            detail="LAN Server auto-discovery is disabled by administrator (Stealth Mode).",
+        )
     return {"status": "ok", "app": "intra_chat", "name": "Intra Server"}
 
 @app.get("/users")

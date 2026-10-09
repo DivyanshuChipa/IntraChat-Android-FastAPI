@@ -467,6 +467,43 @@ class AdminWindow(QMainWindow):
         desc.setWordWrap(True)
         desc.setStyleSheet("color: #9399b2; font-size: 14px; line-height: 1.5;")
 
+        # Divider
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShadow(QFrame.Sunken)
+        sep.setStyleSheet("background-color: #313244; margin: 10px 0;")
+
+        # Discovery Toggle (Default OFF / Stealth)
+        self.chk_discovery = QCheckBox("Allow LAN Server Auto-Discovery (Android Apps)")
+        self.chk_discovery.setTristate(False)
+        self.chk_discovery.setChecked(False)
+        self.chk_discovery.setCursor(Qt.PointingHandCursor)
+        self.chk_discovery.setStyleSheet("""
+            QCheckBox {
+                font-size: 18px;
+                color: #cdd6f4;
+                font-weight: 500;
+            }
+            QCheckBox::indicator {
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                border: 2px solid #45475a;
+                background-color: #313244;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #89b4fa;
+                border-color: #89b4fa;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #89b4fa;
+            }
+        """)
+
+        desc_disc = QLabel("When enabled, Android apps on local Wi-Fi can automatically detect this server. When disabled (Stealth Mode), users must manually type the server IP and port.")
+        desc_disc.setWordWrap(True)
+        desc_disc.setStyleSheet("color: #9399b2; font-size: 14px; line-height: 1.5;")
+
         # Status Label for feedback
         self.settings_status = QLabel("")
         self.settings_status.setStyleSheet("font-weight: bold; font-size: 14px;")
@@ -494,7 +531,10 @@ class AdminWindow(QMainWindow):
 
         card_layout.addWidget(self.chk_approval)
         card_layout.addWidget(desc)
-        card_layout.addSpacing(10)
+        card_layout.addWidget(sep)
+        card_layout.addWidget(self.chk_discovery)
+        card_layout.addWidget(desc_disc)
+        card_layout.addSpacing(15)
         card_layout.addWidget(self.settings_status)
         card_layout.addWidget(save_btn)
 
@@ -510,8 +550,12 @@ class AdminWindow(QMainWindow):
             data = res.json()
             if data["success"]:
                 self.chk_approval.blockSignals(True)
-                self.chk_approval.setChecked(bool(data["require_approval"]))
+                self.chk_approval.setChecked(bool(data.get("require_approval", False)))
                 self.chk_approval.blockSignals(False)
+
+                self.chk_discovery.blockSignals(True)
+                self.chk_discovery.setChecked(bool(data.get("discovery_enabled", False)))
+                self.chk_discovery.blockSignals(False)
         except Exception as e:
             print("load_settings error:", e)
 
@@ -520,17 +564,24 @@ class AdminWindow(QMainWindow):
             self.settings_status.setText("Saving...")
             self.settings_status.setStyleSheet("color: #89b4fa;")
 
-            val = self.chk_approval.isChecked()
-            res = requests.post(f"{self.server_url}/admin/toggle_approval",
+            val_appr = self.chk_approval.isChecked()
+            val_disc = self.chk_discovery.isChecked()
+
+            res1 = requests.post(f"{self.server_url}/admin/toggle_approval",
                               headers=self.headers,
-                              params={"enabled": val},
+                              params={"enabled": val_appr},
                               timeout=3)
 
-            if res.status_code == 200:
+            res2 = requests.post(f"{self.server_url}/admin/toggle_discovery",
+                              headers=self.headers,
+                              params={"enabled": val_disc},
+                              timeout=3)
+
+            if res1.status_code == 200 and res2.status_code == 200:
                 self.settings_status.setText("✅ Settings Saved Successfully!")
                 self.settings_status.setStyleSheet("color: #a6e3a1;")
             else:
-                raise Exception(f"Server error: {res.status_code}")
+                raise Exception(f"Server error: {res1.status_code}/{res2.status_code}")
         except Exception as e:
             self.settings_status.setText(f"❌ Error: {str(e)}")
             self.settings_status.setStyleSheet("color: #f38ba8;")

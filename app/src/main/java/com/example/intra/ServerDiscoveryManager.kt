@@ -79,10 +79,10 @@ object ServerDiscoveryManager {
     }
 
     /**
-     * Verifies that the endpoint responding on port is indeed the Intra FastAPI server.
+     * Verifies that the endpoint responding on port is indeed the Intra FastAPI server
+     * AND that LAN Discovery is enabled by the administrator.
      */
     suspend fun verifyIntraServer(ip: String, port: Int): Boolean = withContext(Dispatchers.IO) {
-        // First try /api/ping
         try {
             val pingRequest = Request.Builder()
                 .url("http://$ip:$port/api/ping")
@@ -91,21 +91,10 @@ object ServerDiscoveryManager {
             probeClient.newCall(pingRequest).execute().use { response ->
                 if (response.isSuccessful) {
                     val body = response.body?.string() ?: ""
-                    if (body.contains("intra") || body.contains("Intra Server")) {
-                        return@withContext true
-                    }
+                    return@withContext body.contains("intra") || body.contains("Intra Server")
                 }
-            }
-        } catch (_: Exception) {}
-
-        // Fallback: try /users or root
-        try {
-            val fallbackRequest = Request.Builder()
-                .url("http://$ip:$port/users")
-                .get()
-                .build()
-            probeClient.newCall(fallbackRequest).execute().use { response ->
-                return@withContext response.isSuccessful || response.code == 401 || response.code == 403
+                // HTTP 403 means Admin explicitly disabled LAN discovery (Stealth Mode)
+                return@withContext false
             }
         } catch (_: Exception) {}
 
@@ -116,14 +105,14 @@ object ServerDiscoveryManager {
      * Scans the local network subnet for the Intra Chat Server.
      * 1. Checks currently saved IP first (instant cache hit).
      * 2. If not reachable, scans 1..254 in parallel coroutines like SmbHelper.
-     * 3. Verifies candidate hosts and returns discovered IP.
+     * 3. Verifies candidate hosts and returns discovered IP (only when discovery is allowed by admin).
      */
     suspend fun scanForServer(
         context: Context,
         port: Int = 8000,
         currentSavedIp: String? = null
     ): String? = withContext(Dispatchers.IO) {
-        // Step 1: Quick check if currently saved IP is already up and running
+        // Step 1: Quick check if currently saved IP is already up, running, and discovery allowed
         if (!currentSavedIp.isNullOrBlank() && currentSavedIp != "127.0.0.1") {
             if (isPortOpen(currentSavedIp, port, timeoutMs = 250) && verifyIntraServer(currentSavedIp, port)) {
                 Log.d(TAG, "Current saved IP $currentSavedIp is active and verified.")
@@ -151,17 +140,12 @@ object ServerDiscoveryManager {
 
         Log.d(TAG, "Open port $port candidates: $openIps")
 
-        // Step 4: Verify candidate IPs
+        // Step 4: Verify candidate IPs (Requires /api/ping 200 OK from server)
         for (ip in openIps) {
             if (verifyIntraServer(ip, port)) {
                 Log.d(TAG, "Found & verified Intra server at: $ip:$port")
                 return@withContext ip
             }
-        }
-
-        // If only 1 host has port open on LAN, return it as the most likely server
-        if (openIps.size == 1) {
-            return@withContext openIps.first()
         }
 
         null

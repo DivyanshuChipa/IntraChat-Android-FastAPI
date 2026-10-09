@@ -33,6 +33,9 @@ def init_db():
     cursor.execute(
         "INSERT OR IGNORE INTO config (key, value) VALUES ('require_approval', '0')"
     )
+    cursor.execute(
+        "INSERT OR IGNORE INTO config (key, value) VALUES ('discovery_enabled', '0')"
+    )
 
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_approved INTEGER DEFAULT 1")
@@ -162,6 +165,28 @@ def get_require_approval():
     cursor.execute("SELECT value FROM config WHERE key='require_approval'")
     row = cursor.fetchone()
     conn.close()
+    return row[0] == "1" if row else False
+
+
+def set_server_discovery(enabled: bool):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    val = "1" if enabled else "0"
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('discovery_enabled', ?)",
+        (val,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_server_discovery() -> bool:
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM config WHERE key='discovery_enabled'")
+    row = cursor.fetchone()
+    conn.close()
+    # Default is False (OFF) as requested
     return row[0] == "1" if row else False
 
 
