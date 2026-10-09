@@ -18,6 +18,9 @@ class SettingsManager(context: Context) {
         const val KEY_BACKGROUND_SERVICE = "background_service_enabled" // ✅ NEW KEY
         const val KEY_SHOW_LUMIR = "show_lumir_assistant" // 🤖 NEW KEY
         const val KEY_LOCATION_ENABLED = "location_services_enabled" // 📍 NEW KEY
+        const val KEY_IPTV_ENABLED = "iptv_hub_enabled" // 📺 IPTV KEY
+        const val KEY_IPTV_PLAYLIST_URL = "iptv_playlist_url"
+        const val DEFAULT_IPTV_PLAYLIST_URL = "https://iptv-org.github.io/iptv/countries/in.m3u"
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -101,5 +104,26 @@ class SettingsManager(context: Context) {
 
     fun setLocationEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_LOCATION_ENABLED, enabled).apply()
+    }
+
+    // 📺 LIVE TV (IPTV HUB)
+    fun isIptvEnabled(): Boolean {
+        return prefs.getBoolean(KEY_IPTV_ENABLED, false) // Default OFF
+    }
+
+    fun setIptvEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_IPTV_ENABLED, enabled).apply()
+    }
+
+    fun getIptvPlaylistUrl(): String {
+        return prefs.getString(KEY_IPTV_PLAYLIST_URL, DEFAULT_IPTV_PLAYLIST_URL) ?: DEFAULT_IPTV_PLAYLIST_URL
+    }
+
+    fun setIptvPlaylistUrl(url: String) {
+        prefs.edit().putString(KEY_IPTV_PLAYLIST_URL, url.trim()).apply()
+    }
+
+    fun resetIptvPlaylistUrl() {
+        prefs.edit().putString(KEY_IPTV_PLAYLIST_URL, DEFAULT_IPTV_PLAYLIST_URL).apply()
     }
 }

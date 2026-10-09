@@ -158,6 +158,7 @@ class MainActivity : ComponentActivity() {
                     var showAbout by rememberSaveable { mutableStateOf(false) }
                     var showSmbBrowser by rememberSaveable { mutableStateOf(false) }
                     var showIntraHome by rememberSaveable { mutableStateOf(false) }
+                    var showIptv by rememberSaveable { mutableStateOf(false) }
                     var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
 
                     LaunchedEffect(callViewModel.isRinging.value) {
@@ -248,6 +249,8 @@ class MainActivity : ComponentActivity() {
                             showSmbBrowser -> SmbBrowserScreen(onBack = { showSmbBrowser = false })
 
                             showIntraHome -> IntraHomeScreen(onBack = { showIntraHome = false })
+
+                            showIptv -> IptvScreen(onBack = { showIptv = false })
 
                             showSettings -> SettingsScreen(
                                 onLogoutConfirmed = {
@@ -362,7 +365,8 @@ class MainActivity : ComponentActivity() {
                                 onChatClick = { currentChatReceiver = it },
                                 onSettingsClick = { showSettings = true },
                                 onSmbClick = { showSmbBrowser = true },
-                                onIntraHomeClick = { showIntraHome = true }
+                                onIntraHomeClick = { showIntraHome = true },
+                                onIptvClick = { showIptv = true }
                             )
                         }
                     }

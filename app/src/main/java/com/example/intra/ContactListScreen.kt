@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -59,15 +60,18 @@ fun ContactListScreen(
     onChatClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onSmbClick: () -> Unit,
-    onIntraHomeClick: () -> Unit
+    onIntraHomeClick: () -> Unit,
+    onIptvClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
 
-    // Refresh Lumir state whenever screen appears
+    // Refresh Lumir and IPTV states whenever screen appears
     var showLumir by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
+    var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()
+        isIptvEnabled = settingsManager.isIptvEnabled()
     }
 
     val contactViewModel: ContactViewModel = viewModel()
@@ -128,13 +132,26 @@ fun ContactListScreen(
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 1. Placeholder (Reserved)
-                                IconButton(onClick = {}) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Person,
-                                        contentDescription = "Placeholder",
-                                        tint = topBarTextColor.copy(alpha = 0.4f)
-                                    )
+                                // 1. Live TV Icon (if enabled) or Placeholder
+                                if (isIptvEnabled) {
+                                    IconButton(onClick = {
+                                        isHubExpanded = false
+                                        onIptvClick()
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Tv,
+                                            contentDescription = "Live TV",
+                                            tint = topBarTextColor
+                                        )
+                                    }
+                                } else {
+                                    IconButton(onClick = {}) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Person,
+                                            contentDescription = "Placeholder",
+                                            tint = topBarTextColor.copy(alpha = 0.4f)
+                                        )
+                                    }
                                 }
                                 // 2. SMB Browser Icon
                                 IconButton(onClick = {
