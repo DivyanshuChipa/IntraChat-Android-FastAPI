@@ -24,7 +24,9 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,8 +65,8 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
 
                 // Configure WebSockets
                 install(WebSockets) {
-                    pingPeriod = java.time.Duration.ofSeconds(15)
-                    timeout = java.time.Duration.ofSeconds(30)
+                    pingPeriodMillis = 15000L
+                    timeoutMillis = 30000L
                     maxFrameSize = Long.MAX_VALUE
                     masking = false
                 }
@@ -334,7 +336,7 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                     webSocket("/ws/chat/{username}") {
                         val username = call.parameters["username"]?.trim() ?: ""
                         if (username.isEmpty()) {
-                            close()
+                            close(CloseReason(CloseReason.Codes.NORMAL, "Username required"))
                             return@webSocket
                         }
 
@@ -375,7 +377,7 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
         when (type) {
             "message" -> {
                 val content = json.optString("content", "")
-                val mediaUrl = json.optString("media_url", null)
+                val mediaUrl = if (json.has("media_url") && !json.isNull("media_url")) json.optString("media_url") else null
                 val timestamp = json.optString("timestamp", "")
 
                 // Save to database

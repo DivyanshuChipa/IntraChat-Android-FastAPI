@@ -1,7 +1,8 @@
 package com.example.intraserver.server
 
-import io.ktor.websocket.DefaultWebSocketServerSession
+import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
+import io.ktor.websocket.send
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
