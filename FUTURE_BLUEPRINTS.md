@@ -38,6 +38,23 @@ Instead of hardcoding every utility into Lumir, introduce a modular "Addon" syst
 - **The Upgrade:** Introduce a background worker (Summarizer). It periodically reads older chats, condenses them into solid, summarized facts (e.g., "User bought a new bike in Jan 2024"), and updates ChromaDB.
 - **Benefit:** Gives Lumir a much sharper long-term memory without overloading the LLM's prompt window with raw, unstructured past conversations.
 
+### 4. Cognitive Memory Architecture (Ebbinghaus Decay, Associative Graph & Personality Curves)
+- **Concept:** Human beings do not remember everything equally forever. Instead of static database rows, Lumir's mind simulates human neuro-cognitive memory retention and emotional dynamics.
+- **Key Mechanics:**
+  1. **Ebbinghaus Forgetting Curve (Memory Decay):**
+     - Each memory has an `importance_weight` (1-10) and timestamp.
+     - Casual banter ("I had pasta for lunch") decays naturally over days ($R = e^{-t / S}$).
+     - Core facts (birthdays, health, key personal goals, passwords/preferences) have near-zero decay.
+  2. **Spaced Reinforcement (Memory Crystallization):**
+     - Every time a user mentions a topic or Lumir recalls it, the memory's `reinforcement_count` increments (+1).
+     - Frequently referenced details permanently crystallize into long-term identity nodes.
+  3. **Associative Connectome Graph (Brain-Scan Concept Linking):**
+     - Memories are interconnected like synapses: e.g., `Chai ➔ Evening ➔ Divya's Favorite ➔ Ginger`.
+     - When a topic arises, related nodes light up automatically, allowing Lumir to make organic, proactive connections ("It's evening, did you brew your usual ginger tea, Divya?").
+  4. **Dynamic Personality Bell Curve (Mood & Energy Arc):**
+     - Rather than acting as a static text-generator, Lumir maintains an internal emotional state (e.g., Playful, Reflective, Caring, Focused) that moves along a bell curve based on conversation tone and time of day.
+- **Why It's Great:** Transforms Lumir from a generic assistant into a truly personal, living digital companion who feels genuinely human.
+
 ---
 
 ## 📱 Intra Portable Node: Embedded Phone Server ("Host as Server Mode")
