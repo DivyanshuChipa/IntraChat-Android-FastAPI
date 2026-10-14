@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object ConnectionManager {
 
-    private val sessions = ConcurrentHashMap<String, DefaultWebSocketServerSession>()
+    private val sessions = ConcurrentHashMap<String, MutableSet<DefaultWebSocketServerSession>>()
     private val mutex = Mutex()
 
     // Live log listener for Dashboard UI
@@ -26,9 +26,10 @@ object ConnectionManager {
     suspend fun connect(username: String, session: DefaultWebSocketServerSession) {
         val cleanUser = username.trim()
         mutex.withLock {
-            sessions[cleanUser] = session
+            val userSessions = sessions.getOrPut(cleanUser) { ConcurrentHashMap.newKeySet() }
+            userSessions.add(session)
         }
-        log("👤 User '$cleanUser' connected (Total online: ${sessions.size})")
+        log("👤 User '$cleanUser' connected (Total users online: ${sessions.size})")
 
         // Broadcast presence
         val presence = JSONObject().apply {
@@ -37,49 +38,73 @@ object ConnectionManager {
             put("status", "online")
         }.toString()
 
-        broadcast(presence, exclude = cleanUser)
+        broadcast(presence, excludeUser = cleanUser)
     }
 
-    suspend fun disconnect(username: String) {
+    suspend fun disconnect(username: String, session: DefaultWebSocketServerSession) {
         val cleanUser = username.trim()
+        var userFullyOffline = false
         mutex.withLock {
-            sessions.remove(cleanUser)
+            val userSessions = sessions[cleanUser]
+            if (userSessions != null) {
+                userSessions.remove(session)
+                if (userSessions.isEmpty()) {
+                    sessions.remove(cleanUser)
+                    userFullyOffline = true
+                }
+            }
         }
-        log("👋 User '$cleanUser' disconnected (Total online: ${sessions.size})")
+        log("👋 User '$cleanUser' disconnected (Total users online: ${sessions.size})")
 
-        // Broadcast presence
-        val presence = JSONObject().apply {
-            put("type", "user_status")
-            put("username", cleanUser)
-            put("status", "offline")
-        }.toString()
+        if (userFullyOffline) {
+            val presence = JSONObject().apply {
+                put("type", "user_status")
+                put("username", cleanUser)
+                put("status", "offline")
+            }.toString()
 
-        broadcast(presence, exclude = cleanUser)
-    }
-
-    suspend fun sendToUser(username: String, messageText: String): Boolean {
-        val session = sessions[username.trim()] ?: return false
-        return try {
-            session.send(Frame.Text(messageText))
-            true
-        } catch (e: Exception) {
-            log("⚠️ Failed to send message to '$username': ${e.message}")
-            false
+            broadcast(presence, excludeUser = cleanUser)
         }
     }
 
-    suspend fun broadcast(messageText: String, exclude: String? = null) {
-        sessions.forEach { (user, session) ->
-            if (exclude == null || !user.equals(exclude, ignoreCase = true)) {
-                try {
-                    session.send(Frame.Text(messageText))
-                } catch (_: Exception) {}
+    private fun findSessionsForUser(username: String): MutableSet<DefaultWebSocketServerSession>? {
+        val clean = username.trim()
+        val exact = sessions[clean]
+        if (exact != null) return exact
+        return sessions.entries.firstOrNull { it.key.equals(clean, ignoreCase = true) }?.value
+    }
+
+    suspend fun sendToUser(username: String, messageText: String, excludeSession: DefaultWebSocketServerSession? = null): Boolean {
+        val userSessions = findSessionsForUser(username) ?: return false
+        var sentCount = 0
+        for (session in userSessions) {
+            if (session == excludeSession) continue
+            try {
+                session.send(Frame.Text(messageText))
+                sentCount++
+            } catch (e: Exception) {
+                log("⚠️ Failed to send to '$username': ${e.message}")
+            }
+        }
+        return sentCount > 0
+    }
+
+    suspend fun broadcast(messageText: String, excludeUser: String? = null, excludeSession: DefaultWebSocketServerSession? = null) {
+        sessions.forEach { (user, userSessions) ->
+            if (excludeUser == null || !user.equals(excludeUser, ignoreCase = true)) {
+                for (session in userSessions) {
+                    if (session == excludeSession) continue
+                    try {
+                        session.send(Frame.Text(messageText))
+                    } catch (_: Exception) {}
+                }
             }
         }
     }
 
     fun isUserOnline(username: String): Boolean {
-        return sessions.containsKey(username.trim())
+        val clean = username.trim()
+        return sessions.keys.any { it.equals(clean, ignoreCase = true) }
     }
 
     fun getOnlineUsers(): Set<String> {

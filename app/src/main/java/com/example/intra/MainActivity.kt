@@ -99,16 +99,27 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(Unit) {
-                        val settings = SettingsManager(this@MainActivity)
-                        if (settings.isBackgroundServiceEnabled() && !WsManager.isConnected) {
-                            val serviceIntent = Intent(this@MainActivity, IntraBackgroundService::class.java)
-                            try {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                                    startForegroundService(serviceIntent)
-                                else startService(serviceIntent)
-                            } catch (e: Exception) {
-                                Log.e("MAIN", "Safe service start failed", e)
+                    val isAuthenticated by authViewModel.isAuthenticated
+
+                    LaunchedEffect(isAuthenticated) {
+                        if (isAuthenticated && !WsManager.isConnected) {
+                            val settings = SettingsManager(this@MainActivity)
+                            val user = settings.getUsername()
+                            if (!user.isNullOrEmpty()) {
+                                if (settings.isBackgroundServiceEnabled()) {
+                                    val serviceIntent = Intent(this@MainActivity, IntraBackgroundService::class.java)
+                                    try {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                                            startForegroundService(serviceIntent)
+                                        else startService(serviceIntent)
+                                    } catch (e: Exception) {
+                                        Log.e("MAIN", "Safe service start failed, falling back to direct connect", e)
+                                        WsManager.connect(this@MainActivity, user)
+                                    }
+                                } else {
+                                    Log.d("MAIN", "Connecting WebSocket directly (background service off)")
+                                    WsManager.connect(this@MainActivity, user)
+                                }
                             }
                         }
                     }
@@ -152,8 +163,6 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-
-                    val isAuthenticated by authViewModel.isAuthenticated
                     var showSettings by rememberSaveable { mutableStateOf(false) }
                     var showAbout by rememberSaveable { mutableStateOf(false) }
                     var showSmbBrowser by rememberSaveable { mutableStateOf(false) }
@@ -255,6 +264,9 @@ class MainActivity : ComponentActivity() {
                             showSettings -> SettingsScreen(
                                 onLogoutConfirmed = {
                                     authViewModel.logout()
+                                    WsManager.disconnect()
+                                    val serviceIntent = Intent(this@MainActivity, IntraBackgroundService::class.java)
+                                    stopService(serviceIntent)
                                     showSettings = false
                                     currentChatReceiver = null
                                 },

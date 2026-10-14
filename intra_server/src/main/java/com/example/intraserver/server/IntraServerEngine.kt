@@ -163,8 +163,9 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         val users = db.getAllUsers()
                         val usersArray = JSONArray()
 
-                        for (u in users) {
+                        for ((index, u) in users.withIndex()) {
                             val userObj = JSONObject().apply {
+                                put("id", index + 1)
                                 put("username", u.username)
                                 put("profile_photo", u.profilePhoto)
                                 put("created_at", u.createdAt)
@@ -333,27 +334,73 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                     }
 
                     // 10. WebSockets: Real-time Chat, Presence, and WebRTC Calling
+                    suspend fun io.ktor.server.websocket.DefaultWebSocketServerSession.handleClientSession(username: String) {
+                        ConnectionManager.connect(username, this)
+
+                        // Send connection status confirmation immediately
+                        send(Frame.Text(JSONObject().apply {
+                            put("type", "status")
+                            put("text", "Connected")
+                            put("user", username)
+                        }.toString()))
+
+                        // Deliver pending offline messages
+                        try {
+                            val pending = db.getUndeliveredMessages(username)
+                            if (pending.isNotEmpty()) {
+                                ConnectionManager.log("📬 Delivering ${pending.size} offline messages to '$username'")
+                                for (msg in pending) {
+                                    val offlineData = JSONObject().apply {
+                                        put("type", if (!msg.mediaUrl.isNullOrEmpty()) "file" else "text")
+                                        put("text", msg.content)
+                                        put("sender", msg.sender)
+                                        put("receiver", msg.receiver)
+                                        put("timestamp", msg.timestamp.toLongOrNull() ?: System.currentTimeMillis())
+                                        if (!msg.mediaUrl.isNullOrEmpty()) {
+                                            put("url", msg.mediaUrl)
+                                            put("filename", msg.mediaUrl.substringAfterLast("/"))
+                                        }
+                                    }
+                                    send(Frame.Text(offlineData.toString()))
+                                    db.markMessageAsRead(msg.id)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            ConnectionManager.log("⚠️ Offline message delivery error for '$username': ${e.message}")
+                        }
+
+                        try {
+                            for (frame in incoming) {
+                                if (frame is Frame.Text) {
+                                    val text = frame.readText()
+                                    handleWebSocketMessage(username, text, this)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            ConnectionManager.log("⚠️ WebSocket error on '$username': ${e.message}")
+                        } finally {
+                            ConnectionManager.disconnect(username, this)
+                        }
+                    }
+
+                    // Primary endpoint used by IntraChat Android app
+                    webSocket("/ws/{username}") {
+                        val username = call.parameters["username"]?.trim() ?: ""
+                        if (username.isEmpty()) {
+                            close(CloseReason(CloseReason.Codes.NORMAL, "Username required"))
+                            return@webSocket
+                        }
+                        handleClientSession(username)
+                    }
+
+                    // Alias endpoint
                     webSocket("/ws/chat/{username}") {
                         val username = call.parameters["username"]?.trim() ?: ""
                         if (username.isEmpty()) {
                             close(CloseReason(CloseReason.Codes.NORMAL, "Username required"))
                             return@webSocket
                         }
-
-                        ConnectionManager.connect(username, this)
-
-                        try {
-                            for (frame in incoming) {
-                                if (frame is Frame.Text) {
-                                    val text = frame.readText()
-                                    handleWebSocketMessage(username, text)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            ConnectionManager.log("⚠️ WebSocket error on '$username': ${e.message}")
-                        } finally {
-                            ConnectionManager.disconnect(username)
-                        }
+                        handleClientSession(username)
                     }
                 }
             }
@@ -369,57 +416,71 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
         }
     }
 
-    private suspend fun handleWebSocketMessage(sender: String, rawMessage: String) {
-        val json = try { JSONObject(rawMessage) } catch (e: Exception) { return }
-        val type = json.optString("type", "message")
-        val receiver = json.optString("receiver", "").trim()
+    private suspend fun handleWebSocketMessage(
+        sender: String,
+        rawMessage: String,
+        currentSession: io.ktor.server.websocket.DefaultWebSocketServerSession
+    ) {
+        val parsed = try { JSONObject(rawMessage) } catch (e: Exception) { return }
+        val type = parsed.optString("type", "text")
+        parsed.put("sender", sender)
+        if (!parsed.has("timestamp") || parsed.optLong("timestamp", 0L) == 0L) {
+            parsed.put("timestamp", System.currentTimeMillis())
+        }
+        val receiver = parsed.optString("receiver", "").trim()
+        val finalRaw = parsed.toString()
 
         when (type) {
-            "message" -> {
-                val content = json.optString("content", "")
-                val mediaUrl = if (json.has("media_url") && !json.isNull("media_url")) json.optString("media_url") else null
-                val timestamp = json.optString("timestamp", "")
-
-                // Save to database
-                db.saveMessage(sender, receiver, content, mediaUrl, timestamp)
-                ConnectionManager.log("💬 Message from '$sender' -> '$receiver': ${content.take(30)}")
-
-                // Forward to receiver if online
-                if (receiver.isNotEmpty()) {
-                    ConnectionManager.sendToUser(receiver, rawMessage)
-                }
-            }
-
             "typing" -> {
                 // Forward typing indicator directly to receiver
                 if (receiver.isNotEmpty()) {
-                    ConnectionManager.sendToUser(receiver, rawMessage)
+                    ConnectionManager.log("⌨️ Typing indicator: '$sender' -> '$receiver'")
+                    ConnectionManager.sendToUser(receiver, finalRaw, excludeSession = currentSession)
                 }
             }
 
             // WebRTC Call Signaling (call_request, call_accepted, call_rejected, ice_candidate, call_ended)
-            "call_request", "call_accepted", "call_rejected", "call_ended", "ice_candidate", "call_busy" -> {
+            "call_request", "call_accepted", "call_rejected", "call_ended", "ice_candidate", "call_busy", "webrtc_offer", "webrtc_answer" -> {
                 ConnectionManager.log("📞 WebRTC Signal ($type) from '$sender' -> '$receiver'")
                 if (receiver.isNotEmpty()) {
-                    val delivered = ConnectionManager.sendToUser(receiver, rawMessage)
+                    val delivered = ConnectionManager.sendToUser(receiver, finalRaw, excludeSession = currentSession)
                     if (!delivered && type == "call_request") {
-                        // Notify sender that receiver is offline
                         val offlineRes = JSONObject().apply {
                             put("type", "call_rejected")
                             put("sender", receiver)
                             put("receiver", sender)
                             put("reason", "offline")
                         }.toString()
-                        ConnectionManager.sendToUser(sender, offlineRes)
+                        currentSession.send(Frame.Text(offlineRes))
                     }
                 }
             }
 
             else -> {
-                // Forward any other message types to receiver
-                if (receiver.isNotEmpty()) {
-                    ConnectionManager.sendToUser(receiver, rawMessage)
+                // Text or File message
+                val textContent = if (parsed.has("text")) parsed.optString("text") else parsed.optString("content", "")
+                val fileUrl = if (parsed.has("url") && !parsed.isNull("url")) parsed.optString("url")
+                              else if (parsed.has("file_url") && !parsed.isNull("file_url")) parsed.optString("file_url")
+                              else null
+                val fileName = if (parsed.has("filename") && !parsed.isNull("filename")) parsed.optString("filename") else null
+                val ts = parsed.optLong("timestamp", System.currentTimeMillis()).toString()
+
+                // Save to database
+                val msgId = db.saveMessage(sender, receiver, textContent, fileUrl, ts)
+                ConnectionManager.log("💬 Message ($type) '$sender' -> '$receiver': ${textContent.take(30)}")
+
+                if (receiver == "Family Group") {
+                    // Broadcast to all users
+                    ConnectionManager.broadcast(finalRaw, excludeSession = currentSession)
+                } else if (receiver.isNotEmpty()) {
+                    // Send to receiver
+                    val delivered = ConnectionManager.sendToUser(receiver, finalRaw)
+                    if (delivered) {
+                        db.markMessageAsRead(msgId)
+                    }
                 }
+                // Sync back to sender's other sessions if any
+                ConnectionManager.sendToUser(sender, finalRaw, excludeSession = currentSession)
             }
         }
     }

@@ -229,4 +229,40 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
         return list.reversed()
     }
+
+    @Synchronized
+    fun getUndeliveredMessages(username: String): List<ServerMessage> {
+        val list = mutableListOf<ServerMessage>()
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_MESSAGES,
+            arrayOf("id", "sender", "receiver", "content", "media_url", "timestamp", "is_read"),
+            "LOWER(receiver) = LOWER(?) AND is_read = 0",
+            arrayOf(username.trim()),
+            null, null, "id ASC", "50"
+        )
+        cursor.use {
+            while (it.moveToNext()) {
+                list.add(
+                    ServerMessage(
+                        id = it.getLong(0),
+                        sender = it.getString(1),
+                        receiver = it.getString(2),
+                        content = it.getString(3),
+                        mediaUrl = it.getString(4),
+                        timestamp = it.getString(5),
+                        isRead = it.getInt(6) == 1
+                    )
+                )
+            }
+        }
+        return list
+    }
+
+    @Synchronized
+    fun markMessageAsRead(id: Long) {
+        val db = writableDatabase
+        val values = ContentValues().apply { put("is_read", 1) }
+        db.update(TABLE_MESSAGES, values, "id = ?", arrayOf(id.toString()))
+    }
 }
