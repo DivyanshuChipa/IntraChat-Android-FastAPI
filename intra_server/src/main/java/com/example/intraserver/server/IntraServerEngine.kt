@@ -17,6 +17,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.request.receiveText
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondFile
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -359,33 +360,60 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         }
                     }
 
-                    // 9. Root Welcome Page
+                    // ==============================================================
+                    // 9. EMBEDDED WEB CLIENT (Laptop/PC Browser Support)
+                    // ==============================================================
+                    // Ye helper function Android app ke 'assets/web/' folder se web files serve karta hai:
+                    // Laptop ya desktop par bina kisi app ke seedha browser se chat chalegi!
+                    suspend fun serveWebAsset(call: io.ktor.server.application.ApplicationCall, path: String) {
+                        val assetPath = "web/$path"
+                        try {
+                            val bytes = context.assets.open(assetPath).use { it.readBytes() }
+                            val contentType = when {
+                                path.endsWith(".html") -> ContentType.Text.Html
+                                path.endsWith(".css") -> ContentType.Text.CSS
+                                path.endsWith(".js") -> ContentType.Application.JavaScript
+                                path.endsWith(".svg") -> ContentType.Image.SVG
+                                path.endsWith(".png") -> ContentType.Image.PNG
+                                path.endsWith(".jpg") || path.endsWith(".jpeg") -> ContentType.Image.JPEG
+                                path.endsWith(".json") -> ContentType.Application.Json
+                                else -> ContentType.Application.OctetStream
+                            }
+                            call.respondBytes(bytes, contentType)
+                        } catch (_: Exception) {
+                            call.respondText("404: Not Found", status = HttpStatusCode.NotFound)
+                        }
+                    }
+
+                    // Root: Laptop browser me http://<ip>:8000/ kholte hi Login page load hoga!
                     get("/") {
-                        val html = """
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <meta name="viewport" content="width=device-width, initial-scale=1">
-                                <title>IntraServer</title>
-                                <style>
-                                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-                                    .card { background: #1e293b; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); text-align: center; max-width: 400px; }
-                                    h1 { color: #818cf8; margin-bottom: 0.5rem; }
-                                    .badge { background: #10b981; color: white; padding: 4px 12px; border-radius: 9999px; font-size: 0.875rem; font-weight: bold; display: inline-block; margin-bottom: 1rem; }
-                                    p { color: #94a3b8; line-height: 1.5; }
-                                </style>
-                            </head>
-                            <body>
-                                <div class="card">
-                                    <h1>⚡ IntraServer</h1>
-                                    <div class="badge">ONLINE (Android)</div>
-                                    <p>Intra Local LAN Chat & Media Server is running actively on this device.</p>
-                                    <p>Connect using the Intra Android app by setting Server IP to this device's address.</p>
-                                </div>
-                            </body>
-                            </html>
-                        """.trimIndent()
-                        call.respondText(html, ContentType.Text.Html)
+                        serveWebAsset(call, "index.html")
+                    }
+
+                    get("/index.html") {
+                        serveWebAsset(call, "index.html")
+                    }
+
+                    // Main chat room page
+                    get("/chat.html") {
+                        serveWebAsset(call, "chat.html")
+                    }
+
+                    // Web Client logic script
+                    get("/app.js") {
+                        serveWebAsset(call, "app.js")
+                    }
+
+                    // Web Client stylesheet
+                    get("/style.css") {
+                        serveWebAsset(call, "style.css")
+                    }
+
+                    // Web icons & SVGs (assets/family_group.svg, assets/lumir5.svg, etc.)
+                    get("/assets/{path...}") {
+                        val pathSegments = call.parameters.getAll("path") ?: emptyList()
+                        val assetSubPath = "assets/" + pathSegments.joinToString("/")
+                        serveWebAsset(call, assetSubPath)
                     }
 
                     // 10. WebSockets: Real-time Chat, Presence, and WebRTC Calling
@@ -494,8 +522,8 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                 }
             }
 
-            // WebRTC Call Signaling (call_request, call_accepted, call_rejected, ice_candidate, call_ended)
-            "call_request", "call_accepted", "call_rejected", "call_ended", "ice_candidate", "call_busy", "webrtc_offer", "webrtc_answer" -> {
+            // WebRTC Call Signaling (call_request, call_accepted, call_accept, call_rejected, ice_candidate, call_ended)
+            "call_request", "call_accepted", "call_accept", "call_rejected", "call_ended", "ice_candidate", "call_busy", "webrtc_offer", "webrtc_answer" -> {
                 ConnectionManager.log("📞 WebRTC Signal ($type) from '$sender' -> '$receiver'")
                 if (receiver.isNotEmpty()) {
                     val delivered = ConnectionManager.sendToUser(receiver, finalRaw, excludeSession = currentSession)
