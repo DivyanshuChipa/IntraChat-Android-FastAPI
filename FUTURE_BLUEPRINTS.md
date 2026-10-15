@@ -202,5 +202,40 @@ To turn Intra from a pure messenger into a comprehensive **LAN Home Ecosystem**,
 - **Incoming Call Overlay:** When a phone calls via IntraChat, the TV displays a sleek, non-intrusive Heads-Up Display (HUD) in the top-right corner: *"Incoming Intra Call from Home"*.
 - **Local Casting:** Phones can push a video or photo to the TV with one tap ("Cast to IntraTV").
 
+---
+
+## ⚡ IntraServer (`:intra_server` Android Host): Roadmap & Next Steps
+
+### 1. Phase 1: Core Engine & Realtime Chat [COMPLETED]
+- Multi-module Gradle configuration with `minSdk = 21` (supports Android 5.0+).
+- Ktor CIO embedded engine on Port 8000 with CORS & WebSocket routing.
+- Native SQLite database (`users` & `messages` tables).
+- Realtime WebSocket messaging, presence broadcasts (`online`/`offline`), and typing indicator forwarding.
+- 24/7 background stability with Foreground Service, `PARTIAL_WAKE_LOCK`, and `WifiLock`.
+- Material 3 Dark Server Appliance Dashboard with live IP badge, dynamic QR code, and real-time terminal log console.
+
+### 2. Phase 2: Media & Profile Synchronization [NEXT SESSION]
+- **Profile Photo Upload (`POST /profile/upload_photo`)**:
+  - Multipart avatar upload saved directly to internal app storage (`files/uploads`).
+  - Automatic avatar URL association in SQLite `users` table and instant sync across client contacts.
+- **File & Media Transfers (`POST /upload` & `GET /uploads/{filename}`)**:
+  - High-speed local LAN image, video, audio note, and document sharing.
+  - Efficient file streaming directly from Android storage to connected clients.
+- **Step-by-Step Validation**: Test single-file upload, photo preview, and audio note exchange one by one.
+
+### 3. Phase 3: UI Theming - Hacker Console vs Material You Switch
+- **Concept:** Provide a user toggle on the Server Dashboard:
+  - **Option A (Hacker / Appliance Mode):** Dark slate/black theme, glowing emerald green status, monospace live logs (ideal for OLED battery saving & burn-in prevention on 24/7 phones).
+  - **Option B (Material You M3 Mode):** Soft pastel tones, dynamic wallpaper-adaptive color schemes (like IntraChat client), and pill cards for users who prefer Pixel aesthetics.
+
+### 4. Phase 4: Embedded Web Chat Client (Zero App Install on PC)
+- Bundle the lightweight static HTML/JS web client (`backend/static`) directly in `intra_server/src/main/assets/web/`.
+- Serve it via Ktor `staticResources` on `http://<phone-ip>:8000/`.
+- Any laptop or smart TV on the Wi-Fi can open a web browser and immediately chat without downloading any app.
+
+### 5. Phase 5: Zero-Config Auto-Discovery (mDNS / UDP Broadcast)
+- Broadcast a UDP beacon (`_intrachat._tcp.local`) from the server phone.
+- Client apps automatically discover the server IP without typing numbers or scanning QR codes.
+
 
 

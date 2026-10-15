@@ -32,15 +32,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.util.UUID
 
 class IntraServerEngine(private val context: Context, private val port: Int = 8000) {
 
     private var engine: CIOApplicationEngine? = null
     private val db = ServerDatabase.getInstance(context)
+    // Uploads main folder (chat files, voice notes, etc.)
     private val uploadsDir = File(context.filesDir, "uploads").apply { mkdirs() }
+    // Profiles sub-folder (user avatars 256x256 PNGs)
+    private val profilesDir = File(uploadsDir, "profiles").apply { mkdirs() }
 
     @Volatile
     var isRunning = false
@@ -241,62 +247,96 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         }
                     }
 
-                    // 7. Profile Photo Upload
-                    post("/profile/upload_photo") {
+                    // ==============================================================
+                    // 7. PROFILE PHOTO UPLOAD (FastAPI "profiles.py" ka Desi Kotlin Bhai)
+                    // ==============================================================
+                    // Ye function client se aane wali profile photo ko handle karta hai:
+                    // 1. Multipart form-data se photo aur username receive karta hai.
+                    // 2. Android ke native Skia Engine (Bitmap) se photo ko 1:1 center-crop karta hai (Pillow ke ImageOps.fit jaisa).
+                    // 3. Exactly 256x256 me smooth resize karke 'uploads/profiles/<username>.png' me save karta hai.
+                    // 4. SQLite database me user ka photo path update karta hai.
+                    suspend fun handleProfileUpload(call: io.ktor.server.application.ApplicationCall) {
                         val multipart = call.receiveMultipart()
-                        var savedFileName: String? = null
                         var targetUsername: String? = null
+                        var tempSavedFile: File? = null
 
+                        // Form ke har part ko check karo (Text ya File)
                         multipart.forEachPart { part ->
                             when (part) {
                                 is PartData.FormItem -> {
+                                    // Username field pakdo
                                     if (part.name == "username") {
                                         targetUsername = part.value.trim()
                                     }
                                 }
                                 is PartData.FileItem -> {
-                                    val originalName = part.originalFileName ?: "avatar.jpg"
-                                    val ext = originalName.substringAfterLast(".", "jpg")
-                                    val uniqueName = "avatar_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.$ext"
-                                    val destFile = File(uploadsDir, uniqueName)
-
-                                    part.streamProvider().use { input ->
-                                        FileOutputStream(destFile).use { output ->
-                                            input.copyTo(output)
-                                        }
+                                    // Pehle temporary file me image process karke save kar lo
+                                    val tempFile = File(profilesDir, "temp_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.png")
+                                    val success = part.streamProvider().use { input ->
+                                        processAndSaveAvatar(input, tempFile)
                                     }
-                                    savedFileName = uniqueName
+                                    if (success) {
+                                        tempSavedFile = tempFile
+                                    }
                                 }
                                 else -> {}
                             }
-                            part.dispose()
+                            part.dispose() // Memory leak se bachne ke liye dispose karo
                         }
 
-                        if (savedFileName != null) {
-                            val photoUrl = "/uploads/$savedFileName"
-                            if (!targetUsername.isNullOrEmpty()) {
-                                db.updateProfilePhoto(targetUsername!!, photoUrl)
-                                ConnectionManager.log("🖼️ Updated avatar for '$targetUsername'")
+                        // Agar username aur processed file dono mil gaye
+                        if (tempSavedFile != null && !targetUsername.isNullOrEmpty()) {
+                            // Standard filename format: <username>.png (same as Python profiles.py)
+                            val finalFile = File(profilesDir, "${targetUsername}.png")
+                            if (finalFile.exists()) {
+                                finalFile.delete() // Purani photo replace kar do
                             }
+                            tempSavedFile?.renameTo(finalFile)
 
+                            // Database me store hone wala relative URL
+                            val dbUrl = "/uploads/profiles/${finalFile.name}"
+
+                            // 💾 SQLite database me user ka profile_photo update karo
+                            db.updateProfilePhoto(targetUsername!!, dbUrl)
+                            ConnectionManager.log("🖼️ Successfully updated 256x256 avatar for '$targetUsername'")
+
+                            // Client ko response bhejo: dono keys support karega (profile_photo aur photo_url)
                             val res = JSONObject().apply {
                                 put("success", true)
-                                put("photo_url", photoUrl)
+                                put("profile_photo", dbUrl)
+                                put("photo_url", dbUrl)
                             }
                             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
                         } else {
+                            tempSavedFile?.delete()
                             val res = JSONObject().apply {
                                 put("success", false)
-                                put("message", "Avatar upload failed")
+                                put("message", "Profile upload failed: username or image missing")
                             }
                             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.BadRequest)
                         }
                     }
 
-                    // 8. Static file serving (/uploads/{filename})
-                    get("/uploads/{filename}") {
-                        val fileName = call.parameters["filename"] ?: ""
-                        val file = File(uploadsDir, fileName)
+                    // 📸 Client Primary endpoint (Android app ApiService.kt)
+                    post("/profile/upload_profile") {
+                        handleProfileUpload(call)
+                    }
+
+                    // 📸 Alias endpoint (Backward compatibility)
+                    post("/profile/upload_photo") {
+                        handleProfileUpload(call)
+                    }
+
+                    // ==============================================================
+                    // 8. STATIC FILE SERVING (/uploads/{path...})
+                    // ==============================================================
+                    // Yeh route single file (/uploads/abc.jpg) aur nested sub-folders
+                    // (/uploads/profiles/rahul.png) dono ko full speed par stream karta hai!
+                    get("/uploads/{path...}") {
+                        val pathSegments = call.parameters.getAll("path") ?: emptyList()
+                        val relativePath = pathSegments.joinToString(File.separator)
+                        val file = File(uploadsDir, relativePath)
+
                         if (file.exists() && file.isFile) {
                             call.respondFile(file)
                         } else {
@@ -482,6 +522,49 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                 // Sync back to sender's other sessions if any
                 ConnectionManager.sendToUser(sender, finalRaw, excludeSession = currentSession)
             }
+        }
+    }
+
+    /**
+     * 🖼️ Profile Photo Processor (Pillow / ImageOps.fit ka Desi Android Equivalent)
+     *
+     * 1. Photo ko decode karta hai memory me (BitmapFactory).
+     * 2. Center se 1:1 square crop karta hai (taaki photo pichke na / no squeeze).
+     * 3. Exact 256x256 pixel me smooth scale karta hai (Bilinear filtering = true).
+     * 4. High-quality PNG format me save karta hai.
+     * 5. Purane phones par RAM crash na ho isliye Bitmaps ko recycle() karta hai.
+     */
+    private fun processAndSaveAvatar(input: InputStream, outputFile: File): Boolean {
+        return try {
+            // Step 1: Image ko memory me Bitmap ki tarah decode karo
+            val original = BitmapFactory.decodeStream(input) ?: return false
+
+            // Step 2: Center-crop dimensions calculate karo
+            // Agar photo rectangle hai toh uske center se square kaatna hai
+            val size = minOf(original.width, original.height)
+            val startX = (original.width - size) / 2
+            val startY = (original.height - size) / 2
+
+            // Step 3: Exact 1:1 square crop (No distortion, no squeezing)
+            val square = Bitmap.createBitmap(original, startX, startY, size, size)
+
+            // Step 4: Exactly 256x256 pixel me high-quality resize
+            val scaled = Bitmap.createScaledBitmap(square, 256, 256, true)
+
+            // Step 5: File me PNG format me compress karke likh do
+            FileOutputStream(outputFile).use { out ->
+                scaled.compress(Bitmap.CompressFormat.PNG, 95, out)
+            }
+
+            // Step 6: Memory Cleanup (Android 5.0+ stability ke liye)
+            if (original != square && !original.isRecycled) original.recycle()
+            if (square != scaled && !square.isRecycled) square.recycle()
+            if (!scaled.isRecycled) scaled.recycle()
+
+            true
+        } catch (e: Exception) {
+            ConnectionManager.log("❌ Avatar processing error: ${e.message}")
+            false
         }
     }
 
