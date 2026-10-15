@@ -5,7 +5,8 @@ import sqlite3
 import subprocess
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame
+    QPushButton, QLabel, QTextEdit, QFrame, QMessageBox,
+    QDialog, QFormLayout, QLineEdit, QFileDialog, QDialogButtonBox
 )
 from PySide6.QtCore import QProcess, Qt, QTimer
 
@@ -198,26 +199,69 @@ class ServerController(QMainWindow):
         self.console.append("<span style='color: #a6e3a1;'>[INFO] Admin key clipboard me copy ho gaya.</span>")
 
     def open_admin_panel(self):
-        if not self.current_admin_key:
-            self.console.append("<span style='color: #f38ba8;'>[INFO] Admin key abhi available nahi hai. Cannot open Admin Panel.</span>")
-            return
-
         if AdminWindow is None:
             self.console.append("<span style='color: #f38ba8;'>[ERROR] AdminWindow could not be imported from intra_admin.</span>")
             return
 
-        # Always use the IP where the server is running (host machine).
-        # We can try to use localhost, or use the local IP if localhost doesn't respond correctly,
-        # but 127.0.0.1 is safe since it's running locally.
-        # Alternatively, use get_local_ip() which is the network IP.
-        url = f"http://127.0.0.1:8000"
+        url = "http://127.0.0.1:8000"
+
+        # 1. Agar DB pehle se detect hai aur admin key pata hai -> Direct open!
+        if self.current_admin_key:
+            try:
+                self.admin_window = AdminWindow(url, self.current_admin_key)
+                self.admin_window.show()
+                self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel direct khul gaya: {url} ✅</span>")
+            except Exception as e:
+                self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to open Admin Panel: {str(e)}</span>")
+            return
+
+        # 2. Agar DB detect nahi hui ya key nahi mili -> Tabhi Popup aayega
+        dialog = AdminUnlockDialog(self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        entered_code = dialog.get_code()
+        custom_db   = dialog.get_db_path()
+
+        real_key = None
+        if custom_db and os.path.exists(custom_db):
+            real_key = self._read_key_from_db(custom_db)
+            if real_key:
+                self.current_admin_key = real_key
+                self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Custom DB se key load ho gayi: {custom_db}</span>")
+        elif entered_code:
+            real_key = entered_code
+
+        # Key nahi mili
+        if not real_key:
+            QMessageBox.warning(self, "Key Not Found", "❌ Admin key nahi mili. Sahi DB path select karein ya key daalein.")
+            self.console.append("<span style='color: #f38ba8;'>[ERROR] Admin key nahi mili.</span>")
+            return
+
+        if entered_code and custom_db and entered_code != real_key:
+            QMessageBox.warning(self, "Access Denied", "❌ Enter kiya hua code aur DB ki key match nahi hui.")
+            self.console.append("<span style='color: #f38ba8;'>[ERROR] Admin Panel: code mismatch with DB key.</span>")
+            return
 
         try:
-            self.admin_window = AdminWindow(url, self.current_admin_key)
+            self.admin_window = AdminWindow(url, real_key)
             self.admin_window.show()
-            self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel opened with URL: {url}</span>")
+            self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel opened with URL: {url} ✅</span>")
         except Exception as e:
             self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to open Admin Panel: {str(e)}</span>")
+
+    def _read_key_from_db(self, db_path):
+        """Kisi bhi DB path se admin_key padhta hai"""
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+            row = cursor.fetchone()
+            conn.close()
+            return row[0] if row and row[0] else None
+        except Exception as e:
+            self.console.append(f"<span style='color: #f38ba8;'>[ERROR] DB read error: {e}</span>")
+            return None
 
     def check_service_status(self):
         """Runs 'systemctl is-active lanserver' silently to check status"""
@@ -260,8 +304,95 @@ class ServerController(QMainWindow):
             self.console.insertPlainText(data)
             self.console.ensureCursorVisible()
 
+# ================= ADMIN UNLOCK DIALOG =================
+class AdminUnlockDialog(QDialog):
+    """DB detect na hone par DB browse karne ya key enter karne ka dialog"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("📂 DB Path & Admin Key")
+        self.setFixedSize(400, 220)
+        self.setStyleSheet("""
+            QDialog { background-color: #1e1e2e; color: #cdd6f4; }
+            QLabel  { color: #cdd6f4; font-size: 13px; }
+            QLineEdit {
+                background: #181825; color: #cdd6f4;
+                border: 1px solid #313244; border-radius: 6px;
+                padding: 6px; font-size: 13px;
+            }
+            QPushButton {
+                background-color: #cba6f7; color: #11111b;
+                font-weight: bold; padding: 8px 20px;
+                border-radius: 6px; font-size: 13px;
+            }
+            QPushButton:hover { background-color: #b4befe; }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Title
+        title = QLabel("📂  Database & Admin Key")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #cba6f7;")
+        layout.addWidget(title)
+
+        desc = QLabel("Database auto-detect nahi hui. DB file browse karein ya key daalein:")
+        desc.setStyleSheet("font-size: 12px; color: #a6adc8;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        form = QFormLayout()
+        form.setSpacing(10)
+
+        # DB path row
+        db_row = QHBoxLayout()
+        self.db_input = QLineEdit()
+        self.db_input.setPlaceholderText("Select chat_users.db file...")
+        browse_btn = QPushButton("📂")
+        browse_btn.setFixedWidth(36)
+        browse_btn.setStyleSheet("padding: 6px; font-size: 14px;")
+        browse_btn.clicked.connect(self._browse_db)
+        db_row.addWidget(self.db_input)
+        db_row.addWidget(browse_btn)
+        form.addRow("DB File:", db_row)
+
+        # Code input
+        self.code_input = QLineEdit()
+        self.code_input.setEchoMode(QLineEdit.Password)
+        self.code_input.setPlaceholderText("Admin key daalo (optional)")
+        form.addRow("Admin Key:", self.code_input)
+
+        layout.addLayout(form)
+
+        # Buttons
+        btn_box = QDialogButtonBox()
+        unlock_btn = btn_box.addButton("Open Admin", QDialogButtonBox.AcceptRole)
+        cancel_btn = btn_box.addButton("Cancel", QDialogButtonBox.RejectRole)
+        btn_box.accepted.connect(self.accept)
+        btn_box.rejected.connect(self.reject)
+        layout.addWidget(btn_box)
+
+        # Enter key se bhi unlock ho
+        self.code_input.returnPressed.connect(self.accept)
+        self.db_input.returnPressed.connect(self.accept)
+
+    def _browse_db(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select DB File", "", "SQLite DB (*.db);;All Files (*)"
+        )
+        if path:
+            self.db_input.setText(path)
+
+    def get_code(self):
+        return self.code_input.text().strip()
+
+    def get_db_path(self):
+        return self.db_input.text().strip()
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = ServerController()
     window.show()
     sys.exit(app.exec())
+
