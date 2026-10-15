@@ -208,40 +208,55 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         call.respondText(msgsArray.toString(), ContentType.Application.Json, HttpStatusCode.OK)
                     }
 
-                    // 6. File Upload
+                    // ==============================================================
+                    // 6. CHAT FILE & MEDIA UPLOAD (FastAPI "files.py" ka Desi Kotlin Bhai)
+                    // ==============================================================
+                    // Ye route chat me bheje jane wale attachments (Photos, Videos, Audio Voice Notes, Documents) ko receive karta hai:
+                    // 1. Multipart stream se file ko 'filesDir/uploads/' folder me directly save karta hai.
+                    // 2. Client ChatViewModel.kt "url" aur "filename" expect karta hai.
+                    // 3. Response me "url", "file_url", "filename" aur "size" return karta hai.
                     post("/upload") {
                         val multipart = call.receiveMultipart()
                         var savedFileName: String? = null
+                        var savedFileSize = 0L
 
+                        // Stream me aane wale parts ko read karo
                         multipart.forEachPart { part ->
                             if (part is PartData.FileItem) {
                                 val originalName = part.originalFileName ?: "file_${System.currentTimeMillis()}"
                                 val ext = originalName.substringAfterLast(".", "")
-                                val uniqueName = "${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.${if (ext.isNotEmpty()) ext else "bin"}"
+                                // Unique filename banate hain taaki file name collisions na ho
+                                val uniqueName = "${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.${if (ext.isNotEmpty()) ext else "bin"}"
                                 val destFile = File(uploadsDir, uniqueName)
 
+                                // Direct Stream copy: Low RAM use karta hai aur badi videos/audios ko bina freeze hue save karta hai
                                 part.streamProvider().use { input ->
                                     FileOutputStream(destFile).use { output ->
                                         input.copyTo(output)
                                     }
                                 }
                                 savedFileName = uniqueName
-                                ConnectionManager.log("📁 File uploaded: $uniqueName (${destFile.length()} bytes)")
+                                savedFileSize = destFile.length()
+                                ConnectionManager.log("📁 File uploaded: $uniqueName (${savedFileSize / 1024} KB)")
                             }
-                            part.dispose()
+                            part.dispose() // Stream cleanup
                         }
 
+                        // Response bhejo
                         if (savedFileName != null) {
+                            val relativeUrl = "/uploads/$savedFileName"
                             val res = JSONObject().apply {
                                 put("success", true)
-                                put("file_url", "/uploads/$savedFileName")
-                                put("filename", savedFileName)
+                                put("url", relativeUrl)         // Client ChatViewModel.kt isko padhta hai
+                                put("file_url", relativeUrl)    // Backward compatibility
+                                put("filename", savedFileName)  // File ka naam
+                                put("size", savedFileSize)      // File size in bytes
                             }
                             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
                         } else {
                             val res = JSONObject().apply {
                                 put("success", false)
-                                put("message", "No file uploaded")
+                                put("message", "No file uploaded or file was empty")
                             }
                             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.BadRequest)
                         }
@@ -497,30 +512,47 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
             }
 
             else -> {
-                // Text or File message
-                val textContent = if (parsed.has("text")) parsed.optString("text") else parsed.optString("content", "")
+                // ==========================================
+                // 💬 TEXT & FILE CHAT MESSAGE LOGIC
+                // ==========================================
                 val fileUrl = if (parsed.has("url") && !parsed.isNull("url")) parsed.optString("url")
                               else if (parsed.has("file_url") && !parsed.isNull("file_url")) parsed.optString("file_url")
                               else null
                 val fileName = if (parsed.has("filename") && !parsed.isNull("filename")) parsed.optString("filename") else null
+
+                // File message ke liye clean description text set karo
+                val textContent = if (parsed.has("text") && parsed.optString("text").isNotEmpty()) {
+                    parsed.optString("text")
+                } else if (type == "file") {
+                    "Shared File: ${fileName ?: "Attachment"}"
+                } else {
+                    parsed.optString("content", "")
+                }
+
+                // Packet me bhi standard text aur url ensure karo
+                if (!parsed.has("text")) parsed.put("text", textContent)
+                if (fileUrl != null && !parsed.has("url")) parsed.put("url", fileUrl)
+
                 val ts = parsed.optLong("timestamp", System.currentTimeMillis()).toString()
 
-                // Save to database
+                // 💾 SQLite Database me chat message save karo
                 val msgId = db.saveMessage(sender, receiver, textContent, fileUrl, ts)
                 ConnectionManager.log("💬 Message ($type) '$sender' -> '$receiver': ${textContent.take(30)}")
 
+                val messageToSend = parsed.toString()
+
                 if (receiver == "Family Group") {
                     // Broadcast to all users
-                    ConnectionManager.broadcast(finalRaw, excludeSession = currentSession)
+                    ConnectionManager.broadcast(messageToSend, excludeSession = currentSession)
                 } else if (receiver.isNotEmpty()) {
                     // Send to receiver
-                    val delivered = ConnectionManager.sendToUser(receiver, finalRaw)
+                    val delivered = ConnectionManager.sendToUser(receiver, messageToSend)
                     if (delivered) {
                         db.markMessageAsRead(msgId)
                     }
                 }
                 // Sync back to sender's other sessions if any
-                ConnectionManager.sendToUser(sender, finalRaw, excludeSession = currentSession)
+                ConnectionManager.sendToUser(sender, messageToSend, excludeSession = currentSession)
             }
         }
     }
