@@ -11,6 +11,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,7 +41,8 @@ fun ServerDashboard(
     isServerRunning: Boolean,
     serverIp: String,
     serverPort: Int,
-    onToggleServer: (Boolean) -> Unit
+    onToggleServer: (Boolean) -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val fullUrl = "http://$serverIp:$serverPort"
@@ -99,8 +101,15 @@ fun ServerDashboard(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { logs.clear() }) {
-                        Icon(Icons.Default.DeleteOutline, contentDescription = "Clear Logs")
+                    IconButton(onClick = {
+                        // Dummy click - future me settings open karne ke liye
+                        Toast.makeText(context, "Settings coming soon", Toast.LENGTH_SHORT).show()
+                        onOpenSettings()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -115,7 +124,7 @@ fun ServerDashboard(
                 .padding(padding)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        ){
             // ==========================================
             // 1. MAIN SERVER CONTROLLER CARD
             // ==========================================
@@ -127,10 +136,12 @@ fun ServerDashboard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp, horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    // Big Power Button
                     FilledIconButton(
                         onClick = { onToggleServer(!isServerRunning) },
                         modifier = Modifier.size(72.dp),
@@ -156,7 +167,6 @@ fun ServerDashboard(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Address badge
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.surface,
@@ -207,7 +217,7 @@ fun ServerDashboard(
             Spacer(Modifier.height(16.dp))
 
             // ==========================================
-            // 2. QR CODE PAIRING (When Running)
+            // 2. QR CODE PAIRING
             // ==========================================
             AnimatedVisibility(visible = isServerRunning && qrBitmap != null) {
                 Card(
@@ -249,37 +259,35 @@ fun ServerDashboard(
             }
 
             // ==========================================
-            // 3. STATS ROW
-            // ==========================================
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                StatCard(
-                    title = "Online Users",
-                    value = "${ConnectionManager.getOnlineCount()}",
-                    icon = Icons.Default.Group,
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = "Port",
-                    value = "$serverPort",
-                    icon = Icons.Default.Router,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ==========================================
             // 4. LIVE LOG TERMINAL
             // ==========================================
-            Text(
-                "Live Activity Logs",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.Start)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Left side: Text
+                Text(
+                    text = "Live Activity Logs",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Right side: Log Cleaner (Delete) Icon
+                IconButton(
+                    onClick = { logs.clear() },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteOutline,
+                        contentDescription = "Clear Logs",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -288,7 +296,7 @@ fun ServerDashboard(
                     .fillMaxWidth()
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF0F172A)) // Dark terminal background
+                    .background(Color(0xFF0F172A))
                     .border(1.dp, Color(0xFF334155), RoundedCornerShape(12.dp))
                     .padding(8.dp)
             ) {
@@ -318,39 +326,6 @@ fun ServerDashboard(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun StatCard(
-    title: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(title, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

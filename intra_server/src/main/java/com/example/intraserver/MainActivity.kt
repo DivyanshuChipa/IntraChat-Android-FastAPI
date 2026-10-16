@@ -51,6 +51,10 @@ class MainActivity : ComponentActivity() {
                         } else {
                             ServerService.stop(this)
                         }
+                    },
+                    onOpenSettings = {
+                        // Yahan settings dialog khol sakte ho ya toast dikha sakte ho
+                        // Toast.makeText(this, "Settings clicked!", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
