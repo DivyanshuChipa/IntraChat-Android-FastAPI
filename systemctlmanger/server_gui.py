@@ -3,6 +3,7 @@ import os
 import socket
 import sqlite3
 import subprocess
+import json
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QFrame, QMessageBox,
@@ -26,12 +27,16 @@ QPushButton#StopBtn { background-color: #f38ba8; color: #11111b; font-weight: bo
 QPushButton#StopBtn:hover { background-color: #eba0ac; }
 QPushButton#StopBtn:disabled { background-color: #45475a; color: #a6adc8; }
 
+QPushButton#FixDBBtn { background-color: #fab387; color: #11111b; font-weight: bold; font-size: 14px; padding: 8px; border-radius: 8px; }
+QPushButton#FixDBBtn:hover { background-color: #fcc6a1; }
+
 QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244; border-radius: 8px; padding: 10px; font-family: 'Consolas', monospace; }
 """
 
-# Possible database locations (different setups may use different filenames/working dirs)
+# Possible database locations
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.expanduser("~")
+CONFIG_FILE = os.path.expanduser("~/.intra_server_config.json")
 
 # Add intra_admin to path so we can import AdminWindow
 INTRA_ADMIN_DIR = os.path.join(REPO_ROOT, "intra_admin")
@@ -41,6 +46,7 @@ try:
     from admin import AdminWindow
 except ImportError:
     AdminWindow = None
+
 DB_CANDIDATES = [
     os.path.join(REPO_ROOT, "lan_server", "chat_users.db"),
     os.path.join(REPO_ROOT, "lan_server", "chat_user.db"),
@@ -60,7 +66,6 @@ class ServerController(QMainWindow):
         self.resize(800, 550)
         self.setStyleSheet(STYLESHEET)
 
-        # Main Layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
@@ -77,18 +82,24 @@ class ServerController(QMainWindow):
         header_layout.addWidget(subtitle)
         layout.addLayout(header_layout)
 
-        # 2. Info Box (IP & Password)
+        # 2. Info Box
         self.info_box = QLabel()
         self.info_box.setObjectName("InfoBox")
         self.info_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.info_box)
 
-        # Buttons next to each other
-        copy_admin_layout = QHBoxLayout()
+        # Key Management Layout
+        key_mgmt_layout = QHBoxLayout()
+        
         self.copy_key_btn = QPushButton("📋 COPY ADMIN KEY")
         self.copy_key_btn.setObjectName("StartBtn")
         self.copy_key_btn.setCursor(Qt.PointingHandCursor)
         self.copy_key_btn.clicked.connect(self.copy_admin_key)
+
+        self.fix_db_btn = QPushButton("📂 FIX DB PATH")
+        self.fix_db_btn.setObjectName("FixDBBtn")
+        self.fix_db_btn.setCursor(Qt.PointingHandCursor)
+        self.fix_db_btn.clicked.connect(self.fix_db_location)
 
         self.open_admin_btn = QPushButton("⚙️ OPEN ADMIN PANEL")
         self.open_admin_btn.setStyleSheet("""
@@ -99,11 +110,12 @@ class ServerController(QMainWindow):
         self.open_admin_btn.setCursor(Qt.PointingHandCursor)
         self.open_admin_btn.clicked.connect(self.open_admin_panel)
 
-        copy_admin_layout.addWidget(self.copy_key_btn)
-        copy_admin_layout.addWidget(self.open_admin_btn)
-        layout.addLayout(copy_admin_layout)
+        key_mgmt_layout.addWidget(self.copy_key_btn)
+        key_mgmt_layout.addWidget(self.fix_db_btn)
+        key_mgmt_layout.addWidget(self.open_admin_btn)
+        layout.addLayout(key_mgmt_layout)
 
-        # 3. Buttons
+        # 3. Service Control
         btn_layout = QHBoxLayout()
         self.start_btn = QPushButton("▶ START SERVICE")
         self.start_btn.setObjectName("StartBtn")
@@ -119,7 +131,7 @@ class ServerController(QMainWindow):
         btn_layout.addWidget(self.stop_btn)
         layout.addLayout(btn_layout)
 
-        # 4. Console Log Output
+        # 4. Console Log
         log_label = QLabel("Live Journalctl Logs:")
         log_label.setStyleSheet("font-weight: bold; color: #fab387; margin-top: 10px;")
         layout.addWidget(log_label)
@@ -128,21 +140,15 @@ class ServerController(QMainWindow):
         self.console.setReadOnly(True)
         layout.addWidget(self.console)
 
-        # ================= ENGINE ROOM =================
-        # A. Setup QProcess to read live logs from systemd
         self.log_process = QProcess(self)
         self.log_process.readyReadStandardOutput.connect(self.handle_log_output)
         self.start_log_stream()
 
-        # B. Setup Timer to check service status every 2 seconds
         self.status_timer = QTimer(self)
         self.status_timer.timeout.connect(self.check_service_status)
         self.status_timer.start(2000)
 
-        # Initial trigger
         self.check_service_status()
-
-        # Keep reference to admin window
         self.admin_window = None
 
     def get_local_ip(self):
@@ -158,6 +164,24 @@ class ServerController(QMainWindow):
 
     def get_admin_password(self):
         last_error = None
+        
+        # Priority 0: Persistent Config File
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+                    saved_path = config.get("db_path")
+                    if saved_path and os.path.exists(saved_path):
+                        conn = sqlite3.connect(saved_path)
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+                        row = cursor.fetchone()
+                        conn.close()
+                        if row and row[0]:
+                            return row[0]
+            except Exception as e:
+                last_error = f"Config Error: {str(e)}"
+
         # Priority 1: Absolute path to known DB location
         absolute_db = "/home/htech/lan_server/chat_users.db"
         if os.path.exists(absolute_db):
@@ -174,22 +198,18 @@ class ServerController(QMainWindow):
 
         # Priority 2: Candidates
         for db_path in DB_CANDIDATES:
-            if not os.path.exists(db_path):
-                continue
+            if not os.path.exists(db_path): continue
             try:
                 conn = sqlite3.connect(db_path)
                 cursor = conn.cursor()
                 cursor.execute("SELECT value FROM config WHERE key='admin_key'")
                 row = cursor.fetchone()
                 conn.close()
-                if row and row[0]:
-                    return row[0]
+                if row and row[0]: return row[0]
             except Exception as e:
                 last_error = str(e)
 
-        if last_error:
-            return f"Error: {last_error}"
-        return "Not Generated Yet"
+        return f"Error: {last_error}" if last_error else "Not Generated Yet"
 
     def update_info_box(self, status):
         ip = self.get_local_ip()
@@ -197,7 +217,10 @@ class ServerController(QMainWindow):
         self.current_admin_key = password if password not in ("Not Generated Yet", "Database not found") and not password.startswith("Error:") else ""
         status_color = "#a6e3a1" if status == "Running 🟢" else "#f38ba8"
         self.copy_key_btn.setEnabled(bool(self.current_admin_key))
-
+        
+        # CONDITIONAL VISIBILITY: Only show Fix DB button if key is NOT found
+        self.fix_db_btn.setVisible(not bool(self.current_admin_key))
+        
         info_html = f"""
         <table width="100%">
             <tr><td width="150"><b>Service Status:</b></td><td><span style='color: {status_color};'>{status}</span></td></tr>
@@ -214,60 +237,51 @@ class ServerController(QMainWindow):
         QApplication.clipboard().setText(self.current_admin_key)
         self.console.append("<span style='color: #a6e3a1;'>[INFO] Admin key clipboard me copy ho gaya.</span>")
 
+    def fix_db_location(self):
+        dialog = AdminUnlockDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            custom_db = dialog.get_db_path()
+            entered_code = dialog.get_code()
+            
+            real_key = None
+            if custom_db and os.path.exists(custom_db):
+                real_key = self._read_key_from_db(custom_db)
+                # PERSISTENCE: Save the selected path to config file
+                try:
+                    with open(CONFIG_FILE, 'w') as f:
+                        json.dump({"db_path": custom_db}, f)
+                    self.console.append(f"<span style='color: #a6e3a1;'>[SYSTEM] DB Path saved to config.</span>")
+                except Exception as e:
+                    self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to save config: {e}</span>")
+            elif entered_code:
+                real_key = entered_code
+            
+            if real_key:
+                self.current_admin_key = real_key
+                self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Key successfully updated! Key: {real_key[:5]}...</span>")
+                self.update_info_box("Running 🟢" if self.stop_btn.isEnabled() else "Stopped 🔴")
+            else:
+                QMessageBox.warning(self, "Error", "Sahi DB path select karein ya valid key daalein.")
+
     def open_admin_panel(self):
         if AdminWindow is None:
-            self.console.append("<span style='color: #f38ba8;'>[ERROR] AdminWindow could not be imported from intra_admin.</span>")
+            self.console.append("<span style='color: #f38ba8;'>[ERROR] AdminWindow import nahi ho paya.</span>")
+            return
+        
+        if not self.current_admin_key:
+            QMessageBox.warning(self, "Key Required", "Admin Key missing! Please click 'FIX DB PATH' first.")
+            self.console.append("<span style='color: #f38ba8;'>[INFO] Admin key missing. Use FIX DB PATH.</span>")
             return
 
         url = "http://127.0.0.1:8000"
-
-        # 1. Agar DB pehle se detect hai aur admin key pata hai -> Direct open!
-        if self.current_admin_key:
-            try:
-                self.admin_window = AdminWindow(url, self.current_admin_key)
-                self.admin_window.show()
-                self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel direct khul gaya: {url} ✅</span>")
-            except Exception as e:
-                self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to open Admin Panel: {str(e)}</span>")
-            return
-
-        # 2. Agar DB detect nahi hui ya key nahi mili -> Tabhi Popup aayega
-        dialog = AdminUnlockDialog(self)
-        if dialog.exec() != QDialog.Accepted:
-            return
-
-        entered_code = dialog.get_code()
-        custom_db   = dialog.get_db_path()
-
-        real_key = None
-        if custom_db and os.path.exists(custom_db):
-            real_key = self._read_key_from_db(custom_db)
-            if real_key:
-                self.current_admin_key = real_key
-                self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Custom DB se key load ho gayi: {custom_db}</span>")
-        elif entered_code:
-            real_key = entered_code
-
-        # Key nahi mili
-        if not real_key:
-            QMessageBox.warning(self, "Key Not Found", "❌ Admin key nahi mili. Sahi DB path select karein ya key daalein.")
-            self.console.append("<span style='color: #f38ba8;'>[ERROR] Admin key nahi mili.</span>")
-            return
-
-        if entered_code and custom_db and entered_code != real_key:
-            QMessageBox.warning(self, "Access Denied", "❌ Enter kiya hua code aur DB ki key match nahi hui.")
-            self.console.append("<span style='color: #f38ba8;'>[ERROR] Admin Panel: code mismatch with DB key.</span>")
-            return
-
         try:
-            self.admin_window = AdminWindow(url, real_key)
+            self.admin_window = AdminWindow(url, self.current_admin_key)
             self.admin_window.show()
-            self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel opened with URL: {url} ✅</span>")
+            self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel opened: {url} ✅</span>")
         except Exception as e:
             self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to open Admin Panel: {str(e)}</span>")
 
     def _read_key_from_db(self, db_path):
-        """Kisi bhi DB path se admin_key padhta hai"""
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -280,11 +294,9 @@ class ServerController(QMainWindow):
             return None
 
     def check_service_status(self):
-        """Runs 'systemctl is-active lanserver' silently to check status"""
         try:
             result = subprocess.run(["systemctl", "is-active", "lanserver"], capture_output=True, text=True)
             is_running = (result.stdout.strip() == "active")
-
             if is_running:
                 self.start_btn.setEnabled(False)
                 self.stop_btn.setEnabled(True)
@@ -297,32 +309,25 @@ class ServerController(QMainWindow):
             self.update_info_box("Error checking status ⚠️")
 
     def start_service(self):
-        self.console.append("<span style='color: #a6e3a1;'>[SYSTEM] Requesting systemctl to START lanserver...</span>")
-        # subprocess.Popen sends the command to OS. Linux will automatically ask for password GUI popup if needed.
+        self.console.append("<span style='color: #a6e3a1;'>[SYSTEM] Starting lanserver...</span>")
         subprocess.Popen(["systemctl", "start", "lanserver"])
 
     def stop_service(self):
-        self.console.append("<span style='color: #f38ba8;'>[SYSTEM] Requesting systemctl to STOP lanserver...</span>")
+        self.console.append("<span style='color: #f38ba8;'>[SYSTEM] Stopping lanserver...</span>")
         subprocess.Popen(["systemctl", "stop", "lanserver"])
 
     def start_log_stream(self):
-        """Tails the journalctl logs live"""
         if self.log_process.state() == QProcess.Running:
             self.log_process.kill()
-
-        # -u: unit name, -f: follow live, -n 50: last 50 lines, -o cat: clean output without timestamps
         self.log_process.start("journalctl", ["-u", "lanserver", "-f", "-n", "50", "-o", "cat"])
 
     def handle_log_output(self):
-        """Reads live logs from journalctl and adds to GUI"""
         data = self.log_process.readAllStandardOutput().data().decode('utf-8')
         if data.strip():
             self.console.insertPlainText(data)
             self.console.ensureCursorVisible()
 
-# ================= ADMIN UNLOCK DIALOG =================
 class AdminUnlockDialog(QDialog):
-    """DB detect na hone par DB browse karne ya key enter karne ka dialog"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("📂 DB Path & Admin Key")
@@ -347,7 +352,6 @@ class AdminUnlockDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        # Title
         title = QLabel("📂  Database & Admin Key")
         title.setStyleSheet("font-size: 16px; font-weight: bold; color: #cba6f7;")
         layout.addWidget(title)
@@ -360,7 +364,6 @@ class AdminUnlockDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(10)
 
-        # DB path row
         db_row = QHBoxLayout()
         self.db_input = QLineEdit()
         self.db_input.setPlaceholderText("Select chat_users.db file...")
@@ -372,7 +375,6 @@ class AdminUnlockDialog(QDialog):
         db_row.addWidget(browse_btn)
         form.addRow("DB File:", db_row)
 
-        # Code input
         self.code_input = QLineEdit()
         self.code_input.setEchoMode(QLineEdit.Password)
         self.code_input.setPlaceholderText("Admin key daalo (optional)")
@@ -380,35 +382,25 @@ class AdminUnlockDialog(QDialog):
 
         layout.addLayout(form)
 
-        # Buttons
         btn_box = QDialogButtonBox()
-        unlock_btn = btn_box.addButton("Open Admin", QDialogButtonBox.AcceptRole)
+        unlock_btn = btn_box.addButton("Update Key", QDialogButtonBox.AcceptRole)
         cancel_btn = btn_box.addButton("Cancel", QDialogButtonBox.RejectRole)
         btn_box.accepted.connect(self.accept)
         btn_box.rejected.connect(self.reject)
         layout.addWidget(btn_box)
 
-        # Enter key se bhi unlock ho
         self.code_input.returnPressed.connect(self.accept)
         self.db_input.returnPressed.connect(self.accept)
 
     def _browse_db(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Select DB File", "", "SQLite DB (*.db);;All Files (*)"
-        )
-        if path:
-            self.db_input.setText(path)
+        path, _ = QFileDialog.getOpenFileName(self, "Select DB File", "", "SQLite DB (*.db);;All Files (*)")
+        if path: self.db_input.setText(path)
 
-    def get_code(self):
-        return self.code_input.text().strip()
-
-    def get_db_path(self):
-        return self.db_input.text().strip()
-
+    def get_code(self): return self.code_input.text().strip()
+    def get_db_path(self): return self.db_input.text().strip()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = ServerController()
     window.show()
     sys.exit(app.exec())
-
