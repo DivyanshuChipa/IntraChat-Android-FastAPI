@@ -3,9 +3,11 @@ import os
 import socket
 import sqlite3
 import subprocess
+import json
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame
+    QPushButton, QLabel, QTextEdit, QFrame, QMessageBox,
+    QDialog, QFormLayout, QLineEdit, QFileDialog, QDialogButtonBox
 )
 from PySide6.QtCore import QProcess, Qt, QTimer
 
@@ -25,12 +27,16 @@ QPushButton#StopBtn { background-color: #f38ba8; color: #11111b; font-weight: bo
 QPushButton#StopBtn:hover { background-color: #eba0ac; }
 QPushButton#StopBtn:disabled { background-color: #45475a; color: #a6adc8; }
 
+QPushButton#FixDBBtn { background-color: #fab387; color: #11111b; font-weight: bold; font-size: 14px; padding: 8px; border-radius: 8px; }
+QPushButton#FixDBBtn:hover { background-color: #fcc6a1; }
+
 QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244; border-radius: 8px; padding: 10px; font-family: 'Consolas', monospace; }
 """
 
-# Possible database locations (different setups may use different filenames/working dirs)
+# Possible database locations
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+REPO_ROOT = os.path.expanduser("~")
+CONFIG_FILE = os.path.expanduser("~/.intra_server_config.json")
 
 # Add intra_admin to path so we can import AdminWindow
 INTRA_ADMIN_DIR = os.path.join(REPO_ROOT, "intra_admin")
@@ -40,7 +46,10 @@ try:
     from admin import AdminWindow
 except ImportError:
     AdminWindow = None
+
 DB_CANDIDATES = [
+    os.path.join(REPO_ROOT, "lan_server", "chat_users.db"),
+    os.path.join(REPO_ROOT, "lan_server", "chat_user.db"),
     os.path.join(REPO_ROOT, "backend", "chat_users.db"),
     os.path.join(REPO_ROOT, "backend", "chat_user.db"),
     os.path.join(REPO_ROOT, "chat_users.db"),
@@ -57,7 +66,6 @@ class ServerController(QMainWindow):
         self.resize(800, 550)
         self.setStyleSheet(STYLESHEET)
 
-        # Main Layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
@@ -74,18 +82,24 @@ class ServerController(QMainWindow):
         header_layout.addWidget(subtitle)
         layout.addLayout(header_layout)
 
-        # 2. Info Box (IP & Password)
+        # 2. Info Box
         self.info_box = QLabel()
         self.info_box.setObjectName("InfoBox")
         self.info_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.info_box)
 
-        # Buttons next to each other
-        copy_admin_layout = QHBoxLayout()
+        # Key Management Layout
+        key_mgmt_layout = QHBoxLayout()
+        
         self.copy_key_btn = QPushButton("📋 COPY ADMIN KEY")
         self.copy_key_btn.setObjectName("StartBtn")
         self.copy_key_btn.setCursor(Qt.PointingHandCursor)
         self.copy_key_btn.clicked.connect(self.copy_admin_key)
+
+        self.fix_db_btn = QPushButton("📂 FIX DB PATH")
+        self.fix_db_btn.setObjectName("FixDBBtn")
+        self.fix_db_btn.setCursor(Qt.PointingHandCursor)
+        self.fix_db_btn.clicked.connect(self.fix_db_location)
 
         self.open_admin_btn = QPushButton("⚙️ OPEN ADMIN PANEL")
         self.open_admin_btn.setStyleSheet("""
@@ -96,11 +110,12 @@ class ServerController(QMainWindow):
         self.open_admin_btn.setCursor(Qt.PointingHandCursor)
         self.open_admin_btn.clicked.connect(self.open_admin_panel)
 
-        copy_admin_layout.addWidget(self.copy_key_btn)
-        copy_admin_layout.addWidget(self.open_admin_btn)
-        layout.addLayout(copy_admin_layout)
+        key_mgmt_layout.addWidget(self.copy_key_btn)
+        key_mgmt_layout.addWidget(self.fix_db_btn)
+        key_mgmt_layout.addWidget(self.open_admin_btn)
+        layout.addLayout(key_mgmt_layout)
 
-        # 3. Buttons
+        # 3. Service Control
         btn_layout = QHBoxLayout()
         self.start_btn = QPushButton("▶ START SERVICE")
         self.start_btn.setObjectName("StartBtn")
@@ -116,7 +131,7 @@ class ServerController(QMainWindow):
         btn_layout.addWidget(self.stop_btn)
         layout.addLayout(btn_layout)
 
-        # 4. Console Log Output
+        # 4. Console Log
         log_label = QLabel("Live Journalctl Logs:")
         log_label.setStyleSheet("font-weight: bold; color: #fab387; margin-top: 10px;")
         layout.addWidget(log_label)
@@ -125,21 +140,15 @@ class ServerController(QMainWindow):
         self.console.setReadOnly(True)
         layout.addWidget(self.console)
 
-        # ================= ENGINE ROOM =================
-        # A. Setup QProcess to read live logs from systemd
         self.log_process = QProcess(self)
         self.log_process.readyReadStandardOutput.connect(self.handle_log_output)
         self.start_log_stream()
 
-        # B. Setup Timer to check service status every 2 seconds
         self.status_timer = QTimer(self)
         self.status_timer.timeout.connect(self.check_service_status)
         self.status_timer.start(2000)
 
-        # Initial trigger
         self.check_service_status()
-
-        # Keep reference to admin window
         self.admin_window = None
 
     def get_local_ip(self):
@@ -155,11 +164,29 @@ class ServerController(QMainWindow):
 
     def get_admin_password(self):
         last_error = None
-        for db_path in DB_CANDIDATES:
-            if not os.path.exists(db_path):
-                continue
+        
+        # Priority 0: Persistent Config File
+        if os.path.exists(CONFIG_FILE):
             try:
-                conn = sqlite3.connect(db_path)
+                with open(CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+                    saved_path = config.get("db_path")
+                    if saved_path and os.path.exists(saved_path):
+                        conn = sqlite3.connect(saved_path)
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+                        row = cursor.fetchone()
+                        conn.close()
+                        if row and row[0]:
+                            return row[0]
+            except Exception as e:
+                last_error = f"Config Error: {str(e)}"
+
+        # Priority 1: Absolute path to known DB location
+        absolute_db = "/home/htech/lan_server/chat_users.db"
+        if os.path.exists(absolute_db):
+            try:
+                conn = sqlite3.connect(absolute_db)
                 cursor = conn.cursor()
                 cursor.execute("SELECT value FROM config WHERE key='admin_key'")
                 row = cursor.fetchone()
@@ -167,12 +194,22 @@ class ServerController(QMainWindow):
                 if row and row[0]:
                     return row[0]
             except Exception as e:
-                # Try the next candidate and report only if all fail
                 last_error = str(e)
 
-        if last_error:
-            return f"Error: {last_error}"
-        return "Not Generated Yet"
+        # Priority 2: Candidates
+        for db_path in DB_CANDIDATES:
+            if not os.path.exists(db_path): continue
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+                row = cursor.fetchone()
+                conn.close()
+                if row and row[0]: return row[0]
+            except Exception as e:
+                last_error = str(e)
+
+        return f"Error: {last_error}" if last_error else "Not Generated Yet"
 
     def update_info_box(self, status):
         ip = self.get_local_ip()
@@ -180,7 +217,10 @@ class ServerController(QMainWindow):
         self.current_admin_key = password if password not in ("Not Generated Yet", "Database not found") and not password.startswith("Error:") else ""
         status_color = "#a6e3a1" if status == "Running 🟢" else "#f38ba8"
         self.copy_key_btn.setEnabled(bool(self.current_admin_key))
-
+        
+        # CONDITIONAL VISIBILITY: Only show Fix DB button if key is NOT found
+        self.fix_db_btn.setVisible(not bool(self.current_admin_key))
+        
         info_html = f"""
         <table width="100%">
             <tr><td width="150"><b>Service Status:</b></td><td><span style='color: {status_color};'>{status}</span></td></tr>
@@ -197,34 +237,66 @@ class ServerController(QMainWindow):
         QApplication.clipboard().setText(self.current_admin_key)
         self.console.append("<span style='color: #a6e3a1;'>[INFO] Admin key clipboard me copy ho gaya.</span>")
 
+    def fix_db_location(self):
+        dialog = AdminUnlockDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            custom_db = dialog.get_db_path()
+            entered_code = dialog.get_code()
+            
+            real_key = None
+            if custom_db and os.path.exists(custom_db):
+                real_key = self._read_key_from_db(custom_db)
+                # PERSISTENCE: Save the selected path to config file
+                try:
+                    with open(CONFIG_FILE, 'w') as f:
+                        json.dump({"db_path": custom_db}, f)
+                    self.console.append(f"<span style='color: #a6e3a1;'>[SYSTEM] DB Path saved to config.</span>")
+                except Exception as e:
+                    self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to save config: {e}</span>")
+            elif entered_code:
+                real_key = entered_code
+            
+            if real_key:
+                self.current_admin_key = real_key
+                self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Key successfully updated! Key: {real_key[:5]}...</span>")
+                self.update_info_box("Running 🟢" if self.stop_btn.isEnabled() else "Stopped 🔴")
+            else:
+                QMessageBox.warning(self, "Error", "Sahi DB path select karein ya valid key daalein.")
+
     def open_admin_panel(self):
-        if not self.current_admin_key:
-            self.console.append("<span style='color: #f38ba8;'>[INFO] Admin key abhi available nahi hai. Cannot open Admin Panel.</span>")
-            return
-
         if AdminWindow is None:
-            self.console.append("<span style='color: #f38ba8;'>[ERROR] AdminWindow could not be imported from intra_admin.</span>")
+            self.console.append("<span style='color: #f38ba8;'>[ERROR] AdminWindow import nahi ho paya.</span>")
+            return
+        
+        if not self.current_admin_key:
+            QMessageBox.warning(self, "Key Required", "Admin Key missing! Please click 'FIX DB PATH' first.")
+            self.console.append("<span style='color: #f38ba8;'>[INFO] Admin key missing. Use FIX DB PATH.</span>")
             return
 
-        # Always use the IP where the server is running (host machine).
-        # We can try to use localhost, or use the local IP if localhost doesn't respond correctly,
-        # but 127.0.0.1 is safe since it's running locally.
-        # Alternatively, use get_local_ip() which is the network IP.
-        url = f"http://127.0.0.1:8000"
-
+        url = "http://127.0.0.1:8000"
         try:
             self.admin_window = AdminWindow(url, self.current_admin_key)
             self.admin_window.show()
-            self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel opened with URL: {url}</span>")
+            self.console.append(f"<span style='color: #a6e3a1;'>[INFO] Admin Panel opened: {url} ✅</span>")
         except Exception as e:
             self.console.append(f"<span style='color: #f38ba8;'>[ERROR] Failed to open Admin Panel: {str(e)}</span>")
 
+    def _read_key_from_db(self, db_path):
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+            row = cursor.fetchone()
+            conn.close()
+            return row[0] if row and row[0] else None
+        except Exception as e:
+            self.console.append(f"<span style='color: #f38ba8;'>[ERROR] DB read error: {e}</span>")
+            return None
+
     def check_service_status(self):
-        """Runs 'systemctl is-active lanserver' silently to check status"""
         try:
             result = subprocess.run(["systemctl", "is-active", "lanserver"], capture_output=True, text=True)
             is_running = (result.stdout.strip() == "active")
-
             if is_running:
                 self.start_btn.setEnabled(False)
                 self.stop_btn.setEnabled(True)
@@ -237,28 +309,95 @@ class ServerController(QMainWindow):
             self.update_info_box("Error checking status ⚠️")
 
     def start_service(self):
-        self.console.append("<span style='color: #a6e3a1;'>[SYSTEM] Requesting systemctl to START lanserver...</span>")
-        # subprocess.Popen sends the command to OS. Linux will automatically ask for password GUI popup if needed.
+        self.console.append("<span style='color: #a6e3a1;'>[SYSTEM] Starting lanserver...</span>")
         subprocess.Popen(["systemctl", "start", "lanserver"])
 
     def stop_service(self):
-        self.console.append("<span style='color: #f38ba8;'>[SYSTEM] Requesting systemctl to STOP lanserver...</span>")
+        self.console.append("<span style='color: #f38ba8;'>[SYSTEM] Stopping lanserver...</span>")
         subprocess.Popen(["systemctl", "stop", "lanserver"])
 
     def start_log_stream(self):
-        """Tails the journalctl logs live"""
         if self.log_process.state() == QProcess.Running:
             self.log_process.kill()
-
-        # -u: unit name, -f: follow live, -n 50: last 50 lines, -o cat: clean output without timestamps
         self.log_process.start("journalctl", ["-u", "lanserver", "-f", "-n", "50", "-o", "cat"])
 
     def handle_log_output(self):
-        """Reads live logs from journalctl and adds to GUI"""
         data = self.log_process.readAllStandardOutput().data().decode('utf-8')
         if data.strip():
             self.console.insertPlainText(data)
             self.console.ensureCursorVisible()
+
+class AdminUnlockDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("📂 DB Path & Admin Key")
+        self.setFixedSize(400, 220)
+        self.setStyleSheet("""
+            QDialog { background-color: #1e1e2e; color: #cdd6f4; }
+            QLabel  { color: #cdd6f4; font-size: 13px; }
+            QLineEdit {
+                background: #181825; color: #cdd6f4;
+                border: 1px solid #313244; border-radius: 6px;
+                padding: 6px; font-size: 13px;
+            }
+            QPushButton {
+                background-color: #cba6f7; color: #11111b;
+                font-weight: bold; padding: 8px 20px;
+                border-radius: 6px; font-size: 13px;
+            }
+            QPushButton:hover { background-color: #b4befe; }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        title = QLabel("📂  Database & Admin Key")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #cba6f7;")
+        layout.addWidget(title)
+
+        desc = QLabel("Database auto-detect nahi hui. DB file browse karein ya key daalein:")
+        desc.setStyleSheet("font-size: 12px; color: #a6adc8;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        form = QFormLayout()
+        form.setSpacing(10)
+
+        db_row = QHBoxLayout()
+        self.db_input = QLineEdit()
+        self.db_input.setPlaceholderText("Select chat_users.db file...")
+        browse_btn = QPushButton("📂")
+        browse_btn.setFixedWidth(36)
+        browse_btn.setStyleSheet("padding: 6px; font-size: 14px;")
+        browse_btn.clicked.connect(self._browse_db)
+        db_row.addWidget(self.db_input)
+        db_row.addWidget(browse_btn)
+        form.addRow("DB File:", db_row)
+
+        self.code_input = QLineEdit()
+        self.code_input.setEchoMode(QLineEdit.Password)
+        self.code_input.setPlaceholderText("Admin key daalo (optional)")
+        form.addRow("Admin Key:", self.code_input)
+
+        layout.addLayout(form)
+
+        btn_box = QDialogButtonBox()
+        unlock_btn = btn_box.addButton("Update Key", QDialogButtonBox.AcceptRole)
+        cancel_btn = btn_box.addButton("Cancel", QDialogButtonBox.RejectRole)
+        btn_box.accepted.connect(self.accept)
+        btn_box.rejected.connect(self.reject)
+        layout.addWidget(btn_box)
+
+        self.code_input.returnPressed.connect(self.accept)
+        self.db_input.returnPressed.connect(self.accept)
+
+    def _browse_db(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select DB File", "", "SQLite DB (*.db);;All Files (*)")
+        if path: self.db_input.setText(path)
+
+    def get_code(self): return self.code_input.text().strip()
+    def get_db_path(self): return self.db_input.text().strip()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
