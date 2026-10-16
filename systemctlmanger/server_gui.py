@@ -31,7 +31,7 @@ QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244
 
 # Possible database locations (different setups may use different filenames/working dirs)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+REPO_ROOT = os.path.expanduser("~")
 
 # Add intra_admin to path so we can import AdminWindow
 INTRA_ADMIN_DIR = os.path.join(REPO_ROOT, "intra_admin")
@@ -42,6 +42,8 @@ try:
 except ImportError:
     AdminWindow = None
 DB_CANDIDATES = [
+    os.path.join(REPO_ROOT, "lan_server", "chat_users.db"),
+    os.path.join(REPO_ROOT, "lan_server", "chat_user.db"),
     os.path.join(REPO_ROOT, "backend", "chat_users.db"),
     os.path.join(REPO_ROOT, "backend", "chat_user.db"),
     os.path.join(REPO_ROOT, "chat_users.db"),
@@ -156,6 +158,21 @@ class ServerController(QMainWindow):
 
     def get_admin_password(self):
         last_error = None
+        # Priority 1: Absolute path to known DB location
+        absolute_db = "/home/htech/lan_server/chat_users.db"
+        if os.path.exists(absolute_db):
+            try:
+                conn = sqlite3.connect(absolute_db)
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+                row = cursor.fetchone()
+                conn.close()
+                if row and row[0]:
+                    return row[0]
+            except Exception as e:
+                last_error = str(e)
+
+        # Priority 2: Candidates
         for db_path in DB_CANDIDATES:
             if not os.path.exists(db_path):
                 continue
@@ -168,7 +185,6 @@ class ServerController(QMainWindow):
                 if row and row[0]:
                     return row[0]
             except Exception as e:
-                # Try the next candidate and report only if all fail
                 last_error = str(e)
 
         if last_error:
