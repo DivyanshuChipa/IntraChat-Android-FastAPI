@@ -2,6 +2,7 @@ import sys
 import os
 import socket
 import sqlite3
+import json
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QMessageBox,
@@ -26,6 +27,9 @@ QPushButton#StopBtn { background-color: #f38ba8; color: #11111b; font-weight: bo
 QPushButton#StopBtn:hover { background-color: #eba0ac; }
 QPushButton#StopBtn:disabled { background-color: #45475a; color: #a6adc8; }
 
+QPushButton#FixDBBtn { background-color: #fab387; color: #11111b; font-weight: bold; font-size: 14px; padding: 8px; border-radius: 8px; }
+QPushButton#FixDBBtn:hover { background-color: #fcc6a1; }
+
 QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244; border-radius: 8px; padding: 10px; font-family: 'Consolas', monospace; }
 """
 
@@ -33,8 +37,11 @@ QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 BACKEND_DIR = os.path.join(REPO_ROOT, "backend")
+CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".intra_server_config.json")
 
-# Admin panel import
+# Admin panel import (search script dir first, then intra_admin)
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
 INTRA_ADMIN_DIR = os.path.join(REPO_ROOT, "intra_admin")
 if INTRA_ADMIN_DIR not in sys.path:
     sys.path.insert(0, INTRA_ADMIN_DIR)
@@ -94,12 +101,17 @@ class ServerController(QMainWindow):
         self.info_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.info_box)
 
-        # Copy Key + Open Admin buttons
+        # Key Management Layout
         copy_admin_layout = QHBoxLayout()
         self.copy_key_btn = QPushButton("📋 COPY ADMIN KEY")
         self.copy_key_btn.setObjectName("StartBtn")
         self.copy_key_btn.setCursor(Qt.PointingHandCursor)
         self.copy_key_btn.clicked.connect(self.copy_admin_key)
+
+        self.fix_db_btn = QPushButton("📂 FIX DB PATH")
+        self.fix_db_btn.setObjectName("FixDBBtn")
+        self.fix_db_btn.setCursor(Qt.PointingHandCursor)
+        self.fix_db_btn.clicked.connect(self.fix_db_location)
 
         self.open_admin_btn = QPushButton("⚙️ OPEN ADMIN PANEL")
         self.open_admin_btn.setStyleSheet("""
@@ -111,6 +123,7 @@ class ServerController(QMainWindow):
         self.open_admin_btn.clicked.connect(self.open_admin_panel)
 
         copy_admin_layout.addWidget(self.copy_key_btn)
+        copy_admin_layout.addWidget(self.fix_db_btn)
         copy_admin_layout.addWidget(self.open_admin_btn)
         layout.addLayout(copy_admin_layout)
 
@@ -167,6 +180,25 @@ class ServerController(QMainWindow):
 
     def get_admin_password(self):
         last_error = None
+
+        # Priority 0: Persistent Config File
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+                    saved_path = config.get("db_path")
+                    if saved_path and os.path.exists(saved_path):
+                        conn = sqlite3.connect(saved_path)
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT value FROM config WHERE key='admin_key'")
+                        row = cursor.fetchone()
+                        conn.close()
+                        if row and row[0]:
+                            return row[0]
+            except Exception as e:
+                last_error = f"Config Error: {str(e)}"
+
+        # Priority 1: Candidates
         for db_path in DB_CANDIDATES:
             if not os.path.exists(db_path):
                 continue
@@ -195,6 +227,9 @@ class ServerController(QMainWindow):
         )
         status_color = "#a6e3a1" if "Running" in status else "#f38ba8"
         self.copy_key_btn.setEnabled(bool(self.current_admin_key))
+
+        # CONDITIONAL VISIBILITY: Only show Fix DB button if key is NOT found
+        self.fix_db_btn.setVisible(not bool(self.current_admin_key))
 
         info_html = f"""
         <table width="100%">
@@ -318,57 +353,50 @@ class ServerController(QMainWindow):
         QApplication.clipboard().setText(self.current_admin_key)
         self._log_info("Admin key clipboard mein copy ho gaya! ✅")
 
+    def fix_db_location(self):
+        dialog = AdminUnlockDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            custom_db = dialog.get_db_path()
+            entered_code = dialog.get_code()
+
+            real_key = None
+            if custom_db and os.path.exists(custom_db):
+                real_key = self._read_key_from_db(custom_db)
+                # PERSISTENCE: Save the selected path to config file
+                try:
+                    with open(CONFIG_FILE, 'w') as f:
+                        json.dump({"db_path": custom_db}, f)
+                    self._log_info(f"DB Path saved to config: {custom_db}")
+                except Exception as e:
+                    self._log_error(f"Failed to save config: {e}")
+            elif entered_code:
+                real_key = entered_code
+
+            if real_key:
+                self.current_admin_key = real_key
+                self._log_info(f"Key successfully updated! Key: {real_key[:5]}...")
+                is_running = bool(self.server_process and self.server_process.state() == QProcess.Running)
+                self.update_info_box("Running 🟢" if is_running else "Stopped 🔴")
+            else:
+                QMessageBox.warning(self, "Error", "Sahi DB path select karein ya valid key daalein.")
+
     def open_admin_panel(self):
         if AdminWindow is None:
-            self._log_error("AdminWindow import nahi ho saka from intra_admin.")
+            self._log_error("AdminWindow import nahi ho saka from intra_admin / systemctlmanger.")
+            return
+
+        if not self.current_admin_key:
+            QMessageBox.warning(self, "Key Required", "Admin Key missing! Please click 'FIX DB PATH' first.")
+            self._log_error("Admin key missing. Use FIX DB PATH.")
             return
 
         url = "http://127.0.0.1:8000"
-
-        # 1. Agar DB pehle se detect hai aur admin key pata hai -> Direct open!
-        if self.current_admin_key:
-            try:
-                self.admin_window = AdminWindow(url, self.current_admin_key)
-                self.admin_window.show()
-                self._log_info(f"Admin Panel direct khul gaya: {url} ✅")
-            except Exception as e:
-                self._log_error(f"Admin Panel error: {str(e)}")
-            return
-
-        # 2. Agar DB detect nahi hui ya key nahi mili -> Tabhi Popup aayega
-        dialog = AdminUnlockDialog(self)
-        if dialog.exec() != QDialog.Accepted:
-            return
-
-        entered_code = dialog.get_code()
-        custom_db   = dialog.get_db_path()
-
-        real_key = None
-        if custom_db and os.path.exists(custom_db):
-            real_key = self._read_key_from_db(custom_db)
-            if real_key:
-                self.current_admin_key = real_key
-                self._log_info(f"Custom DB se key load ho gayi: {custom_db}")
-        elif entered_code:
-            real_key = entered_code
-
-        # Key nahi mili
-        if not real_key:
-            QMessageBox.warning(self, "Key Not Found", "❌ Admin key nahi mili. Sahi DB path select karein ya key daalein.")
-            self._log_error("Admin key nahi mili.")
-            return
-
-        if entered_code and custom_db and entered_code != real_key:
-            QMessageBox.warning(self, "Access Denied", "❌ Enter kiya hua code aur DB ki key match nahi hui.")
-            self._log_error("Admin Panel: code mismatch with DB key.")
-            return
-
         try:
-            self.admin_window = AdminWindow(url, real_key)
+            self.admin_window = AdminWindow(url, self.current_admin_key)
             self.admin_window.show()
-            self._log_info(f"Admin Panel khul gaya: {url} ✅")
+            self._log_info(f"Admin Panel opened: {url} ✅")
         except Exception as e:
-            self._log_error(f"Admin Panel error: {str(e)}")
+            self._log_error(f"Failed to open Admin Panel: {str(e)}")
 
     def _read_key_from_db(self, db_path):
         """Kisi bhi DB path se admin_key padhta hai"""
@@ -466,7 +494,7 @@ class AdminUnlockDialog(QDialog):
 
         # Buttons
         btn_box = QDialogButtonBox()
-        unlock_btn = btn_box.addButton("Open Admin", QDialogButtonBox.AcceptRole)
+        unlock_btn = btn_box.addButton("Update Key", QDialogButtonBox.AcceptRole)
         cancel_btn = btn_box.addButton("Cancel", QDialogButtonBox.RejectRole)
         btn_box.accepted.connect(self.accept)
         btn_box.rejected.connect(self.reject)
