@@ -218,13 +218,22 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         val msgsArray = JSONArray()
 
                         for (m in messages) {
+                            val isFile = !m.mediaUrl.isNullOrEmpty()
+                            val fileName = if (isFile) m.mediaUrl?.substringAfterLast("/") else null
                             val msgObj = JSONObject().apply {
                                 put("id", m.id)
                                 put("sender", m.sender)
                                 put("receiver", m.receiver)
                                 put("content", m.content)
+                                put("text", m.content)
+                                put("type", if (isFile) "file" else "text")
                                 put("media_url", m.mediaUrl)
-                                put("timestamp", m.timestamp)
+                                put("url", m.mediaUrl)
+                                put("fileUrl", m.mediaUrl)
+                                put("file_url", m.mediaUrl)
+                                put("fileName", fileName)
+                                put("filename", fileName)
+                                put("timestamp", m.timestamp.toLongOrNull() ?: 0L)
                                 put("is_read", m.isRead)
                             }
                             msgsArray.put(msgObj)
@@ -247,10 +256,27 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         // Stream me aane wale parts ko read karo
                         multipart.forEachPart { part ->
                             if (part is PartData.FileItem) {
-                                val originalName = part.originalFileName ?: "file_${System.currentTimeMillis()}"
-                                val ext = originalName.substringAfterLast(".", "")
+                                val originalName = part.originalFileName?.trim()?.removeSurrounding("\"")
+                                    ?: "file_${System.currentTimeMillis()}"
+                                val rawExt = originalName.substringAfterLast(".", "").lowercase()
+                                val extFromMime = when (part.contentType?.toString()?.lowercase()) {
+                                    "image/jpeg", "image/jpg" -> "jpg"
+                                    "image/png" -> "png"
+                                    "image/webp" -> "webp"
+                                    "image/gif" -> "gif"
+                                    "video/mp4" -> "mp4"
+                                    "video/webm" -> "webm"
+                                    "video/quicktime" -> "mov"
+                                    "video/x-matroska" -> "mkv"
+                                    "audio/mpeg", "audio/mp3" -> "mp3"
+                                    "audio/wav", "audio/x-wav" -> "wav"
+                                    "audio/ogg" -> "ogg"
+                                    "application/pdf" -> "pdf"
+                                    else -> null
+                                }
+                                val ext = if (rawExt.isNotEmpty() && rawExt != "bin") rawExt else (extFromMime ?: "bin")
                                 // Unique filename banate hain taaki file name collisions na ho
-                                val uniqueName = "${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.${if (ext.isNotEmpty()) ext else "bin"}"
+                                val uniqueName = "${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.$ext"
                                 val destFile = File(uploadsDir, uniqueName)
 
                                 // Direct Stream copy: Low RAM use karta hai aur badi videos/audios ko bina freeze hue save karta hai
@@ -274,6 +300,7 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                                 put("url", relativeUrl)         // Client ChatViewModel.kt isko padhta hai
                                 put("file_url", relativeUrl)    // Backward compatibility
                                 put("filename", savedFileName)  // File ka naam
+                                put("fileName", savedFileName)
                                 put("size", savedFileSize)      // File size in bytes
                             }
                             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
@@ -604,8 +631,15 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                 }
 
                 // Packet me bhi standard text aur url ensure karo
-                if (!parsed.has("text")) parsed.put("text", textContent)
-                if (fileUrl != null && !parsed.has("url")) parsed.put("url", fileUrl)
+                parsed.put("text", textContent)
+                if (fileUrl != null) {
+                    parsed.put("url", fileUrl)
+                    parsed.put("file_url", fileUrl)
+                }
+                if (fileName != null) {
+                    parsed.put("filename", fileName)
+                    parsed.put("fileName", fileName)
+                }
 
                 val ts = parsed.optLong("timestamp", System.currentTimeMillis()).toString()
 

@@ -492,11 +492,14 @@ async function loadHistory() {
     lastRenderedDateStr = null;
     filteredMsgs.forEach(m => {
       const ts = m.timestamp || Date.now();
+      const fileUrl = m.fileUrl || m.url || m.media_url || m.file_url || null;
+      const fileName = m.fileName || m.filename || m.file_name || "file";
+      const textContent = m.text || m.content || (fileUrl ? ("📎 Shared File: " + fileName) : "");
       displayMessage(
         m.sender,
-        m.text || "📎 Shared File: " + (m.fileName || "file"),
+        textContent,
         m.sender === myUsername ? "sent" : "received",
-        m.fileUrl,
+        fileUrl,
         null, false, null, "", m.options, ts
       );
     });
@@ -576,11 +579,13 @@ function connectWS() {
 
       case "file":
         if (isRelevant) {
+          const fileUrl = msg.url || msg.file_url || msg.fileUrl || null;
+          const fileName = msg.filename || msg.fileName || msg.file_name || "file";
           displayMessage(
             msg.sender,
-            msg.text || "📎 Shared File: " + (msg.filename || "received"),
+            msg.text || ("📎 Shared File: " + fileName),
             msg.sender === myUsername ? "sent" : "received",
-            msg.url,
+            fileUrl,
             null, false, null, "", msg.options, msg.timestamp || Date.now()
           );
         }
@@ -762,9 +767,10 @@ async function sendFile() {
         const retroProgress = msgElement.querySelector('.retro-progress-wrapper');
         if (retroProgress) retroProgress.remove();
 
-        // Update image click to open real URL
+        // Update image click to open real URL and set real source
         const img = msgElement.querySelector('img');
         if (img) {
+          img.src = data.url;
           img.onclick = () => window.open(data.url);
         }
 
