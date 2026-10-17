@@ -130,6 +130,18 @@ if (window.location.pathname.includes("chat.html")) {
   if (!myUsername) {
     window.location.href = "/index.html";
   } else {
+    // 🛡️ SECURITY CHECK: Verify if this session/username actually exists on the server!
+    fetch(`/api/verify_session?username=${encodeURIComponent(myUsername)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data.valid) {
+          console.warn("Session invalid on server, kicking to login...");
+          alert("Account not recognized on this server. Please login or register.");
+          logout();
+        }
+      })
+      .catch(err => console.log("Session verify network check:", err));
+
     const profileEl = document.getElementById("profile-name");
     if (profileEl) profileEl.innerText = myUsername;
     initTheme();
@@ -627,8 +639,12 @@ function connectWS() {
     console.error("WebSocket error:", e);
   };
 
-  ws.onclose = () => {
-    console.warn("WebSocket closed");
+  ws.onclose = (e) => {
+    console.warn("WebSocket closed", e.code, e.reason);
+    if (e.code === 1008) {
+      alert("Access Denied: " + (e.reason || "Account not registered or approved on this server."));
+      logout();
+    }
   };
 }
 

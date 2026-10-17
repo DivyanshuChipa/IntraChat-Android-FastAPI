@@ -90,6 +90,27 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         call.respondText(json.toString(), ContentType.Application.Json)
                     }
 
+                    // 1.1 Session Verification (Client session valid hai ya nahi)
+                    get("/api/verify_session") {
+                        val username = call.request.queryParameters["username"]?.trim() ?: ""
+                        val status = if (username.isNotEmpty()) db.getUserStatus(username) else null
+                        if (status == "OK") {
+                            val res = JSONObject().apply {
+                                put("success", true)
+                                put("valid", true)
+                                put("username", username)
+                            }
+                            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+                        } else {
+                            val res = JSONObject().apply {
+                                put("success", false)
+                                put("valid", false)
+                                put("message", if (status == null) "User not found" else "Account pending approval")
+                            }
+                            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.Unauthorized)
+                        }
+                    }
+
                     // 2. Auth: Register
                     post("/register") {
                         val body = call.receiveText()
@@ -418,6 +439,26 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
 
                     // 10. WebSockets: Real-time Chat, Presence, and WebRTC Calling
                     suspend fun io.ktor.server.websocket.DefaultWebSocketServerSession.handleClientSession(username: String) {
+                        // 🛡️ SECURITY CHECK: Defense in Depth (FastAPI chat.py jaisa strict gate)
+                        val status = db.getUserStatus(username)
+                        if (status == null) {
+                            ConnectionManager.log("🚫 Rejected connection from unregistered user: '$username'")
+                            send(Frame.Text(JSONObject().apply {
+                                put("type", "error")
+                                put("text", "Account not registered. Please register first.")
+                            }.toString()))
+                            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "User not registered"))
+                            return
+                        } else if (status != "OK") {
+                            ConnectionManager.log("🚫 Rejected connection from unapproved user: '$username' (Status: $status)")
+                            send(Frame.Text(JSONObject().apply {
+                                put("type", "error")
+                                put("text", "Your account is pending approval from Admin.")
+                            }.toString()))
+                            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Account pending approval"))
+                            return
+                        }
+
                         ConnectionManager.connect(username, this)
 
                         // Send connection status confirmation immediately

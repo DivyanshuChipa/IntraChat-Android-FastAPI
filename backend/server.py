@@ -14,7 +14,7 @@ from jose import jwt
 from datetime import datetime, timedelta, timezone
 import chat, files, calls, messages
 import profiles  # 👈 1. Import profiles module
-from users import init_db, register_user, verify_user, get_admin_key_db, set_admin_key_db
+from users import init_db, register_user, verify_user, get_admin_key_db, set_admin_key_db, is_user_approved
 from messages import init_msg_db
 from users import get_all_users
 from messages import get_recent_messages
@@ -178,6 +178,15 @@ async def ping_server():
             detail="LAN Server auto-discovery is disabled by administrator (Stealth Mode).",
         )
     return {"status": "ok", "app": "intra_chat", "name": "Intra Server"}
+
+@app.get("/api/verify_session")
+async def verify_session(username: str = ""):
+    if not username:
+        return JSONResponse(status_code=401, content={"success": False, "valid": False, "message": "Username required"})
+    if is_user_approved(username):
+        return {"success": True, "valid": True, "username": username}
+    else:
+        return JSONResponse(status_code=401, content={"success": False, "valid": False, "message": "User not approved or not found"})
 
 @app.get("/users")
 async def get_users_list():

@@ -108,7 +108,14 @@ object WsManager {
         }
 
         override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-            Log.w(TAG, "Closed: $reason")
+            Log.w(TAG, "Closed: code=$code, reason=$reason")
+            if (code == 1008) {
+                // 🚫 User is not registered or approved on this server!
+                webSocket = null
+                isConnected = false
+                notifyStatus("Access Denied: $reason")
+                return
+            }
             cleanupAndReconnect()
         }
     }

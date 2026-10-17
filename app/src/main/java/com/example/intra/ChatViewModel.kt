@@ -431,6 +431,14 @@ class ChatViewModel(
                 return
             }
 
+            // 🚫 Server error / Account not registered or approved
+            if (type == "error" || type == "auth_error") {
+                withContext(Dispatchers.Main) {
+                    connectionStatus.value = json.optString("text", "Account not registered or approved.")
+                }
+                return
+            }
+
             // 📞 Call / WebRTC signals
             if (
                 type.startsWith("call_") ||

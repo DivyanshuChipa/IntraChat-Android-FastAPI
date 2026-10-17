@@ -145,6 +145,32 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return "INVALID"
     }
 
+    // 🛡️ SECURITY CHECK: User registered aur approved hai ya nahi
+    @Synchronized
+    fun getUserStatus(username: String): String? {
+        val cleanUser = username.trim()
+        if (cleanUser.isEmpty()) return null
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_USERS,
+            arrayOf("status"),
+            "LOWER(username) = LOWER(?)",
+            arrayOf(cleanUser),
+            null, null, null
+        )
+        cursor.use {
+            if (it.moveToFirst()) {
+                return it.getString(0) // "OK" ya "PENDING"
+            }
+        }
+        return null // User database me exist hi nahi karta!
+    }
+
+    @Synchronized
+    fun isUserApproved(username: String): Boolean {
+        return getUserStatus(username) == "OK"
+    }
+
     @Synchronized
     fun getAllUsers(): List<ServerUser> {
         val list = mutableListOf<ServerUser>()
