@@ -35,6 +35,7 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
         private const val TABLE_USERS = "users"
         private const val TABLE_MESSAGES = "messages"
+        private const val TABLE_CONFIG = "config"
 
         @Volatile
         private var instance: ServerDatabase? = null
@@ -77,9 +78,24 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             )
             """.trimIndent()
         )
+
+        ensureConfigTable(db)
+    }
+
+    // 🛠️ Safe helper taaki purane install me agar config table na ho toh crash na ho
+    private fun ensureConfigTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS $TABLE_CONFIG (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_CONFIG")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_MESSAGES")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")
         onCreate(db)
@@ -105,16 +121,18 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
 
         val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        val initialStatus = if (getRequireApproval()) "PENDING" else "OK"
         val values = ContentValues().apply {
             put("username", cleanUser)
             put("password_hash", hashPassword(password))
             put("created_at", now)
-            put("status", "OK")
+            put("status", initialStatus)
         }
 
         val rowId = db.insert(TABLE_USERS, null, values)
         return if (rowId != -1L) {
-            Pair(true, "User registered successfully")
+            val msg = if (initialStatus == "PENDING") "Registration submitted. Pending admin approval." else "User registered successfully"
+            Pair(true, msg)
         } else {
             Pair(false, "Database insert failed")
         }
@@ -207,6 +225,119 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         val db = writableDatabase
         val count = db.delete(TABLE_USERS, "LOWER(username) = LOWER(?)", arrayOf(username.trim()))
         return count > 0
+    }
+
+    // 👑 ADMIN: User ko approve karne ke liye (status = "OK")
+    @Synchronized
+    fun approveUser(username: String): Boolean {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put("status", "OK")
+        }
+        val count = db.update(TABLE_USERS, values, "LOWER(username) = LOWER(?)", arrayOf(username.trim()))
+        return count > 0
+    }
+
+    // 👑 ADMIN: Kisi user ka password reset karne ke liye
+    @Synchronized
+    fun resetPassword(username: String, newPass: String): Boolean {
+        if (newPass.isEmpty()) return false
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put("password_hash", hashPassword(newPass))
+        }
+        val count = db.update(TABLE_USERS, values, "LOWER(username) = LOWER(?)", arrayOf(username.trim()))
+        return count > 0
+    }
+
+    // ==========================================
+    // ⚙️ CONFIG & ADMIN KEY METHODS
+    // ==========================================
+
+    @Synchronized
+    fun getConfig(key: String, default: String): String {
+        val db = readableDatabase
+        ensureConfigTable(db)
+        val cursor = db.query(TABLE_CONFIG, arrayOf("value"), "key = ?", arrayOf(key), null, null, null)
+        cursor.use {
+            if (it.moveToFirst()) {
+                return it.getString(0)
+            }
+        }
+        return default
+    }
+
+    @Synchronized
+    fun setConfig(key: String, value: String) {
+        val db = writableDatabase
+        ensureConfigTable(db)
+        val values = ContentValues().apply {
+            put("key", key)
+            put("value", value)
+        }
+        db.insertWithOnConflict(TABLE_CONFIG, null, values, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    // 🔑 ADMIN KEY: Unique secret key for PC admin panel / API auth
+    @Synchronized
+    fun getAdminKey(): String {
+        val existing = getConfig("admin_key", "")
+        if (existing.isNotEmpty()) return existing
+
+        // Nayi 16-character alphanumeric key generate karo
+        val newKey = java.util.UUID.randomUUID().toString().replace("-", "").take(16)
+        setConfig("admin_key", newKey)
+        return newKey
+    }
+
+    @Synchronized
+    fun regenerateAdminKey(): String {
+        val newKey = java.util.UUID.randomUUID().toString().replace("-", "").take(16)
+        setConfig("admin_key", newKey)
+        return newKey
+    }
+
+    @Synchronized
+    fun verifyAdminKey(key: String?): Boolean {
+        if (key.isNullOrBlank()) return false
+        val currentKey = getAdminKey().trim()
+        return key.trim() == currentKey
+    }
+
+    // 🛡️ Registration approval toggle (FastAPI parity)
+    @Synchronized
+    fun getRequireApproval(): Boolean {
+        return getConfig("require_approval", "false").toBoolean()
+    }
+
+    @Synchronized
+    fun setRequireApproval(enabled: Boolean) {
+        setConfig("require_approval", enabled.toString())
+    }
+
+    // 📡 Server Discovery toggle
+    @Synchronized
+    fun getDiscoveryEnabled(): Boolean {
+        return getConfig("discovery_enabled", "true").toBoolean()
+    }
+
+    @Synchronized
+    fun setDiscoveryEnabled(enabled: Boolean) {
+        setConfig("discovery_enabled", enabled.toString())
+    }
+
+    // 🧹 Purane messages delete karna (e.g. 7 ya 30 din se purane)
+    @Synchronized
+    fun cleanupOldMessages(days: Int): Int {
+        if (days <= 0) return 0
+        val db = writableDatabase
+        // SQLite date formatting: datetime('now', '-X days')
+        val count = db.delete(
+            TABLE_MESSAGES,
+            "datetime(timestamp) < datetime('now', '-$days days')",
+            null
+        )
+        return count
     }
 
     // ==========================================

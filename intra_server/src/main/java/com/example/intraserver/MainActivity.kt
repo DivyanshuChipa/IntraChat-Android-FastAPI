@@ -7,11 +7,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
+import com.example.intraserver.db.ServerDatabase
 import com.example.intraserver.service.ServerService
+import com.example.intraserver.ui.AdminScreen
 import com.example.intraserver.ui.ServerDashboard
 import com.example.intraserver.util.NetworkUtils
 
@@ -41,22 +43,37 @@ class MainActivity : ComponentActivity() {
 
                 val displayIp = if (isServerRunning) serverIp else NetworkUtils.getLocalIpAddress(this)
 
-                ServerDashboard(
-                    isServerRunning = isServerRunning,
-                    serverIp = displayIp,
-                    serverPort = serverPort,
-                    onToggleServer = { start ->
-                        if (start) {
-                            ServerService.start(this)
-                        } else {
-                            ServerService.stop(this)
+                var currentScreen by remember { mutableStateOf("dashboard") }
+
+                BackHandler(enabled = currentScreen == "admin") {
+                    currentScreen = "dashboard"
+                }
+
+                if (currentScreen == "admin") {
+                    AdminScreen(
+                        onBack = { currentScreen = "dashboard" },
+                        db = ServerDatabase.getInstance(this@MainActivity),
+                        isServerRunning = isServerRunning,
+                        serverIp = displayIp,
+                        serverPort = serverPort
+                    )
+                } else {
+                    ServerDashboard(
+                        isServerRunning = isServerRunning,
+                        serverIp = displayIp,
+                        serverPort = serverPort,
+                        onToggleServer = { start ->
+                            if (start) {
+                                ServerService.start(this@MainActivity)
+                            } else {
+                                ServerService.stop(this@MainActivity)
+                            }
+                        },
+                        onOpenAdmin = {
+                            currentScreen = "admin"
                         }
-                    },
-                    onOpenSettings = {
-                        // Yahan settings dialog khol sakte ho ya toast dikha sakte ho
-                        // Toast.makeText(this, "Settings clicked!", Toast.LENGTH_SHORT).show()
-                    }
-                )
+                    )
+                }
             }
         }
     }

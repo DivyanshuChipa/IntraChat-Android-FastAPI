@@ -42,10 +42,11 @@ fun ServerDashboard(
     serverIp: String,
     serverPort: Int,
     onToggleServer: (Boolean) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenAdmin: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val fullUrl = "http://$serverIp:$serverPort"
+    val adminKey = remember { com.example.intraserver.db.ServerDatabase.getInstance(context).getAdminKey() }
 
     // Live logs state
     val logs = remember { mutableStateListOf<String>() }
@@ -101,14 +102,11 @@ fun ServerDashboard(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        // Dummy click - future me settings open karne ke liye
-                        Toast.makeText(context, "Settings coming soon", Toast.LENGTH_SHORT).show()
-                        onOpenSettings()
-                    }) {
+                    IconButton(onClick = onOpenAdmin) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
+                            imageVector = Icons.Default.AdminPanelSettings,
+                            contentDescription = "Admin Panel",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
@@ -208,6 +206,50 @@ fun ServerDashboard(
                                 ) {
                                     Icon(Icons.Default.OpenInBrowser, contentDescription = "Open", modifier = Modifier.size(16.dp))
                                 }
+                            }
+                        }
+                    }
+
+                    // 🔑 Admin Key & Quick Actions (PySide GUI parity)
+                    Spacer(Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Admin Key: ",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = adminKey,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF9E2AF)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            IconButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("Admin Key", adminKey))
+                                    Toast.makeText(context, "Admin key copied! 📋", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(22.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy Admin Key", modifier = Modifier.size(13.dp))
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(
+                                onClick = onOpenAdmin,
+                                modifier = Modifier.size(22.dp)
+                            ) {
+                                Icon(Icons.Default.Tune, contentDescription = "Open Admin Panel", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                             }
                         }
                     }

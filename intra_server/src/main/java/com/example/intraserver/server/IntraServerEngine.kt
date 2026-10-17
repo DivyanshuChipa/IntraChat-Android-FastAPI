@@ -526,6 +526,9 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                         }
                         handleClientSession(username)
                     }
+
+                    // 11. 👑 Modular Admin API Routes (Desktop PySide & Phone Admin Panel)
+                    adminRoutes(db, context, uploadsDir)
                 }
             }
 

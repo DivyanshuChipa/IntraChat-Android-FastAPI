@@ -1,7 +1,9 @@
 package com.example.intraserver.server
 
 import io.ktor.server.websocket.DefaultWebSocketServerSession
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import io.ktor.websocket.send
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -113,6 +115,25 @@ object ConnectionManager {
 
     fun getOnlineCount(): Int {
         return sessions.size
+    }
+
+    // 👑 ADMIN: User ko forcefully disconnect karne ke liye
+    suspend fun kickUser(username: String, reason: String = "Disconnected by admin") {
+        val clean = username.trim()
+        val userSessions = findSessionsForUser(clean) ?: return
+        for (session in userSessions) {
+            try {
+                session.close(io.ktor.websocket.CloseReason(io.ktor.websocket.CloseReason.Codes.VIOLATED_POLICY, reason))
+            } catch (_: Exception) {}
+        }
+        sessions.remove(clean)
+        log("🚫 User '$clean' was kicked by Admin")
+        val presence = JSONObject().apply {
+            put("type", "user_status")
+            put("username", clean)
+            put("status", "offline")
+        }.toString()
+        broadcast(presence, excludeUser = clean)
     }
 
     fun clearAll() {
