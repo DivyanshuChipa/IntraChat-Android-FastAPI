@@ -342,8 +342,8 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     fun getAiConfig(): AiConfig {
         return AiConfig(
             aiEnabled = getConfig("ai_enabled", "false").toBoolean(),
-            aiModel = getConfig("ai_model", "gemma2:2b"),
-            ollamaUrl = getConfig("ollama_url", "http://192.168.1.35:11434"),
+            aiModel = getConfig("ai_model", "gemma3:270m"),
+            ollamaUrl = getConfig("ollama_url", "http://192.168.31.102:11434"),
             aiVisionModel = getConfig("ai_vision_model", "gemma:27b-cloud"),
             aiFallback = getConfig("ai_fallback", "gemma3:270m")
         )

@@ -44,6 +44,7 @@ object OllamaClient {
         }
 
         try {
+            com.example.intraserver.server.ConnectionManager.log("🤖 Ollama request: $endpoint [Model: $model]")
             val url = URL(endpoint)
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -66,12 +67,16 @@ object OllamaClient {
                 val messageObj = json.optJSONObject("message")
                 val reply = messageObj?.optString("content") ?: json.optString("response", "")
                 if (reply.isNotBlank()) return@withContext reply.trim()
+            } else {
+                val errText = conn.errorStream?.let { BufferedReader(InputStreamReader(it)).use { r -> r.readText() } } ?: ""
+                com.example.intraserver.server.ConnectionManager.log("⚠️ Ollama /api/chat error $responseCode: $errText")
             }
 
             // Fallback to /api/generate if /api/chat fails
             return@withContext fallbackGenerate(cleanUrl, model, prompt, systemPrompt)
         } catch (e: Exception) {
-            "🤖 *Lumir AI*: Network me Ollama server se connect nahi ho saka (`$cleanUrl`). Make sure aapke PC par Ollama chal raha hai (`OLLAMA_HOST=0.0.0.0 ollama serve`)."
+            com.example.intraserver.server.ConnectionManager.log("❌ Ollama connection failed: ${e.message}")
+            "🤖 *Lumir AI*: Network me Ollama server se connect nahi ho saka (`$cleanUrl`). Error: ${e.message}\nMake sure PC par `OLLAMA_HOST=0.0.0.0` chal raha hai aur firewall port 11434 open hai."
         }
     }
 
@@ -96,10 +101,42 @@ object OllamaClient {
                 val resp = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
                 JSONObject(resp).optString("response", "No response from AI")
             } else {
-                "🤖 AI Server responded with code ${conn.responseCode}"
+                val errText = conn.errorStream?.let { BufferedReader(InputStreamReader(it)).use { r -> r.readText() } } ?: ""
+                com.example.intraserver.server.ConnectionManager.log("⚠️ Ollama /api/generate error ${conn.responseCode}: $errText")
+                "🤖 AI Server responded with code ${conn.responseCode}: $errText"
             }
         } catch (e: Exception) {
             "🤖 Error reaching Ollama fallback: ${e.message}"
+        }
+    }
+
+    suspend fun testConnection(ollamaBaseUrl: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val cleanUrl = ollamaBaseUrl.trim().removeSuffix("/")
+        try {
+            val conn = (URL("$cleanUrl/api/tags").openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 5000
+                readTimeout = 5000
+            }
+            val code = conn.responseCode
+            if (code == 200) {
+                val resp = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                val json = JSONObject(resp)
+                val modelsArr = json.optJSONArray("models")
+                val names = mutableListOf<String>()
+                if (modelsArr != null) {
+                    for (i in 0 until modelsArr.length()) {
+                        val mObj = modelsArr.optJSONObject(i)
+                        mObj?.optString("name")?.let { if (it.isNotBlank()) names.add(it) }
+                    }
+                }
+                val modelListStr = if (names.isNotEmpty()) names.joinToString(", ") else "No models pulled yet"
+                Pair(true, "✅ Connected! Models: $modelListStr")
+            } else {
+                Pair(false, "❌ Ollama returned code $code")
+            }
+        } catch (e: Exception) {
+            Pair(false, "❌ Connection failed: ${e.message}")
         }
     }
 }

@@ -38,14 +38,15 @@ object LumirLiteEngine {
             list.add(fileUrl)
             if (list.size > 10) list.removeAt(0)
 
-            // Agar sirf file bheji hai aur text blank hai, toh options prompt karo
-            if (originalText.isBlank()) {
+            // Agar sirf file bheji hai aur user ne specific command nahi likha, toh options prompt karo
+            val isAutoFileText = originalText.isBlank() || originalText.startsWith("Shared File:", ignoreCase = true)
+            if (isAutoFileText) {
                 val ext = fileUrl.substringAfterLast(".", "").lowercase()
                 return when (ext) {
                     "pdf" -> {
                         LumirResponse(
                             text = "📄 PDF received! Choose a document tool or send more PDFs to merge:",
-                            options = listOf("🔗 Merge PDFs", "ℹ️ Document Info")
+                            options = listOf("🔗 Merge PDFs")
                         )
                     }
                     "mp4", "mkv", "avi", "mov", "3gp" -> {
@@ -60,8 +61,7 @@ object LumirLiteEngine {
                             options = listOf(
                                 "🛂 Passport A6 (6 Photos)",
                                 "🛂 Passport A6 (9 Photos)",
-                                "🗜️ Compress to 50 KB",
-                                "🗜️ Compress to 100 KB"
+                                "🗜️ Compress Image"
                             )
                         )
                     }

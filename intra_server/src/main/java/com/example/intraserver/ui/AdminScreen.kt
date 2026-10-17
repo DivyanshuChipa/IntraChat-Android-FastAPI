@@ -401,16 +401,50 @@ fun AdminScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 )
 
-                                Button(
-                                    onClick = {
-                                        db.setAiConfig(aiEnabled, aiModelText, ollamaUrlText)
-                                        Toast.makeText(context, "AI Settings Saved! 💾", Toast.LENGTH_SHORT).show()
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
+                                var testStatus by remember { mutableStateOf<String?>(null) }
+                                var isTesting by remember { mutableStateOf(false) }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Save AI Settings")
+                                    OutlinedButton(
+                                        onClick = {
+                                            isTesting = true
+                                            testStatus = "Testing connection..."
+                                            scope.launch {
+                                                val (ok, msg) = com.example.intraserver.lumir.OllamaClient.testConnection(ollamaUrlText)
+                                                testStatus = msg
+                                                isTesting = false
+                                                Toast.makeText(context, if (ok) "Ollama Connected!" else "Connection Failed!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        enabled = !isTesting && ollamaUrlText.isNotBlank(),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (isTesting) "Testing..." else "⚡ Test Conn")
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            db.setAiConfig(aiEnabled, aiModelText, ollamaUrlText)
+                                            Toast.makeText(context, "AI Settings Saved! 💾", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Save Settings")
+                                    }
+                                }
+
+                                if (testStatus != null) {
+                                    Text(
+                                        text = testStatus!!,
+                                        fontSize = 11.sp,
+                                        color = if (testStatus!!.startsWith("✅")) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
                                 }
                             }
                         }
