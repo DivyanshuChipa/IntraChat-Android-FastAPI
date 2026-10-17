@@ -331,5 +331,54 @@ fun Route.adminRoutes(db: ServerDatabase, context: Context, uploadDir: File) {
             }
             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
         }
+
+        // 11. 🤖 Get AI Settings (PySide & AdminScreen parity)
+        get("/ai_settings") {
+            if (!verifyAdminAuth(call)) {
+                call.respondAdminForbidden()
+                return@get
+            }
+
+            val cfg = db.getAiConfig()
+            val configObj = JSONObject().apply {
+                put("ai_enabled", cfg.aiEnabled)
+                put("ai_model", cfg.aiModel)
+                put("ollama_url", cfg.ollamaUrl)
+                put("ai_vision_model", cfg.aiVisionModel)
+                put("ai_fallback", cfg.aiFallback)
+            }
+
+            val res = JSONObject().apply {
+                put("success", true)
+                put("config", configObj)
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        }
+
+        // 12. 🤖 Save AI Settings
+        post("/ai_settings") {
+            if (!verifyAdminAuth(call)) {
+                call.respondAdminForbidden()
+                return@post
+            }
+
+            val params = call.request.queryParameters
+            val body = runCatching { JSONObject(call.receiveText()) }.getOrNull()
+
+            val enabled = params["enabled"]?.toBoolean() ?: body?.optBoolean("enabled", false) ?: false
+            val model = params["model"] ?: body?.optString("model", "gemma2:2b") ?: "gemma2:2b"
+            val url = params["url"] ?: body?.optString("url", "http://192.168.1.35:11434") ?: "http://192.168.1.35:11434"
+            val vision = params["vision"] ?: body?.optString("vision", "gemma:27b-cloud") ?: "gemma:27b-cloud"
+            val fallback = params["fallback"] ?: body?.optString("fallback", "gemma3:270m") ?: "gemma3:270m"
+
+            db.setAiConfig(enabled, model, url, vision, fallback)
+            ConnectionManager.log("🤖 Admin updated AI settings: Enabled=$enabled, Model=$model, URL=$url")
+
+            val res = JSONObject().apply {
+                put("success", true)
+                put("message", "AI configuration updated successfully")
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        }
     }
 }

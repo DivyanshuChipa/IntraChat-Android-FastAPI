@@ -27,6 +27,14 @@ data class ServerMessage(
     val isRead: Boolean = false
 )
 
+data class AiConfig(
+    val aiEnabled: Boolean = false,
+    val aiModel: String = "gemma2:2b",
+    val ollamaUrl: String = "http://192.168.1.35:11434",
+    val aiVisionModel: String = "gemma:27b-cloud",
+    val aiFallback: String = "gemma3:270m"
+)
+
 class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
@@ -324,6 +332,36 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     @Synchronized
     fun setDiscoveryEnabled(enabled: Boolean) {
         setConfig("discovery_enabled", enabled.toString())
+    }
+
+    // ==========================================
+    // 🤖 AI & LUMIR BOT CONFIG (FastAPI Parity)
+    // ==========================================
+
+    @Synchronized
+    fun getAiConfig(): AiConfig {
+        return AiConfig(
+            aiEnabled = getConfig("ai_enabled", "false").toBoolean(),
+            aiModel = getConfig("ai_model", "gemma2:2b"),
+            ollamaUrl = getConfig("ollama_url", "http://192.168.1.35:11434"),
+            aiVisionModel = getConfig("ai_vision_model", "gemma:27b-cloud"),
+            aiFallback = getConfig("ai_fallback", "gemma3:270m")
+        )
+    }
+
+    @Synchronized
+    fun setAiConfig(
+        enabled: Boolean,
+        model: String,
+        url: String,
+        visionModel: String = "gemma:27b-cloud",
+        fallback: String = "gemma3:270m"
+    ) {
+        setConfig("ai_enabled", enabled.toString())
+        setConfig("ai_model", model.trim())
+        setConfig("ollama_url", url.trim())
+        setConfig("ai_vision_model", visionModel.trim())
+        setConfig("ai_fallback", fallback.trim())
     }
 
     // 🧹 Purane messages delete karna (e.g. 7 ya 30 din se purane)

@@ -29,7 +29,9 @@ import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -616,6 +618,47 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                 if (receiver == "Family Group") {
                     // Broadcast to all users
                     ConnectionManager.broadcast(messageToSend, excludeSession = currentSession)
+                } else if (receiver.equals("Lumir", ignoreCase = true)) {
+                    // 🤖 LUMIR BOT: Background async worker
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        try {
+                            val botResponse = com.example.intraserver.lumir.LumirLiteEngine.process(
+                                rawText = textContent,
+                                fileUrl = fileUrl,
+                                sender = sender,
+                                uploadsDir = uploadsDir,
+                                db = db
+                            )
+
+                            val botTs = System.currentTimeMillis().toString()
+                            val botReplyJson = JSONObject().apply {
+                                put("type", if (botResponse.mediaUrl != null) "file" else if (botResponse.options != null) "utility_options" else "text")
+                                put("sender", "Lumir")
+                                put("receiver", sender)
+                                put("text", botResponse.text)
+                                put("content", botResponse.text)
+                                put("timestamp", botTs)
+                                if (botResponse.mediaUrl != null) {
+                                    put("url", botResponse.mediaUrl)
+                                    put("file_url", botResponse.mediaUrl)
+                                }
+                                if (botResponse.fileName != null) {
+                                    put("filename", botResponse.fileName)
+                                }
+                                if (botResponse.options != null) {
+                                    put("options", JSONArray(botResponse.options))
+                                }
+                            }
+
+                            // 💾 Lumir's reply DB me save karo
+                            db.saveMessage("Lumir", sender, botResponse.text, botResponse.mediaUrl, botTs)
+
+                            // 📤 Sender ko WebSocket se reply bhejo
+                            ConnectionManager.sendToUser(sender, botReplyJson.toString())
+                        } catch (e: Exception) {
+                            ConnectionManager.log("⚠️ Lumir processing error: ${e.message}")
+                        }
+                    }
                 } else if (receiver.isNotEmpty()) {
                     // Send to receiver
                     val delivered = ConnectionManager.sendToUser(receiver, messageToSend)

@@ -8,6 +8,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -59,6 +61,11 @@ fun AdminScreen(
     var storageUsedMb by remember { mutableStateOf("0.00") }
     var uploadsCount by remember { mutableIntStateOf(0) }
 
+    // AI & Lumir Bot State
+    var aiEnabled by remember { mutableStateOf(db.getAiConfig().aiEnabled) }
+    var ollamaUrlText by remember { mutableStateOf(db.getAiConfig().ollamaUrl) }
+    var aiModelText by remember { mutableStateOf(db.getAiConfig().aiModel) }
+
     // Dialog States
     var showResetDialogFor by remember { mutableStateOf<String?>(null) }
     var newPasswordText by remember { mutableStateOf("") }
@@ -71,6 +78,11 @@ fun AdminScreen(
         adminKey = db.getAdminKey()
         requireApproval = db.getRequireApproval()
         discoveryEnabled = db.getDiscoveryEnabled()
+
+        val aiCfg = db.getAiConfig()
+        aiEnabled = aiCfg.aiEnabled
+        ollamaUrlText = aiCfg.ollamaUrl
+        aiModelText = aiCfg.aiModel
 
         val uploadDir = File(context.filesDir, "uploads")
         val files = uploadDir.listFiles()?.filter { it.isFile } ?: emptyList()
@@ -227,6 +239,7 @@ fun AdminScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -337,6 +350,70 @@ fun AdminScreen(
                                 }
                             }
                         }
+
+                        // 🤖 AI & Lumir Bot Settings Card
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("🤖 Lumir AI & LAN Ollama", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(
+                                    "Network me kisi bhi PC par chal rahe Ollama se phone server ko connect karein.",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Enable Lumir AI Bot", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                        Text("User 'Lumir' ko message bhej kar AI se baatein kar sakein.", fontSize = 11.sp, color = Color.Gray)
+                                    }
+                                    Switch(
+                                        checked = aiEnabled,
+                                        onCheckedChange = { checked ->
+                                            aiEnabled = checked
+                                            db.setAiConfig(checked, aiModelText, ollamaUrlText)
+                                            Toast.makeText(context, "AI Bot: ${if (checked) "ON" else "OFF"}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+
+                                OutlinedTextField(
+                                    value = ollamaUrlText,
+                                    onValueChange = { ollamaUrlText = it },
+                                    label = { Text("Ollama URL (PC IP:Port)") },
+                                    placeholder = { Text("http://192.168.1.35:11434") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = aiModelText,
+                                    onValueChange = { aiModelText = it },
+                                    label = { Text("Model Name") },
+                                    placeholder = { Text("gemma2:2b, llama3:8b, etc.") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Button(
+                                    onClick = {
+                                        db.setAiConfig(aiEnabled, aiModelText, ollamaUrlText)
+                                        Toast.makeText(context, "AI Settings Saved! 💾", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Save AI Settings")
+                                }
+                            }
+                        }
                     }
                 }
                 2 -> {
@@ -344,6 +421,7 @@ fun AdminScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
