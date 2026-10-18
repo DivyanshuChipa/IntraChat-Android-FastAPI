@@ -214,28 +214,68 @@ To turn Intra from a pure messenger into a comprehensive **LAN Home Ecosystem**,
 - 24/7 background stability with Foreground Service, `PARTIAL_WAKE_LOCK`, and `WifiLock`.
 - Material 3 Dark Server Appliance Dashboard with live IP badge, dynamic QR code, and real-time terminal log console.
 
-### 2. Phase 2: Media & Profile Synchronization [NEXT SESSION]
+### 2. Phase 2: Media & Profile Synchronization [COMPLETED]
 - **Profile Photo Upload (`POST /profile/upload_photo`)**:
   - Multipart avatar upload saved directly to internal app storage (`files/uploads`).
   - Automatic avatar URL association in SQLite `users` table and instant sync across client contacts.
 - **File & Media Transfers (`POST /upload` & `GET /uploads/{filename}`)**:
   - High-speed local LAN image, video, audio note, and document sharing.
   - Efficient file streaming directly from Android storage to connected clients.
-- **Step-by-Step Validation**: Test single-file upload, photo preview, and audio note exchange one by one.
+- **Zero-Friction WebDrop (`/drop`)**:
+  - Instant LAN file and clipboard sharing with automatic 10-day retention cleanup.
 
-### 3. Phase 3: UI Theming - Hacker Console vs Material You Switch
-- **Concept:** Provide a user toggle on the Server Dashboard:
-  - **Option A (Hacker / Appliance Mode):** Dark slate/black theme, glowing emerald green status, monospace live logs (ideal for OLED battery saving & burn-in prevention on 24/7 phones).
-  - **Option B (Material You M3 Mode):** Soft pastel tones, dynamic wallpaper-adaptive color schemes (like IntraChat client), and pill cards for users who prefer Pixel aesthetics.
+### 3. Phase 3: Embedded Web Chat & WebDrop Client [COMPLETED]
+- Bundled static HTML5/CSS3/JS web client (`backend/static`) directly in `intra_server/src/main/assets/web/`.
+- Served via Ktor on `http://<phone-ip>:8000/` and `http://<phone-ip>:8000/drop`.
+- Any laptop, PC, iPhone, or smart TV on the Wi-Fi can chat or share files without downloading any app.
 
-### 4. Phase 4: Embedded Web Chat Client (Zero App Install on PC)
-- Bundle the lightweight static HTML/JS web client (`backend/static`) directly in `intra_server/src/main/assets/web/`.
-- Serve it via Ktor `staticResources` on `http://<phone-ip>:8000/`.
-- Any laptop or smart TV on the Wi-Fi can open a web browser and immediately chat without downloading any app.
+### 4. Phase 4: LAN Auto-Discovery & Stealth Mode [IN PROGRESS]
+- **Python Backend:** Already implemented with `discovery_enabled` database toggle in `users.py` / `admin_api.py`. When enabled, `/api/ping` broadcasts presence to `ServerDiscoveryManager.kt`. When disabled, activates **Stealth Mode** (403 Forbidden).
+- **IntraServer Parity:** Add `discovery_enabled` setting in `ServerDatabase.kt`, toggleable via Admin dashboard, controlling `/api/ping` responses on the phone server.
 
-### 5. Phase 5: Zero-Config Auto-Discovery (mDNS / UDP Broadcast)
-- Broadcast a UDP beacon (`_intrachat._tcp.local`) from the server phone.
-- Client apps automatically discover the server IP without typing numbers or scanning QR codes.
+---
+
+## 🗄️ IntraDrive: Turn Phone Server into a Virtual Network Hard Drive (WebDAV Engine)
+
+### 1. Vision & Problem Statement
+Users already have an SMB client in the Android app to browse existing Linux/Windows Samba shares. However, running a true SMB server on non-root Android is nearly impossible because standard SMB requires privileged port **445**, which Android kernel blocks for normal apps.
+
+**The Solution:** Implement a native **WebDAV Engine** inside `IntraServer` on port `8000` (e.g. `http://<phone-ip>:8000/drive`).
+
+### 2. Why WebDAV is the Ultimate Solution:
+- **Zero Root / Zero High-Port Hack:** Runs directly on unprivileged user port `8000` alongside existing Ktor routes.
+- **Native OS Integration (No extra software needed):**
+  - **Windows 10 / 11:** Open File Explorer ➔ Right-click "This PC" ➔ **Map Network Drive** ➔ Enter `http://192.168.x.x:8000/drive`. The phone mounts directly as drive letter `Z:\` or `D:\`!
+  - **macOS:** Finder ➔ `Go` ➔ `Connect to Server` (`Cmd + K`) ➔ Enter `http://192.168.x.x:8000/drive`.
+  - **Linux:** Mountable via standard Nautilus, Dolphin, or `davfs2`.
+  - **IntraChat Android Client:** Uses built-in WebDAV/SMB browser to access files.
+- **Core HTTP Verbs:**
+  - `PROPFIND` / `PROPPATCH` (List folders & file metadata)
+  - `GET` & `PUT` (Read and write file streams)
+  - `MKCOL` (Create new folders)
+  - `DELETE` & `MOVE` / `COPY` (File management)
+
+---
+
+## 🧠 Node 2 Distributed AI Engine: Full-Duplex Lumir Calling
+
+### 1. Hardware Split & Strategy
+- **Node 1 (Lightweight / 24/7):** Handles core chat, WebDrop, and presence.
+- **Node 2 (High-Performance GPU Machine):** Runs the heavy AI stack:
+  1. **STT:** `faster-whisper` (medium/large-v3) with GPU CUDA acceleration for near-instant Hindi/English audio transcription.
+  2. **LLM:** Ollama running high-capacity Gemma 2 (9B/27B) or Llama 3 for intelligent conversational reasoning.
+  3. **TTS:** `Kokoro` / `Piper TTS` streaming high-fidelity natural humanoid speech.
+- **Calling Flow:**
+  - Phone mic audio is sent to Node 1 via WebSocket.
+  - Node 1 proxies audio chunks to Node 2's AI pipeline.
+  - Node 2 responds with streaming voice packets back to the phone earpiece/speaker.
+
+---
+
+## 📺 Local Media Casting (Phone ➔ PC / TV)
+- **Concept:** Send any active video or photo from the phone to a connected PC browser or IntraTV screen with a single "Cast" tap.
+- **Lower Priority:** Planned after IntraDrive and Node 2 AI setup.
+
 
 
 
