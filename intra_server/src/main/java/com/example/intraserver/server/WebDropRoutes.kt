@@ -143,13 +143,36 @@ fun Route.webDropRoutes(
         call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
     }
 
-    // 4. Delete file
+    // 4. Delete file (DELETE method)
     delete("/api/drop/file/{filename}") {
         val filename = call.parameters["filename"]?.trim() ?: ""
         val target = File(dropDir, filename)
         if (target.exists() && target.isFile) {
             target.delete()
             ConnectionManager.log("🗑️ [WebDrop] File deleted: $filename")
+            val res = JSONObject().apply {
+                put("success", true)
+                put("message", "Deleted $filename")
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        } else {
+            val res = JSONObject().apply {
+                put("success", false)
+                put("message", "File not found")
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.NotFound)
+        }
+    }
+
+    // 4.1 Delete file fallback (POST method)
+    post("/api/drop/delete") {
+        val raw = call.receiveText()
+        val json = try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
+        val filename = json.optString("filename", "").trim()
+        val target = File(dropDir, filename)
+        if (target.exists() && target.isFile) {
+            target.delete()
+            ConnectionManager.log("🗑️ [WebDrop] File deleted via POST: $filename")
             val res = JSONObject().apply {
                 put("success", true)
                 put("message", "Deleted $filename")

@@ -9,8 +9,15 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="", tags=["WebDrop"])
 
-WEBDROP_DIR = Path("uploads/webdrop")
+import urllib.parse
+
+BASE_DIR = Path(__file__).resolve().parent
+WEBDROP_DIR = BASE_DIR / "uploads" / "webdrop"
 WEBDROP_DIR.mkdir(parents=True, exist_ok=True)
+
+# Also ensure relative uploads/webdrop exists if running from another CWD
+if not WEBDROP_DIR.exists():
+    Path("uploads/webdrop").mkdir(parents=True, exist_ok=True)
 
 # In-memory shared clipboard snippets (Last 20)
 shared_texts = []
@@ -18,6 +25,28 @@ shared_texts = []
 class TextDropItem(BaseModel):
     text: str
     sender: Optional[str] = "Guest"
+
+class DeleteFileRequest(BaseModel):
+    filename: str
+
+def _get_target_file(raw_name: str) -> Optional[Path]:
+    """Finds the target file checking unquoted names and fallback directories."""
+    unquoted = urllib.parse.unquote(raw_name).strip()
+    safe_name = os.path.basename(unquoted)
+    if not safe_name or safe_name in [".", ".."]:
+        return None
+
+    # Try both base_dir and current working dir uploads
+    candidates = [
+        WEBDROP_DIR / safe_name,
+        Path("uploads/webdrop") / safe_name,
+        WEBDROP_DIR / os.path.basename(raw_name),
+        Path("uploads/webdrop") / os.path.basename(raw_name)
+    ]
+    for c in candidates:
+        if c.exists() and c.is_file():
+            return c
+    return None
 
 def _format_size(size_bytes: int) -> str:
     if size_bytes < 1024:
@@ -115,18 +144,31 @@ async def upload_drop_files(
     except Exception as e:
         return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
 
-@router.delete("/api/drop/file/{filename}")
-async def delete_drop_file(filename: str):
-    """Allows deleting a dropped file."""
-    safe_name = os.path.basename(filename).strip()
-    target = WEBDROP_DIR / safe_name
-    if target.exists() and target.is_file():
+def _perform_delete(filename: str):
+    target = _get_target_file(filename)
+    if target and target.is_file():
         try:
             target.unlink()
-            return {"success": True, "message": f"Deleted {safe_name}"}
+            return True, f"Deleted {target.name}", 200
         except Exception as e:
-            return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
-    raise HTTPException(status_code=404, detail="File not found")
+            return False, f"Delete failed: {e}", 500
+    return False, f"File not found: {filename}", 404
+
+@router.delete("/api/drop/file/{filename:path}")
+async def delete_drop_file(filename: str):
+    """Allows deleting a dropped file via DELETE method."""
+    success, msg, status = _perform_delete(filename)
+    if success:
+        return {"success": True, "message": msg}
+    return JSONResponse(status_code=status, content={"success": False, "message": msg})
+
+@router.post("/api/drop/delete")
+async def delete_drop_file_post(req: DeleteFileRequest):
+    """Fallback POST endpoint for file deletion."""
+    success, msg, status = _perform_delete(req.filename)
+    if success:
+        return {"success": True, "message": msg}
+    return JSONResponse(status_code=status, content={"success": False, "message": msg})
 
 @router.get("/api/drop/texts")
 async def get_shared_texts():

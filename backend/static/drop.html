@@ -712,7 +712,7 @@
             </div>
             <div class="file-actions">
               <a href="${f.url}" download class="action-btn" title="Download">⬇️</a>
-              <button class="action-btn delete" onclick="deleteFile('${f.name}')" title="Delete">🗑️</button>
+              <button class="action-btn delete" onclick="deleteFile('${escapeQuotes(f.name)}')" title="Delete">🗑️</button>
             </div>
           </div>
         `;
@@ -733,13 +733,35 @@
     async function deleteFile(filename) {
       if (!confirm(`Delete "${filename}" from WebDrop?`)) return;
       try {
-        const res = await fetch(`/api/drop/file/${encodeURIComponent(filename)}`, { method: "DELETE" });
+        let res = await fetch(`/api/drop/file/${encodeURIComponent(filename)}`, { method: "DELETE" });
+        if (!res.ok) {
+          res = await fetch("/api/drop/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: filename })
+          });
+        }
         const data = await res.json();
         if (data.success) {
           loadFiles();
+        } else {
+          alert(data.message || "Delete failed");
         }
       } catch (e) {
-        console.error("Delete failed:", e);
+        console.error("Delete failed, trying fallback:", e);
+        try {
+          const res = await fetch("/api/drop/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: filename })
+          });
+          const data = await res.json();
+          if (data.success) {
+            loadFiles();
+            return;
+          }
+        } catch (_) {}
+        alert("Failed to delete file: " + e.message);
       }
     }
 
