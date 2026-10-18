@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intra WebDrop — Zero Friction LAN Share</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0f17;
+      --card-bg: rgba(26, 31, 46, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.2);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at 20% 20%, #1e1b4b 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 60px 16px;
+    }
+
+    /* HEADER */
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding: 12px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 28px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .brand-text h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* MAIN CONTAINER */
+    main {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* TABS */
+    .nav-tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 4px;
+      border: 1px solid var(--card-border);
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .nav-tab.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+
+    /* DROP ZONE */
+    .drop-zone {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 2px dashed rgba(99, 102, 241, 0.4);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(16, 185, 129, 0.08);
+      transform: scale(1.01);
+    }
+
+    .drop-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .drop-zone h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .drop-zone p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .progress-bar-container {
+      margin-top: 18px;
+      display: none;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width 0.15s ease;
+    }
+
+    .progress-status {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    /* SEARCH & FILTER BAR */
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 220px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+    }
+
+    .category-pills {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .pill.active {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* FILE LIST */
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .file-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+
+    .file-card:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .file-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .file-info {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .file-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+
+    .file-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: var(--text);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .action-btn:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .action-btn.delete:hover {
+      background: var(--danger);
+    }
+
+    /* TEXT CLIPBOARD SECTION */
+    .clipboard-section {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .clipboard-input-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .clipboard-textarea {
+      width: 100%;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      color: var(--text);
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+    }
+
+    .clipboard-textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .clipboard-btn {
+      align-self: flex-end;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .clipboard-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .snippet-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .snippet-text {
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    .snippet-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* QR MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .modal-card {
+      background: #151824;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .qr-container {
+      background: #fff;
+      padding: 12px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    .qr-container img {
+      display: block;
+      width: 180px;
+      height: 180px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 13px;
+      grid-column: 1 / -1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🚀</div>
+      <div class="brand-text">
+        <h1>Intra WebDrop</h1>
+        <p>Instant LAN File & Clipboard Share — Zero Friction</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" onclick="openQrModal()">📱 Show QR</button>
+      <button class="btn-secondary" onclick="loadFiles()">🔄 Refresh</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- TABS -->
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('files')">📁 Shared Files (<span id="file-count">0</span>)</button>
+      <button class="nav-tab" onclick="switchTab('clipboard')">📋 LAN Clipboard</button>
+    </div>
+
+    <!-- TAB 1: FILES -->
+    <div id="tab-files" style="display: flex; flex-direction: column; gap: 18px;">
+
+      <!-- DROP ZONE -->
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <span class="drop-icon">📤</span>
+        <h3>Drop files here or click to browse</h3>
+        <p>Full speed direct LAN Wi-Fi transfer • No internet used</p>
+        <input type="file" id="file-input" multiple style="display: none;" onchange="handleFileSelect(this.files)">
+        
+        <div class="progress-bar-container" id="progress-container">
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <p class="progress-status" id="progress-status">Uploading...</p>
+        </div>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="filter-bar">
+        <input type="text" class="search-input" id="search-input" placeholder="🔍 Search dropped files..." oninput="filterFiles()">
+        <div class="category-pills">
+          <span class="pill active" onclick="setCategory('all', this)">All</span>
+          <span class="pill" onclick="setCategory('image', this)">Photos 📸</span>
+          <span class="pill" onclick="setCategory('video', this)">Videos 🎬</span>
+          <span class="pill" onclick="setCategory('document', this)">Docs 📄</span>
+          <span class="pill" onclick="setCategory('audio', this)">Audio 🎵</span>
+          <span class="pill" onclick="setCategory('archive', this)">Zip 📦</span>
+        </div>
+      </div>
+
+      <!-- FILE LIST GRID -->
+      <div class="file-grid" id="file-grid">
+        <div class="empty-state">Loading dropped files...</div>
+      </div>
+    </div>
+
+    <!-- TAB 2: CLIPBOARD / TEXT -->
+    <div id="tab-clipboard" class="clipboard-section" style="display: none;">
+      <div class="clipboard-input-box">
+        <textarea class="clipboard-textarea" id="clipboard-input" placeholder="Type or paste any link, Wi-Fi password, or text note to share across devices..."></textarea>
+        <button class="clipboard-btn" onclick="shareText()">🚀 Share to LAN</button>
+      </div>
+
+      <div id="snippets-list" style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="empty-state">No shared text snippets yet.</div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- QR MODAL -->
+  <div class="modal-overlay" id="qr-modal" onclick="closeQrModal(event)">
+    <div class="modal-card">
+      <h3 style="font-size: 16px; font-weight: 600;">Scan to Open WebDrop</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">Open phone camera and scan to connect directly</p>
+      <div class="qr-container">
+        <img id="qr-img" src="" alt="WebDrop QR Code">
+      </div>
+      <p id="qr-url-text" style="font-size: 12px; word-break: break-all; color: var(--primary); font-weight: 600;"></p>
+      <button class="btn-secondary" style="width: 100%; justify-content: center;" onclick="copyDropUrl()">📋 Copy Link</button>
+    </div>
+  </div>
+
+  <script>
+    let allFiles = [];
+    let currentCategory = 'all';
+
+    // Drag and drop event handlers
+    const dropZone = document.getElementById("drop-zone");
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+      });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        handleFileSelect(e.dataTransfer.files);
+      }
+    });
+
+    function handleFileSelect(files) {
+      if (!files || files.length === 0) return;
+      uploadFiles(files);
+    }
+
+    function uploadFiles(fileList) {
+      const formData = new FormData();
+      for (let i = 0; i < fileList.length; i++) {
+        formData.append("files", fileList[i]);
+      }
+
+      const progressContainer = document.getElementById("progress-container");
+      const progressFill = document.getElementById("progress-fill");
+      const progressStatus = document.getElementById("progress-status");
+
+      progressContainer.style.display = "block";
+      progressFill.style.width = "0%";
+      progressStatus.innerText = `Uploading ${fileList.length} file(s)...`;
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/drop/upload");
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressFill.style.width = percent + "%";
+          progressStatus.innerText = `Uploading: ${percent}%`;
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          progressStatus.innerText = "✅ Upload complete!";
+          setTimeout(() => {
+            progressContainer.style.display = "none";
+          }, 1500);
+          loadFiles();
+        } else {
+          progressStatus.innerText = "❌ Upload failed!";
+        }
+        document.getElementById("file-input").value = "";
+      };
+
+      xhr.onerror = () => {
+        progressStatus.innerText = "❌ Network error";
+      };
+
+      xhr.send(formData);
+    }
+
+    async function loadFiles() {
+      try {
+        const res = await fetch("/api/drop/files");
+        const data = await res.json();
+        if (data.success) {
+          allFiles = data.files;
+          document.getElementById("file-count").innerText = allFiles.length;
+          renderFiles();
+        }
+      } catch (e) {
+        console.error("Error loading files:", e);
+      }
+    }
+
+    function renderFiles() {
+      const grid = document.getElementById("file-grid");
+      const query = document.getElementById("search-input").value.toLowerCase().trim();
+
+      const filtered = allFiles.filter(f => {
+        const matchesCategory = currentCategory === 'all' || f.category === currentCategory;
+        const matchesQuery = !query || f.name.toLowerCase().includes(query);
+        return matchesCategory && matchesQuery;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state">No files found matching criteria.</div>`;
+        return;
+      }
+
+      const icons = {
+        image: "📸",
+        video: "🎬",
+        audio: "🎵",
+        document: "📄",
+        archive: "📦",
+        other: "📎"
+      };
+
+      grid.innerHTML = filtered.map(f => {
+        const icon = icons[f.category] || "📎";
+        const dateStr = new Date(f.uploaded_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="file-card">
+            <div class="file-icon">${icon}</div>
+            <div class="file-info">
+              <div class="file-name" title="${f.name}">${f.name}</div>
+              <div class="file-meta">${f.formatted_size} • ${dateStr}</div>
+            </div>
+            <div class="file-actions">
+              <a href="${f.url}" download class="action-btn" title="Download">⬇️</a>
+              <button class="action-btn delete" onclick="deleteFile('${f.name}')" title="Delete">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function setCategory(cat, el) {
+      currentCategory = cat;
+      document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+      el.classList.add("active");
+      renderFiles();
+    }
+
+    function filterFiles() {
+      renderFiles();
+    }
+
+    async function deleteFile(filename) {
+      if (!confirm(`Delete "${filename}" from WebDrop?`)) return;
+      try {
+        const res = await fetch(`/api/drop/file/${encodeURIComponent(filename)}`, { method: "DELETE" });
+        const data = await res.json();
+        if (data.success) {
+          loadFiles();
+        }
+      } catch (e) {
+        console.error("Delete failed:", e);
+      }
+    }
+
+    // CLIPBOARD LOGIC
+    async function loadSnippets() {
+      try {
+        const res = await fetch("/api/drop/texts");
+        const data = await res.json();
+        if (data.success) {
+          const list = document.getElementById("snippets-list");
+          if (data.texts.length === 0) {
+            list.innerHTML = `<div class="empty-state">No shared text snippets yet.</div>`;
+            return;
+          }
+          list.innerHTML = data.texts.map(s => {
+            const dateStr = new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return `
+              <div class="snippet-card">
+                <div>
+                  <div class="snippet-text">${escapeHtml(s.text)}</div>
+                  <div class="snippet-meta">From ${s.sender} • ${dateStr}</div>
+                </div>
+                <button class="copy-btn" onclick="copySnippet('${escapeQuotes(s.text)}')">📋 Copy</button>
+              </div>
+            `;
+          }).join("");
+        }
+      } catch (e) {
+        console.error("Error loading texts:", e);
+      }
+    }
+
+    async function shareText() {
+      const input = document.getElementById("clipboard-input");
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        const res = await fetch("/api/drop/text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text, sender: "Guest" })
+        });
+        const data = await res.json();
+        if (data.success) {
+          input.value = "";
+          loadSnippets();
+        }
+      } catch (e) {
+        console.error("Error sharing text:", e);
+      }
+    }
+
+    function copySnippet(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Copied to clipboard!");
+      });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+    }
+
+    function escapeQuotes(str) {
+      return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, " ");
+    }
+
+    // TABS
+    function switchTab(tab) {
+      const filesTab = document.getElementById("tab-files");
+      const clipTab = document.getElementById("tab-clipboard");
+      const buttons = document.querySelectorAll(".nav-tab");
+
+      if (tab === 'files') {
+        filesTab.style.display = "flex";
+        clipTab.style.display = "none";
+        buttons[0].classList.add("active");
+        buttons[1].classList.remove("active");
+      } else {
+        filesTab.style.display = "none";
+        clipTab.style.display = "flex";
+        buttons[0].classList.remove("active");
+        buttons[1].classList.add("active");
+        loadSnippets();
+      }
+    }
+
+    // QR MODAL
+    function openQrModal() {
+      const currentUrl = window.location.origin + "/drop";
+      document.getElementById("qr-url-text").innerText = currentUrl;
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
+      document.getElementById("qr-img").src = qrApiUrl;
+      document.getElementById("qr-modal").style.display = "flex";
+    }
+
+    function closeQrModal(e) {
+      if (e.target.id === "qr-modal") {
+        document.getElementById("qr-modal").style.display = "none";
+      }
+    }
+
+    function copyDropUrl() {
+      const url = window.location.origin + "/drop";
+      navigator.clipboard.writeText(url).then(() => {
+        alert("WebDrop URL copied!");
+      });
+    }
+
+    // Initial Load & Auto-polling every 6 seconds
+    loadFiles();
+    setInterval(() => {
+      loadFiles();
+      if (document.getElementById("tab-clipboard").style.display !== "none") {
+        loadSnippets();
+      }
+    }, 6000);
+  </script>
+</body>
+</html>

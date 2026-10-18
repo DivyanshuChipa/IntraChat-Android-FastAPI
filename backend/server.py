@@ -73,7 +73,7 @@ def verify_admin(x_admin_key: str = Header(None)):
 
 # ================= BACKGROUND TASKS & SCHEDULER =================
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from tasks import sync_weather_data, hourly_sentinel_check, cleanup_yt_downloads
+from tasks import sync_weather_data, hourly_sentinel_check, cleanup_yt_downloads, cleanup_webdrop_files
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -88,6 +88,9 @@ async def lifespan(app: FastAPI):
 
     # Run YouTube download cleaner every minute
     scheduler.add_job(cleanup_yt_downloads, 'cron', minute='*')
+    
+    # Run WebDrop 10-day file cleanup every day at 03:00 AM
+    scheduler.add_job(cleanup_webdrop_files, 'cron', hour=3, minute=0)
     
     scheduler.start()
     print("🌅 Level 5 Smart Environment Monitor scheduler started.")
@@ -228,7 +231,9 @@ async def handle_delete_account(user: UserAuth):
 # ================= EXISTING MODULES =================
 
 import admin_api
+import webdrop
 app.include_router(admin_api.router)
+app.include_router(webdrop.router)
 app.include_router(chat.router)
 app.include_router(files.router)
 app.include_router(calls.router, prefix="/calls")

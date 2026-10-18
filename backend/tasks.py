@@ -132,6 +132,34 @@ async def cleanup_yt_downloads() -> None:
         import logging
         logging.getLogger(__name__).error(f"Failed to cleanup YouTube downloads: {e}")
 
+async def cleanup_webdrop_files() -> None:
+    """
+    Background task to clean up files in uploads/webdrop/ older than 10 days.
+    Runs daily to prevent server storage bloat.
+    """
+    try:
+        import os
+        import time
+        from pathlib import Path
+        
+        drop_dir = Path("uploads/webdrop")
+        if not drop_dir.exists():
+            return
+            
+        current_time = time.time()
+        max_age_seconds = 10 * 24 * 3600  # 10 days in seconds
+        
+        for file_path in drop_dir.glob("*"):
+            if file_path.is_file():
+                file_mtime = os.path.getmtime(file_path)
+                if (current_time - file_mtime) > max_age_seconds:
+                    file_path.unlink()
+                    print(f"🧹 [WebDrop] Auto-deleted expired file (>10 days old): {file_path.name}")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to cleanup WebDrop files: {e}")
+
+
 async def hourly_sentinel_check() -> None:
     """
     Runs every hour. Reads the cache.
