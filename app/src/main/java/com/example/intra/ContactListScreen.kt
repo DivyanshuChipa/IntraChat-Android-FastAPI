@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -98,6 +99,7 @@ fun ContactListScreen(
     // State for Profile Dialog
     var selectedProfileForDialog by remember { mutableStateOf<ProfileDialogData?>(null) }
     var isHubExpanded by remember { mutableStateOf(false) }
+    var showWebDropDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = colorScheme.surface,
@@ -132,7 +134,7 @@ fun ContactListScreen(
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 1. Live TV Icon (if enabled) or Placeholder
+                                // 1. Live TV Icon (if enabled)
                                 if (isIptvEnabled) {
                                     IconButton(onClick = {
                                         isHubExpanded = false
@@ -144,30 +146,33 @@ fun ContactListScreen(
                                             tint = topBarTextColor
                                         )
                                     }
-                                } else {
-                                    IconButton(onClick = {}) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Person,
-                                            contentDescription = "Placeholder",
-                                            tint = topBarTextColor.copy(alpha = 0.4f)
-                                        )
-                                    }
                                 }
-                                // 2. SMB Browser Icon
+                                // 2. WebDrop (Zero-Friction LAN Share)
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    showWebDropDialog = true
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.NearMe,
+                                        contentDescription = "WebDrop",
+                                        tint = topBarTextColor
+                                    )
+                                }
+                                // 3. SMB Browser Icon
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     onSmbClick()
                                 }) {
                                     Icon(Icons.Filled.Storage, contentDescription = "SMB Network", tint = topBarTextColor)
                                 }
-                                // 3. Smart Home Icon
+                                // 4. Smart Home Icon
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     onIntraHomeClick()
                                 }) {
                                     Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarTextColor)
                                 }
-                                // 4. Settings Icon
+                                // 5. Settings Icon
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     onSettingsClick()
@@ -325,6 +330,15 @@ fun ContactListScreen(
             onDismiss = { selectedProfileForDialog = null },
             isDark = isDark,
             baseUrl = settingsManager.getBaseUrl().removeSuffix("/")
+        )
+    }
+
+    // Render WebDrop QR & Link Dialog
+    if (showWebDropDialog) {
+        WebDropDialog(
+            baseUrl = settingsManager.getBaseUrl(),
+            isDark = isDark,
+            onDismiss = { showWebDropDialog = false }
         )
     }
 }

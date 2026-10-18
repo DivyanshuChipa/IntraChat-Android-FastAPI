@@ -95,6 +95,8 @@ dependencies {
 
     // Compose: Material Icons
     implementation("androidx.compose.material:material-icons-extended")
+    // 🌐 QR Code Generator (for WebDrop QR & Pairing)
+    implementation("com.google.zxing:core:3.5.3")
     // 🌐 SMB Network Sharing Client Library
     implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
     // 📞 WebRTC Library

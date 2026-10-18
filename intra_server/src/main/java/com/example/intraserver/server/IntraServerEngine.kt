@@ -558,12 +558,28 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
 
                     // 11. 👑 Modular Admin API Routes (Desktop PySide & Phone Admin Panel)
                     adminRoutes(db, context, uploadsDir)
+
+                    // 12. 🚀 WebDrop (Zero-Friction LAN File & Clipboard Share)
+                    webDropRoutes(uploadsDir, ::serveWebAsset)
                 }
             }
 
             engine?.start(wait = false)
             isRunning = true
             ConnectionManager.log("🚀 IntraServer running on port $port")
+
+            // Auto-clean files older than 10 days in background
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val deleted = cleanupOldWebDropFiles(uploadsDir, days = 10)
+                    if (deleted > 0) {
+                        ConnectionManager.log("🧹 WebDrop: Cleaned up $deleted expired file(s)")
+                    }
+                } catch (e: Exception) {
+                    ConnectionManager.log("⚠️ WebDrop cleanup error: ${e.message}")
+                }
+            }
+
             onStarted()
         } catch (t: Throwable) {
             isRunning = false
