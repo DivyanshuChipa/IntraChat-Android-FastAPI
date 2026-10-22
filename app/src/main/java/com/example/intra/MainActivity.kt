@@ -155,6 +155,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val coroutineScope = rememberCoroutineScope()
+                    val lumirVoiceManager = remember {
+                        LumirVoiceCallManager(context = applicationContext, scope = coroutineScope)
+                    }
+
                     val webRTCClient = remember {
                         WebRTCClient(
                             context = applicationContext,
@@ -192,7 +197,15 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     "call_rejected", "call_ended" -> {
-                                        cleanupCall(callViewModel, webRTCClient)
+                                        cleanupCall(callViewModel, webRTCClient, lumirVoiceManager)
+                                    }
+
+                                    "call_accept" -> {
+                                        val sender = json.optString("sender")
+                                        if (sender.equals("Lumir", ignoreCase = true)) {
+                                            callViewModel.onCallConnected()
+                                            lumirVoiceManager.startSession()
+                                        }
                                     }
 
                                     "webrtc_offer" -> {
@@ -275,8 +288,21 @@ class MainActivity : ComponentActivity() {
                             )
 
                             callViewModel.callState.value.status != CallStatus.IDLE -> {
+                                val isLumir = callViewModel.callState.value.targetUser.equals("Lumir", ignoreCase = true)
                                 CallScreen(
                                     state = callViewModel.callState.value,
+                                    lumirVoiceStatus = if (isLumir) {
+                                        when {
+                                            lumirVoiceManager.isListening -> "🎙️ Listening... (Speak now)"
+                                            lumirVoiceManager.isThinking -> "⏳ Thinking (Processing with Node 2)..."
+                                            lumirVoiceManager.isSpeaking -> "🔊 Lumir is Speaking..."
+                                            else -> "🎙️ Tap Mic to Speak"
+                                        }
+                                    } else null,
+                                    lumirSubtitle = if (isLumir) {
+                                        if (lumirVoiceManager.isSpeaking || lumirVoiceManager.isThinking) lumirVoiceManager.lumirTranscript
+                                        else lumirVoiceManager.userTranscript
+                                    } else null,
 
                                     onRejectCall = {
                                         val target = callViewModel.callState.value.targetUser
@@ -287,11 +313,11 @@ class MainActivity : ComponentActivity() {
                                             }
                                             chatViewModel.sendRawSignal(json.toString())
                                         }
-                                        cleanupCall(callViewModel, webRTCClient)
+                                        cleanupCall(callViewModel, webRTCClient, lumirVoiceManager)
                                     },
 
                                     onEndCall = {
-                                        cleanupCall(callViewModel, webRTCClient)
+                                        cleanupCall(callViewModel, webRTCClient, lumirVoiceManager)
                                     },
 
                                     onAcceptCall = {
@@ -313,9 +339,17 @@ class MainActivity : ComponentActivity() {
                                     },
 
                                     onToggleMute = {
-                                        val newMute = !callViewModel.callState.value.isMuted
-                                        webRTCClient.toggleMute(newMute)
-                                        callViewModel.updateMuteState(newMute)
+                                        if (isLumir) {
+                                            if (lumirVoiceManager.isListening) {
+                                                lumirVoiceManager.stopListening()
+                                            } else {
+                                                lumirVoiceManager.startListening()
+                                            }
+                                        } else {
+                                            val newMute = !callViewModel.callState.value.isMuted
+                                            webRTCClient.toggleMute(newMute)
+                                            callViewModel.updateMuteState(newMute)
+                                        }
                                     },
 
                                     onToggleSpeaker = {
@@ -362,11 +396,21 @@ class MainActivity : ComponentActivity() {
                                                 .removeSuffix("/") + it
                                         }
 
+                                    if (target.equals("Lumir", ignoreCase = true)) {
+                                        // 🤖 LUMIR AI VOICE CALL
+                                        chatViewModel.sendCallRequest(target)
+                                        callViewModel.onStartOutgoingCall(target, photo)
+                                        callViewModel.onCallConnected()
+                                        lumirVoiceManager.startSession()
+                                        proximitySensor.deactivate(true)
+                                    } else {
+                                        // 👤 HUMAN WEBRTC PEER CALL
                                         chatViewModel.sendCallRequest(target)
                                         callViewModel.onStartOutgoingCall(target, photo)
                                         webRTCClient.startCall(target)
                                         proximitySensor.deactivate(true)
                                     }
+                                }
                                 )
                             }
 
@@ -497,9 +541,11 @@ class MainActivity : ComponentActivity() {
 
     private fun cleanupCall(
         callViewModel: CallViewModel,
-        webRTCClient: WebRTCClient
+        webRTCClient: WebRTCClient,
+        lumirVoiceManager: LumirVoiceCallManager? = null
     ) {
         try {
+            lumirVoiceManager?.endSession()
             webRTCClient.endCall()
         } catch (_: Exception) {}
         callViewModel.onCallEnded()

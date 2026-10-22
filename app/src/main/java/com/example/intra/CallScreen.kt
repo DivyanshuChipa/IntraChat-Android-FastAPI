@@ -4,6 +4,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
@@ -43,6 +45,8 @@ import android.os.Build
 @Composable
 fun CallScreen(
     state: CallState,
+    lumirVoiceStatus: String? = null,
+    lumirSubtitle: String? = null,
     onEndCall: () -> Unit,
     onRejectCall: () -> Unit,
     onAcceptCall: () -> Unit,
@@ -110,7 +114,7 @@ fun CallScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     AvatarGlowRing(
-                        isActive = state.status != CallStatus.CONNECTED
+                        isActive = state.status != CallStatus.CONNECTED || (lumirVoiceStatus?.contains("Speaking") == true)
                     )
 
                     Box(
@@ -161,6 +165,33 @@ fun CallScreen(
                         color = Color.White.copy(alpha = 0.7f),
                         fontSize = 18.sp
                     )
+                }
+
+                if (!lumirVoiceStatus.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = lumirVoiceStatus,
+                        color = Color(0xFFFFD54F),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                if (!lumirSubtitle.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.Black.copy(alpha = 0.35f),
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    ) {
+                        Text(
+                            text = lumirSubtitle,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
 

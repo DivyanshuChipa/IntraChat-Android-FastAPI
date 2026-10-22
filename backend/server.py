@@ -232,12 +232,14 @@ async def handle_delete_account(user: UserAuth):
 
 import admin_api
 import webdrop
+from lumir.voice import router as lumir_voice_router
 app.include_router(admin_api.router)
 app.include_router(webdrop.router)
 app.include_router(chat.router)
 app.include_router(files.router)
 app.include_router(calls.router, prefix="/calls")
 app.include_router(profiles.router, prefix="/profile", tags=["Profile"])  # 👈 3. Add Profile Router
+app.include_router(lumir_voice_router)
 
 # ================= STATIC FILES (WEB CLIENT) =================
 # ⚠️ Yeh line SABSE NEECHE honi chahiye!

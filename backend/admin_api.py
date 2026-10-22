@@ -156,8 +156,42 @@ def admin_set_ai_settings(
         vision: str = "gemma:27b-cloud",
         fallback: str = "gemma3:270m",
         smart_models: str = "gpt-oss:20b-cloud",
+        voice_node_url: str = "http://localhost:8005",
+        voice_node_enabled: bool = False,
         admin=Depends(verify_admin)
 ):
-    set_ai_config(enabled, model, url, vision, fallback, smart_models)
-    return {"success": True, "message": "AI settings updated successfully (with Vision and Fallback Engine)!"}
+    set_ai_config(enabled, model, url, vision, fallback, smart_models, voice_node_url, voice_node_enabled)
+    return {"success": True, "message": "AI settings updated successfully (including Node 2 Voice Engine)!"}
+
+# ================= TEST VOICE NODE (NODE 2) =================
+@router.get("/test_voice_node")
+def admin_test_voice_node(url: str = None, admin=Depends(verify_admin)):
+    import requests
+    if not url:
+        config = get_ai_config()
+        url = config.get("voice_node_url", "http://localhost:8005")
+
+    try:
+        start_time = time.time()
+        res = requests.get(f"{url.rstrip('/')}/health", timeout=3)
+        latency = round((time.time() - start_time) * 1000, 2)
+        if res.status_code == 200:
+            data = res.json()
+            return {
+                "success": True,
+                "latency_ms": latency,
+                "node_info": data,
+                "message": f"Connected to Node 2 Voice Engine in {latency}ms!"
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Node 2 responded with status code {res.status_code}"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Could not reach Voice Node at {url}: {str(e)}"
+        }
+
 

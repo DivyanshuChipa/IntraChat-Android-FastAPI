@@ -128,15 +128,19 @@ In IntraChat, users can already chat with Lumir via text. When a user taps the *
 ### 3. Distributed Node Architecture (LAN Offloading)
 Not every home server (e.g. Raspberry Pi) has a dedicated GPU for Whisper + LLM + TTS. To solve this, IntraChat introduces a **Distributed AI Node** system:
 
-- **Modular Offloading:** The IntraChat backend acts as the orchestrator. It can delegate:
-  1. STT to `http://<Node_IP>:9000/v1/audio/transcriptions` (e.g., Gaming PC running faster-whisper).
-  2. LLM to `http://<Node_IP>:11434` (Ollama running Gemma / Llama).
-  3. TTS to `http://<Node_IP>:5000/tts` (Piper Node) with local **eSpeak fallback** if the node goes down.
+- **Modular Offloading:** The IntraChat backend acts as the orchestrator. It delegates heavy voice workloads to the dedicated `voice-capability/` microservice running on **Node 2** (e.g. Intel Core i3 12th Gen Linux machine on port `8005`):
+  1. **STT:** `faster-whisper` (CPU int8, ~150ms).
+  2. **LLM:** Ollama running Gemma / Llama cloud or local.
+  3. **TTS:** `Piper TTS` (<50ms natural voice) with automatic **espeak-ng fallback**.
+  4. **Scripts:** `voice-capability/install.sh` & `start.sh` (Linux) and `.bat` (Windows).
 
 ---
 
 ### 4. Admin Panel Settings (`/admin/ai_settings` & SQLite `config`)
 Admins can customize and configure the entire voice & AI pipeline from the Web Admin Dashboard:
+- `voice_node_url`: URL of the Node 2 Voice Engine (e.g. `http://192.168.31.94:8005`).
+- `voice_node_enabled`: 1-tap master toggle to enable/disable voice offloading.
+- `/admin/test_voice_node`: Instant ping test with roundtrip latency detection.
 
 | Setting Key | Description | Example Value |
 | :--- | :--- | :--- |

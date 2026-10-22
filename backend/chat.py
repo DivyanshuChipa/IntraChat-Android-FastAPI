@@ -4,7 +4,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime, timezone, timedelta
 from lumir.engine import lumir_engine  # 👈 YE ADD KARO
 from lumir.memory import save_media_to_memory  # 👈 YE NAYI LINE ADD KARO
-from users import get_all_users, is_user_approved  # 👈 Import is_user_approved
+from users import get_all_users, is_user_approved, get_ai_config  # 👈 Import is_user_approved & get_ai_config
 from messages import (
     save_message, 
     create_delivery_entries, 
@@ -183,6 +183,21 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 # 🤖 LUMIR REAL BOT LOGIC (Phase 3)
                 # ==========================================
                 if receiver == "Lumir":
+                    # 📞 LUMIR AI VOICE CALL SIGNALING
+                    if msg_type in SIGNAL_TYPES:
+                        if msg_type == "call_request":
+                            print(f"📞 Incoming voice call to Lumir from {sender} - Auto Accepting...")
+                            await ws.send_text(json.dumps({
+                                "type": "call_accept",
+                                "sender": "Lumir",
+                                "receiver": sender,
+                                "timestamp": int(datetime.now(IST).timestamp() * 1000)
+                            }))
+                        elif msg_type in ("call_end", "call_ended", "call_reject", "call_rejected"):
+                            print(f"🛑 Lumir voice call ended by {sender}")
+                        # Ignore webrtc_offer / ice_candidate so it doesn't get saved as chat
+                        continue
+
                     # 🛑 FIX: Ignore typing signals for Lumir so it doesn't spam empty replies
                     if msg_type == "typing":
                         continue
@@ -288,3 +303,5 @@ async def websocket_endpoint(ws: WebSocket, username: str):
                 print(f"🔴 {username} fully disconnected")
             else:
                 print(f"🔴 {username} device disconnected ({remaining} devices remaining)")
+
+

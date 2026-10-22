@@ -348,7 +348,7 @@ def get_ai_config():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models')"
+        "SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models', 'voice_node_url', 'voice_node_enabled')"
     )
     rows = cursor.fetchall()
     conn.close()
@@ -361,10 +361,12 @@ def get_ai_config():
         "ai_vision_model": "gemma:27b-cloud",  # Naya Vision Model
         "ai_fallback": "gemma3:270m",  # Naya Fallback Model
         "ai_smart_models": "gpt-oss:20b-cloud, llama3:8b",  # Inko Vector DB milega
+        "voice_node_url": "http://localhost:8005",  # 🎙️ Node 2 Voice Microservice
+        "voice_node_enabled": False,
     }
 
     for key, value in rows:
-        if key == "ai_enabled":
+        if key in ("ai_enabled", "voice_node_enabled"):
             config[key] = value == "1"
         else:
             config[key] = value
@@ -379,6 +381,8 @@ def set_ai_config(
     vision_model: str,
     fallback: str,
     smart_models: str,
+    voice_node_url: str = "http://localhost:8005",
+    voice_node_enabled: bool = False,
 ):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
@@ -403,6 +407,14 @@ def set_ai_config(
     cursor.execute(
         "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_smart_models', ?)",
         (smart_models,),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('voice_node_url', ?)",
+        (voice_node_url,),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('voice_node_enabled', ?)",
+        ("1" if voice_node_enabled else "0",),
     )
     conn.commit()
     conn.close()
