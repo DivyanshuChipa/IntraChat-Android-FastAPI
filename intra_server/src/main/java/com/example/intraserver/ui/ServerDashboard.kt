@@ -364,6 +364,77 @@ fun ServerDashboard(
             }
 
             // ==========================================
+            // 3.1 INTRADRIVE (WebDAV Network Storage)
+            // ==========================================
+            val isDriveEnabled = remember(isServerRunning) {
+                com.example.intraserver.db.ServerDatabase.getInstance(context).getIntraDriveEnabled()
+            }
+            AnimatedVisibility(visible = isServerRunning && isDriveEnabled) {
+                val driveUrl = "$fullUrl/drive"
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("🗄️", fontSize = 24.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text("IntraDrive (Network Storage)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(
+                                    driveUrl,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "Windows me 'Map network drive' se Z: banayein",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("IntraDrive URL", driveUrl))
+                                    Toast.makeText(context, "IntraDrive link copied! 📋", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy Drive URL", modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(
+                                onClick = {
+                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(driveUrl))
+                                    context.startActivity(browserIntent)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.OpenInBrowser, contentDescription = "Open IntraDrive", modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ==========================================
             // 4. LIVE LOG TERMINAL
             // ==========================================
             Row(

@@ -224,13 +224,13 @@ While IntraChat is tailored for personal mobile devices, **IntraPlay** brings th
 - Served via Ktor on `http://<phone-ip>:8000/` and `http://<phone-ip>:8000/drop`.
 - Any laptop, PC, iPhone, or smart TV on the Wi-Fi can chat or share files without downloading any app.
 
-### 4. Phase 4: LAN Auto-Discovery & Stealth Mode [IN PROGRESS]
-- **Python Backend:** Already implemented with `discovery_enabled` database toggle in `users.py` / `admin_api.py`. When enabled, `/api/ping` broadcasts presence to `ServerDiscoveryManager.kt`. When disabled, activates **Stealth Mode** (403 Forbidden).
-- **IntraServer Parity:** Add `discovery_enabled` setting in `ServerDatabase.kt`, toggleable via Admin dashboard, controlling `/api/ping` responses on the phone server.
+### 4. Phase 4: LAN Auto-Discovery & Stealth Mode [COMPLETED]
+- **Python Backend:** Implemented with `discovery_enabled` database toggle in `users.py` / `admin_api.py`. When enabled, `/api/ping` broadcasts presence to `ServerDiscoveryManager.kt`. When disabled, activates **Stealth Mode** (403 Forbidden).
+- **IntraServer Parity:** Implemented in `IntraServerEngine.kt` (`/api/ping` checks `db.getDiscoveryEnabled()`), toggleable via `AdminScreen.kt` Switch and `/toggle_discovery` API, default set to `'false'` (Stealth).
 
 ---
 
-## 🗄️ IntraDrive: Turn Phone Server into a Virtual Network Hard Drive (WebDAV Engine)
+## 🗄️ IntraDrive: Turn Phone Server into a Virtual Network Hard Drive (WebDAV Engine) [COMPLETED ON :intra_server]
 
 ### 1. Vision & Problem Statement
 Users already have an SMB client in the Android app to browse existing Linux/Windows Samba shares. However, running a true SMB server on non-root Android is nearly impossible because standard SMB requires privileged port **445**, which Android kernel blocks for normal apps.

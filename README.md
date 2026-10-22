@@ -50,7 +50,8 @@
 * **Smart OCR & Document Scan:** Extract receipts, menus, and text using Tesseract OCR.
 * **Environmental Monitor:** Hourly sentinel tracking temperature, weather, and home presence.
 
-### 5. 🗄️ SMB Network Browser & Media Center
+### 5. 🗄️ IntraDrive & SMB Network Storage
+* **IntraDrive (Virtual Network Hard Drive):** Mount your phone server on Windows File Explorer as a drive letter (`Z:\`) or macOS Finder via built-in WebDAV (`/drive`) on port 8000 — 0 root required!
 * **Local Network Storage:** Native Samba/SMB browser powered by `jcifs-ng` to stream movies and access NAS/PC shared folders.
 * **IntraTV (Free-To-Air IPTV):** ExoPlayer-powered HLS player streaming public IPTV channels and local media directly on your device.
 

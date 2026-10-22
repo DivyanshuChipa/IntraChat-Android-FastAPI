@@ -50,6 +50,8 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
     private val uploadsDir = File(context.filesDir, "uploads").apply { mkdirs() }
     // Profiles sub-folder (user avatars 256x256 PNGs)
     private val profilesDir = File(uploadsDir, "profiles").apply { mkdirs() }
+    // IntraDrive (WebDAV Network Storage folder)
+    private val driveDir = File(context.filesDir, "drive").apply { mkdirs() }
 
     @Volatile
     var isRunning = false
@@ -66,10 +68,23 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                     allowHeader(HttpHeaders.ContentType)
                     allowHeader(HttpHeaders.Authorization)
                     allowHeader("X-Admin-Key")
+                    allowHeader("Depth")
+                    allowHeader("Destination")
+                    allowHeader("Overwrite")
+                    allowHeader("Lock-Token")
+                    allowHeader("Timeout")
+                    allowHeader("Translate")
                     allowMethod(HttpMethod.Options)
                     allowMethod(HttpMethod.Put)
                     allowMethod(HttpMethod.Patch)
                     allowMethod(HttpMethod.Delete)
+                    allowMethod(HttpMethod.parse("PROPFIND"))
+                    allowMethod(HttpMethod.parse("PROPPATCH"))
+                    allowMethod(HttpMethod.parse("MKCOL"))
+                    allowMethod(HttpMethod.parse("MOVE"))
+                    allowMethod(HttpMethod.parse("COPY"))
+                    allowMethod(HttpMethod.parse("LOCK"))
+                    allowMethod(HttpMethod.parse("UNLOCK"))
                 }
 
                 // Configure WebSockets
@@ -84,6 +99,13 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                 routing {
                     // 1. Health check & Discovery
                     get("/api/ping") {
+                        if (!db.getDiscoveryEnabled()) {
+                            val res = JSONObject().apply {
+                                put("detail", "LAN Server auto-discovery is disabled by administrator (Stealth Mode).")
+                            }
+                            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.Forbidden)
+                            return@get
+                        }
                         val json = JSONObject().apply {
                             put("status", "ok")
                             put("app", "intra_chat")
@@ -561,6 +583,9 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
 
                     // 12. 🚀 WebDrop (Zero-Friction LAN File & Clipboard Share)
                     webDropRoutes(uploadsDir, ::serveWebAsset)
+
+                    // 13. 🗄️ IntraDrive (Native WebDAV Network Storage)
+                    webDavRoutes(driveDir) { db.getIntraDriveEnabled() }
                 }
             }
 

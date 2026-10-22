@@ -196,6 +196,7 @@ fun Route.adminRoutes(db: ServerDatabase, context: Context, uploadDir: File) {
                 put("success", true)
                 put("require_approval", db.getRequireApproval())
                 put("discovery_enabled", db.getDiscoveryEnabled())
+                put("intradrive_enabled", db.getIntraDriveEnabled())
             }
             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
         }
@@ -242,6 +243,29 @@ fun Route.adminRoutes(db: ServerDatabase, context: Context, uploadDir: File) {
                 put("success", true)
                 put("message", "Server discovery set to ${if (enabled) "ON" else "OFF (Stealth)"}")
                 put("discovery_enabled", enabled)
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        }
+
+        // 7.1 🗄️ Toggle IntraDrive (WebDAV) Setting
+        post("/toggle_drive") {
+            if (!verifyAdminAuth(call)) {
+                call.respondAdminForbidden()
+                return@post
+            }
+
+            val enabledStr = call.request.queryParameters["enabled"]
+                ?: runCatching { JSONObject(call.receiveText()).optString("enabled") }.getOrNull()
+                ?: "false"
+
+            val enabled = enabledStr.toBoolean()
+            db.setIntraDriveEnabled(enabled)
+            ConnectionManager.log("👑 Admin set IntraDrive (WebDAV): $enabled")
+
+            val res = JSONObject().apply {
+                put("success", true)
+                put("message", "IntraDrive set to ${if (enabled) "ON" else "OFF"}")
+                put("intradrive_enabled", enabled)
             }
             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
         }
@@ -328,6 +352,7 @@ fun Route.adminRoutes(db: ServerDatabase, context: Context, uploadDir: File) {
                 put("admin_key", db.getAdminKey())
                 put("require_approval", db.getRequireApproval())
                 put("discovery_enabled", db.getDiscoveryEnabled())
+                put("intradrive_enabled", db.getIntraDriveEnabled())
             }
             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
         }

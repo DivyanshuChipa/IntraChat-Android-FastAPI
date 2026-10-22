@@ -58,6 +58,7 @@ fun AdminScreen(
     var adminKey by remember { mutableStateOf(db.getAdminKey()) }
     var requireApproval by remember { mutableStateOf(db.getRequireApproval()) }
     var discoveryEnabled by remember { mutableStateOf(db.getDiscoveryEnabled()) }
+    var intraDriveEnabled by remember { mutableStateOf(db.getIntraDriveEnabled()) }
     var storageUsedMb by remember { mutableStateOf("0.00") }
     var uploadsCount by remember { mutableIntStateOf(0) }
 
@@ -78,6 +79,7 @@ fun AdminScreen(
         adminKey = db.getAdminKey()
         requireApproval = db.getRequireApproval()
         discoveryEnabled = db.getDiscoveryEnabled()
+        intraDriveEnabled = db.getIntraDriveEnabled()
 
         val aiCfg = db.getAiConfig()
         aiEnabled = aiCfg.aiEnabled
@@ -345,6 +347,32 @@ fun AdminScreen(
                                             discoveryEnabled = checked
                                             db.setDiscoveryEnabled(checked)
                                             Toast.makeText(context, "LAN Discovery: $checked", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+
+                                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+
+                                // IntraDrive (WebDAV Network Drive) Toggle
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("🗄️ IntraDrive (Network Sharing)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                        Text(
+                                            "Windows me Z: Drive ki tarah mount karein (WebDAV on /drive).",
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                    Switch(
+                                        checked = intraDriveEnabled,
+                                        onCheckedChange = { checked ->
+                                            intraDriveEnabled = checked
+                                            db.setIntraDriveEnabled(checked)
+                                            Toast.makeText(context, "IntraDrive: ${if (checked) "ON" else "OFF"}", Toast.LENGTH_SHORT).show()
                                         }
                                     )
                                 }

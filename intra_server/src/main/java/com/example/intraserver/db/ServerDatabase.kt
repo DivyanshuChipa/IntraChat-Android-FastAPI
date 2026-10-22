@@ -326,12 +326,23 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     // 📡 Server Discovery toggle
     @Synchronized
     fun getDiscoveryEnabled(): Boolean {
-        return getConfig("discovery_enabled", "true").toBoolean()
+        return getConfig("discovery_enabled", "false").toBoolean()
     }
 
     @Synchronized
     fun setDiscoveryEnabled(enabled: Boolean) {
         setConfig("discovery_enabled", enabled.toString())
+    }
+
+    // 🗄️ IntraDrive (WebDAV Network Drive) toggle
+    @Synchronized
+    fun getIntraDriveEnabled(): Boolean {
+        return getConfig("intradrive_enabled", "false").toBoolean()
+    }
+
+    @Synchronized
+    fun setIntraDriveEnabled(enabled: Boolean) {
+        setConfig("intradrive_enabled", enabled.toString())
     }
 
     // ==========================================
