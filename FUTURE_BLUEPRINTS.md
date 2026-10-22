@@ -166,41 +166,36 @@ Admins can customize and configure the entire voice & AI pipeline from the Web A
 
 ---
 
-## 📺 IntraTV: Smart Media Center & Free-To-Air IPTV Integration
+## 📺 IntraPlay: Smart TV & Fire TV Edition (Leanback Media Hub)
 
-### 1. Vision & Dual-Target Strategy
-To turn Intra from a pure messenger into a comprehensive **LAN Home Ecosystem**, media playback is expanded into two tailored surfaces:
-
-1. **IntraChat Mobile (Phone Integration):**
-   - In `ContactListScreen.kt`, the Top Bar "Hub" (Dice) menu contains a vacant 4th slot.
-   - We introduce **"Live TV / IPTV Hub"** here, letting mobile users watch free-to-air news, sports, music, and stream SMB media directly on their phones.
-2. **Dedicated IntraTV App (Android TV / FireStick Leanback Edition):**
-   - A standalone, remote-controlled (D-Pad friendly) media player app.
-   - Stripped of heavy typing/chat features, focusing 100% on **Leanback Entertainment, Local Cinema, and Intercom Notifications**.
+### 1. Vision & Core Philosophy
+While IntraChat is tailored for personal mobile devices, **IntraPlay** brings the Intra ecosystem to the living room big screen (Android TV, Google TV, FireStick, Smart Boxes). It strips away mobile-specific typing keyboards and focuses 100% on a **remote-controlled (D-Pad), leanback entertainment and local home cinema experience**.
 
 ---
 
-### 2. Core Capabilities
+### 2. Key Architecture & Features
 
-#### A. Free-To-Air IPTV (.m3u / .m3u8 HLS Streams)
-- **Engine:** Built upon the existing **`ExoPlayer` (`VideoPlayer.kt`)** which natively parses HLS live streams without additional dependencies.
-- **Playlist Management:**
-  - Ingests public, legal Free-To-Air IPTV playlists (e.g. GitHub `iptv-org` feeds: Doordarshan, regional channels, news, music, international).
-  - Users can input custom M3U playlist URLs or local files.
-  - Channel Grid / Electronic Program Guide (EPG) categorized by Language and Genre.
+#### A. Free-To-Air GitHub IPTV Hub (.m3u / .m3u8 HLS)
+- **Automatic Playlist Loader:** Ingests legal, public Free-To-Air streams from GitHub (`iptv-org` playlists).
+- **Categories & Channel Grid:**
+  - News (DD News, International, Regional feeds)
+  - Music & Entertainment
+  - Sports & Documentaries
+  - Regional & Language filters
+- **Engine:** Built upon Google Media3 / ExoPlayer with zero extra bloated players needed. Supports adaptive bitrate HLS streams.
 
-#### B. SMB Local Home Theater (Direct LAN 4K Streaming)
-- Uses the battle-tested **`SmbHelper.kt`** engine to browse home PCs, NAS, and router hard drives.
-- Streams high-bitrate 1080p/4K MKV/MP4 files over local Wi-Fi with zero internet consumption and zero buffering.
-- Subtitle (.srt) detection and audio track switching support.
+#### B. Inbuilt SMB LAN Cinema (Direct 4K Home Theater)
+- **Direct PC/NAS Streaming:** Connects to home computers, Linux Samba servers, or IntraDrive phone nodes using `jcifs-ng`.
+- **Zero Buffering / Zero Internet:** Streams uncompressed 1080p and 4K MKV/MP4 files over 5GHz Wi-Fi with instant seeking.
+- **Subtitle & Audio Switching:** Automatic `.srt` subtitle detection and multi-audio track selection via remote.
 
-#### C. Music Jukebox & LAN Slideshow
-- Background music player for MP3/FLAC collections hosted on the LAN.
-- Ambient photo slideshow pulling from shared family folders on the SMB server.
+#### C. Big-Screen Family Slideshow & Ambient Frame
+- **Ambient Mode:** Displays high-resolution photos and family memories pulling directly from shared LAN folders or WebDrop storage.
+- **Music Jukebox:** Plays MP3/FLAC playlists in the background while browsing photos or idling.
 
-#### D. Intra Ecosystem Bridge (TV Caller ID & Casting)
-- **Incoming Call Overlay:** When a phone calls via IntraChat, the TV displays a sleek, non-intrusive Heads-Up Display (HUD) in the top-right corner: *"Incoming Intra Call from Home"*.
-- **Local Casting:** Phones can push a video or photo to the TV with one tap ("Cast to IntraTV").
+#### D. Intra Living Room Bridge (Smart Caller ID & Casting)
+- **Heads-Up Caller Overlay:** When someone rings your home phone via IntraChat, a sleek non-intrusive HUD appears in the top-right corner of the TV screen: *"Incoming Call from Rahul"*.
+- **1-Click Local Casting:** Any phone in the house can push a video, photo, or YouTube link to IntraPlay with a single "Cast to TV" button.
 
 ---
 
