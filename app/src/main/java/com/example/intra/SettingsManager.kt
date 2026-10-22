@@ -21,6 +21,7 @@ class SettingsManager(context: Context) {
         const val KEY_IPTV_ENABLED = "iptv_hub_enabled" // 📺 IPTV KEY
         const val KEY_IPTV_PLAYLIST_URL = "iptv_playlist_url"
         const val DEFAULT_IPTV_PLAYLIST_URL = "https://iptv-org.github.io/iptv/countries/in.m3u"
+        const val KEY_INTRADRIVE_ENABLED = "intradrive_hub_enabled" // 🗄️ IntraDrive KEY
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -125,5 +126,14 @@ class SettingsManager(context: Context) {
 
     fun resetIptvPlaylistUrl() {
         prefs.edit().putString(KEY_IPTV_PLAYLIST_URL, DEFAULT_IPTV_PLAYLIST_URL).apply()
+    }
+
+    // 🗄️ INTRADRIVE (WEBDAV NETWORK STORAGE)
+    fun isIntraDriveEnabled(): Boolean {
+        return prefs.getBoolean(KEY_INTRADRIVE_ENABLED, true) // Default ON
+    }
+
+    fun setIntraDriveEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_INTRADRIVE_ENABLED, enabled).apply()
     }
 }

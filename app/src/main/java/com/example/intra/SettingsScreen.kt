@@ -170,6 +170,9 @@ fun SettingsScreen(
     // 📺 LIVE TV (IPTV) STATE
     var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
 
+    // 🗄️ INTRADRIVE STATE
+    var isIntraDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
+
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -435,6 +438,32 @@ fun SettingsScreen(
                         onCheckedChange = { enabled ->
                             isIptvEnabled = enabled
                             settingsManager.setIptvEnabled(enabled)
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 🗄️ INTRADRIVE TOGGLE
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("IntraDrive (Network Storage)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Show IntraDrive shortcut in Apps Hub to share & browse files.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isIntraDriveEnabled,
+                        onCheckedChange = { enabled ->
+                            isIntraDriveEnabled = enabled
+                            settingsManager.setIntraDriveEnabled(enabled)
                         }
                     )
                 }

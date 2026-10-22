@@ -18,6 +18,9 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.FolderShared
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -67,12 +70,14 @@ fun ContactListScreen(
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
 
-    // Refresh Lumir and IPTV states whenever screen appears
+    // Refresh Lumir, IPTV, and IntraDrive states whenever screen appears
     var showLumir by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
     var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
+    var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()
         isIptvEnabled = settingsManager.isIptvEnabled()
+        isDriveEnabled = settingsManager.isIntraDriveEnabled()
     }
 
     val contactViewModel: ContactViewModel = viewModel()
@@ -100,6 +105,7 @@ fun ContactListScreen(
     var selectedProfileForDialog by remember { mutableStateOf<ProfileDialogData?>(null) }
     var isHubExpanded by remember { mutableStateOf(false) }
     var showWebDropDialog by remember { mutableStateOf(false) }
+    var showIntraDriveDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = colorScheme.surface,
@@ -130,8 +136,9 @@ fun ContactListScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(end = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                    .padding(end = 8.dp)
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // 1. Live TV Icon (if enabled)
@@ -158,21 +165,34 @@ fun ContactListScreen(
                                         tint = topBarTextColor
                                     )
                                 }
-                                // 3. SMB Browser Icon
+                                // 3. IntraDrive (Network Storage / WebDAV)
+                                if (isDriveEnabled) {
+                                    IconButton(onClick = {
+                                        isHubExpanded = false
+                                        showIntraDriveDialog = true
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.FolderShared,
+                                            contentDescription = "IntraDrive",
+                                            tint = topBarTextColor
+                                        )
+                                    }
+                                }
+                                // 4. SMB Browser Icon
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     onSmbClick()
                                 }) {
                                     Icon(Icons.Filled.Storage, contentDescription = "SMB Network", tint = topBarTextColor)
                                 }
-                                // 4. Smart Home Icon
+                                // 5. Smart Home Icon
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     onIntraHomeClick()
                                 }) {
                                     Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarTextColor)
                                 }
-                                // 5. Settings Icon
+                                // 6. Settings Icon
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     onSettingsClick()
@@ -339,6 +359,15 @@ fun ContactListScreen(
             baseUrl = settingsManager.getBaseUrl(),
             isDark = isDark,
             onDismiss = { showWebDropDialog = false }
+        )
+    }
+
+    // Render IntraDrive QR & Link Dialog
+    if (showIntraDriveDialog) {
+        IntraDriveDialog(
+            baseUrl = settingsManager.getBaseUrl(),
+            isDark = isDark,
+            onDismiss = { showIntraDriveDialog = false }
         )
     }
 }
