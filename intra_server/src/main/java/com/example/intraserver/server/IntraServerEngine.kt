@@ -50,8 +50,20 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
     private val uploadsDir = File(context.filesDir, "uploads").apply { mkdirs() }
     // Profiles sub-folder (user avatars 256x256 PNGs)
     private val profilesDir = File(uploadsDir, "profiles").apply { mkdirs() }
-    // IntraDrive (WebDAV Network Storage folder)
-    private val driveDir = File(context.filesDir, "drive").apply { mkdirs() }
+    // IntraDrive (WebDAV Network Storage folder) - Stored in visible Downloads/IntraDrive or external files
+    private val driveDir: File by lazy {
+        try {
+            val publicDownloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            val publicFolder = File(publicDownloads, "IntraDrive")
+            if (publicFolder.exists() || publicFolder.mkdirs() || publicFolder.canWrite()) {
+                publicFolder
+            } else {
+                context.getExternalFilesDir("drive") ?: File(context.filesDir, "drive")
+            }
+        } catch (_: Exception) {
+            context.getExternalFilesDir("drive") ?: File(context.filesDir, "drive")
+        }.apply { mkdirs() }
+    }
 
     @Volatile
     var isRunning = false

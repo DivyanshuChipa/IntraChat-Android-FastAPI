@@ -379,6 +379,11 @@ private fun generatePropfindXml(
         sb.append("        <D:displayname>").append(escapeXml(name)).append("</D:displayname>\n")
         if (isDir) {
             sb.append("        <D:resourcetype><D:collection/></D:resourcetype>\n")
+            val usable = file.usableSpace
+            val total = file.totalSpace
+            val used = (total - usable).coerceAtLeast(0L)
+            sb.append("        <D:quota-available-bytes>").append(usable).append("</D:quota-available-bytes>\n")
+            sb.append("        <D:quota-used-bytes>").append(used).append("</D:quota-used-bytes>\n")
         } else {
             sb.append("        <D:resourcetype/>\n")
             sb.append("        <D:getcontentlength>").append(length).append("</D:getcontentlength>\n")
