@@ -794,6 +794,71 @@ class AdminWindow(QMainWindow):
         card_layout.addRow("Fallback Model:", self.fallback_dropdown)
         card_layout.addRow("Smart Models (Comma Separated):", self.smart_models_input)
 
+        # Voice Engine Card / Sub-section
+        voice_sep = QFrame()
+        voice_sep.setFrameShape(QFrame.HLine)
+        voice_sep.setFrameShadow(QFrame.Sunken)
+        voice_sep.setStyleSheet("background-color: #45475a; margin-top: 10px; margin-bottom: 10px;")
+        card_layout.addRow(voice_sep)
+
+        voice_heading = QLabel("🎙️ Distributed Voice Engine (Node 2 STT & TTS)")
+        voice_heading.setStyleSheet("font-size: 16px; font-weight: bold; color: #89b4fa; margin-top: 5px;")
+        card_layout.addRow(voice_heading)
+
+        self.chk_voice_enable = QCheckBox("Enable Node 2 Voice Engine (Faster-Whisper + Piper)")
+        self.chk_voice_enable.setTristate(False)
+        self.chk_voice_enable.setChecked(False)
+        self.chk_voice_enable.setCursor(Qt.PointingHandCursor)
+        self.chk_voice_enable.setStyleSheet("""
+            QCheckBox {
+                font-size: 16px;
+                color: #cdd6f4;
+                font-weight: 500;
+            }
+            QCheckBox::indicator {
+                width: 22px;
+                height: 22px;
+                border-radius: 6px;
+                border: 2px solid #45475a;
+                background-color: #313244;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #89b4fa;
+                border-color: #89b4fa;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #89b4fa;
+            }
+        """)
+
+        self.voice_url_input = QLineEdit()
+        self.voice_url_input.setPlaceholderText("http://192.168.31.94:8005")
+        self.voice_url_input.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
+        self.test_voice_btn = QPushButton("🔌 TEST VOICE NODE")
+        self.test_voice_btn.setCursor(Qt.PointingHandCursor)
+        self.test_voice_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #89b4fa;
+                color: #11111b;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #b4befe;
+            }
+        """)
+        self.test_voice_btn.clicked.connect(self.test_voice_node)
+
+        voice_row = QHBoxLayout()
+        voice_row.addWidget(self.voice_url_input, 3)
+        voice_row.addWidget(self.test_voice_btn, 1)
+
+        card_layout.addRow("", self.chk_voice_enable)
+        card_layout.addRow("Voice Server URL:", voice_row)
+
         self.ai_status_lbl = QLabel("Status: Waiting...")
         self.ai_status_lbl.setStyleSheet("font-weight: bold; font-size: 14px; color: #f9e2af;")
         self.ai_status_lbl.setAlignment(Qt.AlignCenter)
@@ -823,6 +888,10 @@ class AdminWindow(QMainWindow):
                 self.fallback_dropdown.setCurrentText(config.get("ai_fallback", "gemma3:270m"))
                 self.smart_models_input.setText(config.get("ai_smart_models", "gpt-oss:20b-cloud"))
                 self.url_input.setText(config.get("ollama_url", "http://localhost:11434"))
+
+                self.chk_voice_enable.setChecked(bool(config.get("voice_node_enabled", False)))
+                self.voice_url_input.setText(config.get("voice_node_url", "http://192.168.31.94:8005"))
+
                 self.ai_status_lbl.setText("Status: ✅ Loaded")
         except Exception as e:
             self.ai_status_lbl.setText(f"Status: ❌ Error: {str(e)}")
@@ -836,7 +905,9 @@ class AdminWindow(QMainWindow):
                 "vision": self.vision_dropdown.currentText(),
                 "url": self.url_input.text().strip(),
                 "fallback": self.fallback_dropdown.currentText().strip(),
-                "smart_models": self.smart_models_input.text().strip()
+                "smart_models": self.smart_models_input.text().strip(),
+                "voice_node_url": self.voice_url_input.text().strip(),
+                "voice_node_enabled": self.chk_voice_enable.isChecked()
             }
             res = requests.post(f"{self.server_url}/admin/ai_settings", headers=self.headers, params=params, timeout=3)
             if res.status_code == 200:
@@ -845,6 +916,27 @@ class AdminWindow(QMainWindow):
                 raise Exception(f"Server error {res.status_code}")
         except Exception as e:
             self.ai_status_lbl.setText(f"Status: ❌ Failed: {str(e)}")
+
+    def test_voice_node(self):
+        url = self.voice_url_input.text().strip()
+        if not url:
+            self.ai_status_lbl.setText("Status: ❌ Please enter Voice Server URL first!")
+            return
+        try:
+            self.ai_status_lbl.setText("Status: 🔌 Testing Voice Node connection...")
+            QApplication.processEvents()
+            res = requests.get(f"{self.server_url}/admin/test_voice_node", headers=self.headers, params={"url": url}, timeout=4)
+            data = res.json()
+            if data.get("success"):
+                caps = data.get("node_info", {}).get("capabilities", {})
+                stt = caps.get("stt", "ok")
+                tts = caps.get("tts_primary", "ok")
+                latency = data.get("latency_ms", 0)
+                self.ai_status_lbl.setText(f"Status: ✅ Node 2 Online ({latency}ms) | STT: {stt} | TTS: {tts}")
+            else:
+                self.ai_status_lbl.setText(f"Status: ❌ {data.get('message')}")
+        except Exception as e:
+            self.ai_status_lbl.setText(f"Status: ❌ Connection failed: {str(e)}")
 
     # ================= PAGE: LUMINAL =================
     def create_luminal_page(self):
