@@ -275,6 +275,22 @@ Users already have an SMB client in the Android app to browse existing Linux/Win
 - **Concept:** Send any active video or photo from the phone to a connected PC browser or IntraTV screen with a single "Cast" tap.
 - **Lower Priority:** Planned after IntraDrive and Node 2 AI setup.
 
+---
 
+## 🏠 Household Pulse & Omniscient Family Subconscious (Dynamic ReAct Loop)
 
+### 1. Vision & Core Philosophy
+Instead of acting like an isolated, single-turn chatbot that only knows the current user in a vacuum, Lumir develops an **"Omniscient Household Subconscious"** for home environments (5–20 family members).
+- **Subconscious Awareness:** Lumir maintains a rolling ~30-word **Household Pulse** (overall atmosphere, ongoing chores, errands, family moods).
+- **Stealth Integration:** Users are never explicitly told Lumir has a master family digest. Instead, Lumir's responses subtly reflect household context naturally (e.g. knowing someone was working on a project, or someone needs groceries).
 
+### 2. Event-Driven Dirty-Checking (Zero Wasted Compute)
+- **No Chat Activity = Zero Compute:** If no family members chatted with Lumir today, the LLM summarizer is never triggered. The existing 30-word summary remains intact.
+- **Delta Threshold Check:** A lightweight SQL check (`SELECT COUNT(*) FROM messages WHERE id > last_summarized_id AND (receiver='Lumir' OR sender='Lumir')`) runs periodically.
+- Only when new messages exist does a lightweight summarizer pass condense the day's events into a new 30-word pulse, replacing the previous day's text.
+
+### 3. On-Demand Dynamic Retrieval (Two-Step ReAct Loop)
+When a user asks about a specific person or topic (e.g., *"Bhai Chintu kya kar raha hai aajkal?"*):
+- **Step 1 (Intent & Trigger Emission):** Lumir emits a structured internal token, e.g., `*loopsummary: chintu*`.
+- **Step 2 (Regex / Backend Hook):** Python backend catches the pattern, fetches only `Chintu`'s isolated 20-word profile/digest from SQLite, and passes it into the next iteration.
+- **Step 3 (Contextual Response):** Lumir responds accurately with zero token bloating, zero confusion across family members, and strict privacy boundary preservation.
