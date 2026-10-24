@@ -73,7 +73,7 @@ class LumirEngine:
         # 🧠 Bot ki Memory: Sender -> Last Image URL
         self.user_context = {}
 
-    def process(self, text: str, file_url: str = None, sender: str = "Unknown", lat: float = None, lon: float = None):
+    def process(self, text: str, file_url: str = None, sender: str = "Unknown", lat: float = None, lon: float = None, is_voice_mode: bool = False):
         original_text = text.strip()
         text = text.lower().strip()
         # ==========================================
@@ -613,7 +613,7 @@ class LumirEngine:
                                 print(f"👁️ [ENGINE] Sending image to AI: {target_image_path}")
 
                 # AI ko prompt, config, history, sender name, aur AANKHEIN (image_path) bhejo
-                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender, image_path=target_image_path, user_facts=user_facts_list)
+                ai_reply = ask_ai(prompt=text, config=config, history=chat_history, sender=sender, image_path=target_image_path, user_facts=user_facts_list, is_voice_mode=is_voice_mode)
 
                 # 🧹 MEMORY CLEANUP: Image process hone ke baad context clear karo
                 # Taaki agli chat mein bina matlab wapas itni heavy Base64 image na jaye!

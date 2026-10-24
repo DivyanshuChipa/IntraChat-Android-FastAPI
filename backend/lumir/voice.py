@@ -129,6 +129,19 @@ def local_tts(text: str) -> bytes:
                 pass
 
 
+def sanitize_for_tts(text: str) -> str:
+    """Strips markdown formatting, asterisks, and emojis for clean, natural voice playback."""
+    import re
+
+    # 1. Strip markdown symbols (*, _, #, `, ~, >)
+    clean = re.sub(r"[\*_#`~>]", "", text)
+    # 2. Strip emojis and unicode pictorial symbols (including sparkles, stars, etc.)
+    clean = re.sub(r"[\U00010000-\U0010ffff\u2600-\u27bf]", "", clean)
+    # 3. Collapse multiple spaces and clean quotes
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return clean
+
+
 # ================= MAIN VOICE TURN ENDPOINT =================
 @router.post("/voice_turn")
 async def lumir_voice_turn(
@@ -201,7 +214,7 @@ async def lumir_voice_turn(
 
     print(f"🎙️ [VOICE CALL] ({engine_used}) {sender} said: '{user_text}'")
 
-    # 3. Process with Lumir Brain (History + Memory + LLM)
+    # 3. Process with Lumir Brain (History + Memory + LLM in Voice Mode)
     bot_res = await asyncio.to_thread(
         lumir_engine.process,
         text=user_text,
@@ -209,6 +222,7 @@ async def lumir_voice_turn(
         sender=sender,
         lat=lat,
         lon=lon,
+        is_voice_mode=True,
     )
     reply_text = bot_res.get("text", "").strip() or "I received your message."
     print(f"🤖 [VOICE CALL] Lumir reply: '{reply_text}'")
@@ -237,12 +251,15 @@ async def lumir_voice_turn(
     except Exception as e:
         print(f"⚠️ Failed to save voice call messages to DB: {e}")
 
-    # 5. Synthesize voice: Try Node 2 first, then auto-failover to Node 1 local espeak
+    # 5. Clean text for natural spoken TTS (strip emojis & markdown)
+    clean_tts_text = sanitize_for_tts(reply_text) or reply_text
+
+    # 6. Synthesize voice: Try Node 2 first, then auto-failover to Node 1 local espeak
     wav_bytes = b""
     if engine_used == "Node-2" and voice_node_enabled and voice_node_url:
         try:
             tts_res = requests.post(
-                f"{voice_node_url}/api/tts", data={"text": reply_text}, timeout=8
+                f"{voice_node_url}/api/tts", data={"text": clean_tts_text}, timeout=8
             )
             if tts_res.status_code == 200:
                 wav_bytes = tts_res.content
@@ -255,7 +272,7 @@ async def lumir_voice_turn(
     if not wav_bytes:
         engine_used = "Node-1-Fallback"
         print("🔄 [FALLBACK] Synthesizing speech via Node 1 local espeak...")
-        wav_bytes = await asyncio.to_thread(local_tts, reply_text)
+        wav_bytes = await asyncio.to_thread(local_tts, clean_tts_text)
 
     if not wav_bytes:
         raise HTTPException(

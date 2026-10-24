@@ -3,7 +3,7 @@ import json
 import base64 # 👈 NAYA IMPORT AANKHON KE LIYE
 import os
 
-def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None):
+def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None, is_voice_mode: bool = False):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
 
@@ -20,8 +20,17 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
     system_prompt = f"""You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
     You live inside the 'Intra' LAN messenger network. 
     Your creator is an engineer known as 'Divya'. 
-    Always reply in a helpful and concise manner. 
-    IMPORTANT: The user you are currently chatting with is named '{sender}'. Address them by their name naturally in conversation."""
+    The user you are currently chatting with is named '{sender}'. Address them by their name naturally in conversation."""
+
+    if is_voice_mode:
+        system_prompt += f"""\n\n[CRITICAL: LIVE VOICE PHONE CALL MODE ACTIVE]
+    - You are on a real-time phone call with {sender}. Your words will be read aloud immediately by TTS.
+    - Reply like a real person on a phone: keep responses very brief, natural, and conversational (strictly 1 to 2 short sentences).
+    - NEVER use markdown formatting (no asterisks **, no bold, no headers #, no bullet points).
+    - NEVER use emojis, ascii art, or symbols (e.g. no ✨, 😂, 🚀), because TTS reads them awkwardly.
+    - You are female. When speaking Hindi/Urdu, strictly use female grammar (e.g. 'रही हूँ', 'बताऊँगी', 'सुन रही हूँ', NOT 'रहा हूँ')."""
+    else:
+        system_prompt += "\n    Always reply in a helpful and concise manner."
 
     # 🧠 NEW: INJECT FACTS INVISIBLY
     if user_facts:
