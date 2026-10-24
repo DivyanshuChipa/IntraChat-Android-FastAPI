@@ -170,6 +170,46 @@ Admins can customize and configure the entire voice & AI pipeline from the Web A
 
 ---
 
+### 6. Lumir Voice Call Level 2: Realtime Spoken Persona & Clean Audio Stream
+
+#### A. Problem Statement (Voice vs Text Mismatch)
+In standard text chat, Lumir writes long multi-paragraph responses, uses Markdown formatting (`**bold**`, bullet lists), and emojis (`✨`, `😂`, `🐐`). When spoken through Piper or eSpeak TTS during a live phone call:
+1. **TTS Glitches on Markdown & Emojis:** TTS engines either stutter on asterisks, pronounce markdown symbols literally, or click on emojis.
+2. **Robotic Monologues:** Long paragraphs take 15–20 seconds to read out, turning what should be a snappy phone conversation into an unnatural lecture.
+3. **Gender Consistency in Hindi:** In Hindi/Urdu, verbs change based on gender (`रहा हूँ` vs `रही हूँ`). Lumir's persona is a 14–18 year old girl, so spoken Hindi must use female grammatical inflection.
+
+#### B. Dynamic Mode Flag (`is_voice_mode`)
+- **Isolation:** Normal text chat across WebSockets remains 100% untouched (`is_voice_mode=False`).
+- **Trigger:** Only the `/api/lumir/voice_turn` endpoint passes `is_voice_mode=True` to `lumir_engine.process()`.
+
+#### C. Voice-Optimized System Prompt Conditioning
+When `is_voice_mode=True`, the LLM receives specialized spoken-conversation conditioning:
+```python
+if is_voice_mode:
+    system_prompt += """
+    [VOICE CALL ACTIVE]:
+    - You are speaking aloud on a live voice phone call with {sender}.
+    - Keep replies very brief, natural, and conversational (1 to 2 sentences max).
+    - NEVER use emojis, markdown formatting, asterisks (**), or bullet lists.
+    - You are a young female AI: in Hindi/Urdu, strictly use female grammar (e.g., 'रही हूँ', 'बताऊँगी', 'सुन रही हूँ').
+    """
+```
+
+#### D. Pre-TTS Sanitization Pipeline (Regex Filter)
+Before sending the LLM's response text to Piper or eSpeak, a lightweight regex sanitization pipeline strips any residual artifacts:
+```python
+def sanitize_for_tts(text: str) -> str:
+    # 1. Strip markdown symbols (*, _, #, `, ~, >)
+    clean = re.sub(r"[\*_#`~>]", "", text)
+    # 2. Strip emojis and unicode pictorial symbols
+    clean = re.sub(r"[\U00010000-\U0010ffff]", "", clean)
+    # 3. Collapse multiple spaces and clean quotes
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return clean
+```
+
+---
+
 ## 📺 IntraPlay: Smart TV & Fire TV Edition (Leanback Media Hub)
 
 ### 1. Vision & Core Philosophy

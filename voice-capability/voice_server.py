@@ -65,22 +65,81 @@ def get_stt_model():
     return whisper_model
 
 
-def synthesize_with_piper(text: str, output_path: str) -> bool:
-    """Attempts to synthesize voice using Piper TTS CLI or Python library."""
+VOICES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "voices")
+
+
+def get_piper_model(voice_name: Optional[str] = None) -> Optional[str]:
+    """Finds matching .onnx model in voices/ directory."""
+    if not os.path.isdir(VOICES_DIR):
+        return None
+
+    if voice_name:
+        for fname in os.listdir(VOICES_DIR):
+            if fname.endswith(".onnx") and voice_name.lower() in fname.lower():
+                return os.path.join(VOICES_DIR, fname)
+
+    # Priority defaults for Lumir: Amy (young 16yo EN) -> Priyamvada (young HI) -> Lessac -> any .onnx
+    for preferred in ["amy", "priyamvada", "lessac"]:
+        for fname in os.listdir(VOICES_DIR):
+            if preferred in fname.lower() and fname.endswith(".onnx"):
+                return os.path.join(VOICES_DIR, fname)
+
+    for fname in os.listdir(VOICES_DIR):
+        if fname.endswith(".onnx"):
+            return os.path.join(VOICES_DIR, fname)
+
+    return None
+
+
+def synthesize_with_piper(
+    text: str, output_path: str, voice_name: Optional[str] = None
+) -> bool:
+    """Attempts to synthesize voice using Piper TTS CLI with matching .onnx model."""
     try:
-        # Check if piper executable is in PATH
         piper_exe = shutil.which("piper") or shutil.which("piper-tts")
-        if piper_exe:
-            proc = subprocess.Popen(
-                [piper_exe, "--output_file", output_path],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+        if not piper_exe:
+            # Check inside local virtual environment bin
+            venv_piper = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "venv", "bin", "piper"
             )
-            proc.communicate(input=text)
-            if os.path.exists(output_path) and os.path.getsize(output_path) > 100:
-                return True
+            if os.path.exists(venv_piper):
+                piper_exe = venv_piper
+
+        if not piper_exe:
+            print("⚠️ Piper executable not found in PATH or venv.")
+            return False
+
+        # Auto-detect Hindi script (Devanagari)
+        selected_voice = voice_name
+        import re
+
+        if not selected_voice and re.search(r"[\u0900-\u097F]", text):
+            selected_voice = "priyamvada"
+
+        model_path = get_piper_model(selected_voice)
+        if not model_path:
+            print(f"⚠️ No Piper .onnx model found in {VOICES_DIR}")
+            return False
+
+        print(
+            f"🎙️ [PIPER] Synthesizing speech using model: {os.path.basename(model_path)}"
+        )
+        proc = subprocess.Popen(
+            [piper_exe, "--model", model_path, "--output_file", output_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        _, stderr = proc.communicate(input=text)
+        if (
+            proc.returncode == 0
+            and os.path.exists(output_path)
+            and os.path.getsize(output_path) > 100
+        ):
+            return True
+        else:
+            print(f"⚠️ Piper returned code {proc.returncode}: {stderr}")
     except Exception as e:
         print(f"⚠️ Piper synthesis error: {e}")
     return False
@@ -93,21 +152,25 @@ def synthesize_with_espeak(text: str, output_path: str) -> bool:
         if espeak_exe:
             cmd = [espeak_exe, "-w", output_path, text]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 100:
+            if (
+                res.returncode == 0
+                and os.path.exists(output_path)
+                and os.path.getsize(output_path) > 100
+            ):
                 return True
     except Exception as e:
         print(f"⚠️ espeak fallback error: {e}")
     return False
 
 
-def generate_speech_wav(text: str) -> bytes:
+def generate_speech_wav(text: str, voice: Optional[str] = None) -> bytes:
     """Synthesizes speech to WAV bytes using Piper with espeak-ng fallback."""
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
         tmp_path = tmp_file.name
 
     try:
-        # 1. Try Piper first (High quality natural voice)
-        success = synthesize_with_piper(text, tmp_path)
+        # 1. Try Piper first (High quality natural voice from voices/ folder)
+        success = synthesize_with_piper(text, tmp_path, voice_name=voice)
 
         # 2. Fallback to espeak / espeak-ng
         if not success:
@@ -115,8 +178,9 @@ def generate_speech_wav(text: str) -> bytes:
 
         # 3. Ultimate minimal WAV generator fallback (if neither is installed)
         if not success:
-            import wave
             import struct
+            import wave
+
             with wave.open(tmp_path, "w") as wav_file:
                 wav_file.setnchannels(1)
                 wav_file.setsampwidth(2)
@@ -247,7 +311,7 @@ async def text_to_speech(text: str = Form(...), voice: Optional[str] = Form(None
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
     start_time = time.time()
-    wav_bytes = generate_speech_wav(text)
+    wav_bytes = generate_speech_wav(text, voice=voice)
     elapsed = round((time.time() - start_time) * 1000, 2)
 
     return Response(

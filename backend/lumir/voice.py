@@ -41,26 +41,63 @@ def get_local_whisper():
 
 
 def local_transcribe(audio_bytes: bytes) -> str:
-    """Fallback STT: Runs faster-whisper tiny on Node 1."""
+    """Fallback STT: Runs faster-whisper tiny on Node 1 safely avoiding PyAV metadata_errors bug."""
     model = get_local_whisper()
     if not model:
         return ""
-    tmp_path = ""
     try:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp.write(audio_bytes)
-            tmp_path = tmp.name
-        segments, _ = model.transcribe(tmp_path, beam_size=1)
-        return " ".join(seg.text for seg in segments).strip()
+        import numpy as np
+
+        audio_data = None
+        # 1. Try reading via soundfile if present
+        try:
+            import io
+            import soundfile as sf
+
+            audio_data, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+            if audio_data.ndim > 1:
+                audio_data = audio_data.mean(axis=1)
+            if sr != 16000:
+                duration = len(audio_data) / sr
+                target_samples = int(duration * 16000)
+                audio_data = np.interp(
+                    np.linspace(0, len(audio_data), target_samples, endpoint=False),
+                    np.arange(len(audio_data)),
+                    audio_data,
+                ).astype(np.float32)
+        except Exception:
+            pass
+
+        # 2. Direct PCM16 16kHz WAV byte decoding (100% immune to PyAV bugs)
+        if audio_data is None and len(audio_bytes) > 44:
+            try:
+                raw_samples = audio_bytes[44:]
+                int16_arr = np.frombuffer(raw_samples, dtype=np.int16)
+                audio_data = int16_arr.astype(np.float32) / 32768.0
+            except Exception:
+                pass
+
+        if audio_data is not None and len(audio_data) > 0:
+            segments, _ = model.transcribe(audio_data, beam_size=1)
+            return " ".join(seg.text for seg in segments).strip()
+
+        # 3. Fallback to file path transcribe if numpy decoding failed
+        tmp_path = ""
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(audio_bytes)
+                tmp_path = tmp.name
+            segments, _ = model.transcribe(tmp_path, beam_size=1)
+            return " ".join(seg.text for seg in segments).strip()
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
     except Exception as e:
         print(f"⚠️ [FALLBACK] Local STT error: {e}")
         return ""
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
 
 
 def local_tts(text: str) -> bytes:
