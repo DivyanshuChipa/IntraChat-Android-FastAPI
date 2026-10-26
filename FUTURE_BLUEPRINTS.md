@@ -219,7 +219,7 @@ While IntraChat is tailored for personal mobile devices, **IntraPlay** brings th
 
 ### 2. Key Architecture & Features
 
-#### A. Free-To-Air GitHub IPTV Hub (.m3u / .m3u8 HLS)
+#### A. Free-To-Air GitHub IPTV Hub (.m3u / .m3u8 HLS) [PHASE 1 IMPLEMENTED IN :intra_play]
 - **Automatic Playlist Loader:** Ingests legal, public Free-To-Air streams from GitHub (`iptv-org` playlists).
 - **Categories & Channel Grid:**
   - News (DD News, International, Regional feeds)

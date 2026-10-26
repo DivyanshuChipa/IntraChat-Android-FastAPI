@@ -22,4 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "intra"
 include(":app")
 include(":intra_server")
- 
+include(":intra_play")

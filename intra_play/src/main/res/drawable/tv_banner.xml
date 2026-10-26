@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <!-- Dark Gradient Background -->
+    <path
+        android:pathData="M0,0h320v180h-320z"
+        android:fillColor="#0D1117" />
+    <path
+        android:pathData="M0,0h320v180h-320z"
+        android:fillColor="#161B22" />
+    <!-- TV Display Frame -->
+    <path
+        android:pathData="M110,50 h100 v60 h-100 z"
+        android:fillColor="#1F2937"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="3" />
+    <!-- Play Triangle Inside TV -->
+    <path
+        android:pathData="M152,68 L172,80 L152,92 Z"
+        android:fillColor="#60A5FA" />
+    <!-- TV Stand -->
+    <path
+        android:pathData="M150,110 h20 v12 h-20 z"
+        android:fillColor="#3B82F6" />
+    <path
+        android:pathData="M140,122 h40 v4 h-40 z"
+        android:fillColor="#3B82F6" />
+</vector>
