@@ -946,223 +946,75 @@ fun SmbBrowserScreen(
     }
 
     // ----------------------------------------------------
+    // ----------------------------------------------------
     // Create Folder Dialog
     // ----------------------------------------------------
     if (showCreateFolderDialog) {
-        Dialog(onDismissRequest = {
-            showCreateFolderDialog = false
-            newFolderName = ""
-        }) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(24.dp)
-                ) {
-                    Text(
-                        text = "Create New Folder",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = newFolderName,
-                        onValueChange = { newFolderName = it },
-                        placeholder = { Text("Folder Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = {
-                            showCreateFolderDialog = false
-                            newFolderName = ""
-                        }) {
-                            Text("Cancel", color = Color.Gray)
+        NetworkCreateFolderDialog(
+            onDismiss = {
+                showCreateFolderDialog = false
+                newFolderName = ""
+            },
+            onCreate = { folderName ->
+                val state = uiState
+                if (state is SmbUiState.DirectoryBrowser) {
+                    scope.launch {
+                        val success = if (state.protocol == NetworkProtocol.WEBDAV) {
+                            WebDavHelper.createFolder(
+                                parentPath = state.currentPath,
+                                folderName = folderName
+                            )
+                        } else {
+                            SmbHelper.createFolder(
+                                shareName = state.shareName,
+                                parentPath = state.currentPath,
+                                folderName = folderName
+                            )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                val state = uiState
-                                if (state is SmbUiState.DirectoryBrowser && newFolderName.trim().isNotEmpty()) {
-                                    scope.launch {
-                                        val success = if (state.protocol == NetworkProtocol.WEBDAV) {
-                                            WebDavHelper.createFolder(
-                                                parentPath = state.currentPath,
-                                                folderName = newFolderName.trim()
-                                            )
-                                        } else {
-                                            SmbHelper.createFolder(
-                                                shareName = state.shareName,
-                                                parentPath = state.currentPath,
-                                                folderName = newFolderName.trim()
-                                            )
-                                        }
-                                        showCreateFolderDialog = false
-                                        if (success) {
-                                            Toast.makeText(context, "Folder created!", Toast.LENGTH_SHORT).show()
-                                            openDirectory(state.shareName, state.currentPath, state.protocol)
-                                        } else {
-                                            Toast.makeText(context, "Failed to create folder.", Toast.LENGTH_SHORT).show()
-                                        }
-                                        newFolderName = ""
-                                    }
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6741A8))
-                        ) {
-                            Text("Create", color = Color.White)
+                        showCreateFolderDialog = false
+                        if (success) {
+                            Toast.makeText(context, "Folder created!", Toast.LENGTH_SHORT).show()
+                            openDirectory(state.shareName, state.currentPath, state.protocol)
+                        } else {
+                            Toast.makeText(context, "Failed to create folder.", Toast.LENGTH_SHORT).show()
                         }
+                        newFolderName = ""
                     }
                 }
             }
-        }
+        )
     }
 
     // ----------------------------------------------------
     // Authentication Dialog
     // ----------------------------------------------------
     showAuthDialog?.let { ip ->
-        Dialog(onDismissRequest = { showAuthDialog = null }) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(24.dp)
-                ) {
-                    Text(
-                        text = "Authentication Required",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Connect to ${if (selectedProtocol == NetworkProtocol.WEBDAV) "WebDAV / IntraDrive" else "SMB"} server at $ip",
-                        fontSize = 13.sp,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { isAnonymous = true }.fillMaxWidth().padding(vertical = 4.dp)
-                        ) {
-                            RadioButton(selected = isAnonymous, onClick = { isAnonymous = true })
-                            Text("Anonymous User", color = MaterialTheme.colorScheme.onSurface)
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { isAnonymous = false }.fillMaxWidth().padding(vertical = 4.dp)
-                        ) {
-                            RadioButton(selected = !isAnonymous, onClick = { isAnonymous = false })
-                            Text("Registered User", color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-
-                    if (!isAnonymous) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = username,
-                            onValueChange = { username = it },
-                            label = { Text("Username") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = password,
-                            onValueChange = { password = it },
-                            label = { Text("Password") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { rememberCredentials = !rememberCredentials }
-                    ) {
-                        Checkbox(checked = rememberCredentials, onCheckedChange = { rememberCredentials = it })
-                        Text("Remember details", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showAuthDialog = null }) {
-                            Text("Cancel", color = Color.Gray)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = { connectToServer(ip) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6741A8))
-                        ) {
-                            Text("Connect", color = Color.White)
-                        }
-                    }
-                }
+        NetworkAuthDialog(
+            serverAddress = ip,
+            protocol = selectedProtocol,
+            initialIsAnonymous = isAnonymous,
+            initialUsername = username,
+            initialPassword = password,
+            onDismiss = { showAuthDialog = null },
+            onConnect = { anon, user, pass, remember ->
+                isAnonymous = anon
+                username = user
+                password = pass
+                rememberCredentials = remember
+                connectToServer(ip)
             }
-        }
+        )
     }
 
     // ----------------------------------------------------
     // Live Download / Upload Progress Dialog
     // ----------------------------------------------------
     activeDownloadProgress?.let { progress ->
-        Dialog(onDismissRequest = {}) {
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = if (isUploadingProgress) "Uploading File" else "Downloading File",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = activeDownloadName,
-                        fontSize = 13.sp,
-                        color = Color.Gray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    LinearProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = String.format(Locale.US, "%.0f%%", progress * 100),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
+        NetworkTransferProgressDialog(
+            isUploading = isUploadingProgress,
+            fileName = activeDownloadName,
+            progress = progress
+        )
     }
 
     // ----------------------------------------------------
