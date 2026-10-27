@@ -78,7 +78,7 @@ fun WebDropDialog(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "🚀",
+                            text = "",
                             fontSize = 24.sp
                         )
                         Spacer(Modifier.width(10.dp))
@@ -105,7 +105,7 @@ fun WebDropDialog(
                     }
                 }
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(19.dp))
 
                 // QR Code Container
                 Box(
@@ -113,7 +113,7 @@ fun WebDropDialog(
                         .size(220.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White)
-                        .padding(12.dp),
+                        .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     if (qrBitmap != null) {
@@ -131,7 +131,7 @@ fun WebDropDialog(
 
                 Text(
                     text = "Scan with any phone camera (iPhone / Android) to drop files & copy texts instantly without an account!",
-                    fontSize = 12.sp,
+                    fontSize = 10.sp,
                     textAlign = TextAlign.Center,
                     color = if (isDark) Color(0xFF9CA3AF) else Color(0xFF6B7280),
                     lineHeight = 16.sp
@@ -141,7 +141,7 @@ fun WebDropDialog(
 
                 // URL Display Pill with Copy Action
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(25.dp),
                     color = if (isDark) Color(0xFF2A2B3D) else Color(0xFFF3F4F6),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
@@ -158,31 +158,31 @@ fun WebDropDialog(
                     ) {
                         Text(
                             text = webDropUrl,
-                            fontSize = 13.sp,
+                            fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Medium,
-                            color = if (isDark) Color(0xFF93C5FD) else Color(0xFF2563EB),
+                            color = if (isDark) Color(0xFF93C5FD) else Color(0xFFA8168F),
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("WebDrop Link", webDropUrl))
-                                Toast.makeText(context, "WebDrop link copied! 📋", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "WebDrop link copied!", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(30.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.ContentCopy,
                                 contentDescription = "Copy Link",
-                                tint = if (isDark) Color.White else Color(0xFF374151),
-                                modifier = Modifier.size(18.dp)
+                                tint = if (isDark) Color.White else Color(0xFF9A1E98),
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(10.dp))
 
                 // Action Buttons Row (Share / Open)
                 Row(
@@ -197,12 +197,12 @@ fun WebDropDialog(
                             }
                             context.startActivity(Intent.createChooser(shareIntent, "Share WebDrop Link"))
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(25.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Share", fontSize = 13.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Share", fontSize = 14.sp)
                     }
 
                     Button(
@@ -210,15 +210,15 @@ fun WebDropDialog(
                             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(webDropUrl))
                             context.startActivity(browserIntent)
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(25.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isDark) Color(0xFF7C3AED) else Color(0xFF6741A8)
                         ),
                         modifier = Modifier.weight(1.2f)
                     ) {
                         Icon(Icons.Filled.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Open Drop", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Open Drop", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
