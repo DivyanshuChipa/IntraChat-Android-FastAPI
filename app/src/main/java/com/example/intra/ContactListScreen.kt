@@ -139,7 +139,7 @@ fun ContactListScreen(
                                     .fillMaxWidth()
                                     .padding(end = 8.dp)
                                     .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(18.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // 1. Live TV Icon (if enabled)
