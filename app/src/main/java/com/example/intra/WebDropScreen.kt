@@ -54,7 +54,7 @@ fun WebDropScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager(context) }
-    val apiService = remember { ApiClient.getApiService(context) }
+    val apiService = remember { ApiClient.apiService }
 
     val isDark = isSystemInDarkTheme()
     val colorScheme = MaterialTheme.colorScheme
