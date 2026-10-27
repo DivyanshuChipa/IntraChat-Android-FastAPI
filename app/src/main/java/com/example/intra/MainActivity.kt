@@ -171,6 +171,7 @@ class MainActivity : ComponentActivity() {
                     var showSettings by rememberSaveable { mutableStateOf(false) }
                     var showAbout by rememberSaveable { mutableStateOf(false) }
                     var showSmbBrowser by rememberSaveable { mutableStateOf(false) }
+                    var showWebDrop by rememberSaveable { mutableStateOf(false) }
                     var showIntraHome by rememberSaveable { mutableStateOf(false) }
                     var showIptv by rememberSaveable { mutableStateOf(false) }
                     var currentChatReceiver by rememberSaveable { mutableStateOf<String?>(null) }
@@ -268,7 +269,15 @@ class MainActivity : ComponentActivity() {
 
                             showAbout -> AboutScreen { showAbout = false }
 
-                            showSmbBrowser -> SmbBrowserScreen(onBack = { showSmbBrowser = false })
+                            showSmbBrowser -> SmbBrowserScreen(
+                                onBack = { showSmbBrowser = false },
+                                onWebDropClick = {
+                                    showSmbBrowser = false
+                                    showWebDrop = true
+                                }
+                            )
+
+                            showWebDrop -> WebDropScreen(onBack = { showWebDrop = false })
 
                             showIntraHome -> IntraHomeScreen(onBack = { showIntraHome = false })
 
@@ -421,6 +430,7 @@ class MainActivity : ComponentActivity() {
                                 onChatClick = { currentChatReceiver = it },
                                 onSettingsClick = { showSettings = true },
                                 onSmbClick = { showSmbBrowser = true },
+                                onWebDropClick = { showWebDrop = true },
                                 onIntraHomeClick = { showIntraHome = true },
                                 onIptvClick = { showIptv = true }
                             )

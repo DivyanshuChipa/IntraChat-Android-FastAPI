@@ -64,6 +64,7 @@ fun ContactListScreen(
     onChatClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onSmbClick: () -> Unit,
+    onWebDropClick: () -> Unit = {},
     onIntraHomeClick: () -> Unit,
     onIptvClick: () -> Unit = {}
 ) {
@@ -157,7 +158,7 @@ fun ContactListScreen(
                                 // 2. WebDrop (Zero-Friction LAN Share)
                                 IconButton(onClick = {
                                     isHubExpanded = false
-                                    showWebDropDialog = true
+                                    onWebDropClick()
                                 }) {
                                     Icon(
                                         imageVector = Icons.Filled.NearMe,

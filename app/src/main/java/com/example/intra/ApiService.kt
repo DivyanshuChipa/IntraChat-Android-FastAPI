@@ -91,4 +91,52 @@ interface ApiService {
     @POST("delete_account")
     suspend fun deleteAccount(@Body request: AuthRequest): Response<AuthResponse>
 
+    // ================= 🚀 WEBDROP ENDPOINTS =================
+
+    @GET("api/drop/files")
+    suspend fun getWebDropFiles(): Response<WebDropFilesResponse>
+
+    @Multipart
+    @POST("api/drop/upload")
+    suspend fun uploadWebDropFile(
+        @Part file: MultipartBody.Part,
+        @Part("sender") sender: RequestBody? = null
+    ): Response<WebDropUploadResponse>
+
+    @POST("api/drop/delete")
+    suspend fun deleteWebDropFile(
+        @Body request: WebDropDeleteRequest
+    ): Response<WebDropCommonResponse>
+
 }
+
+// ================= WEBDROP DATA MODELS =================
+data class WebDropFileItem(
+    val name: String,
+    val size: Long,
+    @SerializedName("formatted_size") val formattedSize: String,
+    val url: String,
+    @SerializedName("uploaded_at") val uploadedAt: Long,
+    val category: String? = "other"
+)
+
+data class WebDropFilesResponse(
+    val success: Boolean,
+    val count: Int,
+    val files: List<WebDropFileItem>?
+)
+
+data class WebDropUploadResponse(
+    val success: Boolean,
+    val message: String?,
+    val files: List<WebDropFileItem>?
+)
+
+data class WebDropDeleteRequest(
+    val filename: String
+)
+
+data class WebDropCommonResponse(
+    val success: Boolean,
+    val message: String?
+)

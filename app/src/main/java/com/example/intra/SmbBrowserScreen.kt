@@ -55,7 +55,8 @@ sealed class SmbUiState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmbBrowserScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onWebDropClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -381,7 +382,7 @@ fun SmbBrowserScreen(
                                 // 1. WebDrop (Zero-Friction LAN Share)
                                 IconButton(onClick = {
                                     isHubExpanded = false
-                                    showWebDropDialog = true
+                                    onWebDropClick()
                                 }) {
                                     Icon(
                                         imageVector = Icons.Filled.NearMe,
