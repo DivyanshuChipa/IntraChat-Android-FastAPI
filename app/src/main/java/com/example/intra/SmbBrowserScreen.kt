@@ -55,22 +55,11 @@ sealed class SmbUiState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmbBrowserScreen(
-    onBack: () -> Unit,
-    onIptvClick: () -> Unit = {},
-    onIntraHomeClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager(context) }
-
-    // Feature toggles
-    var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
-    var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
-    LaunchedEffect(Unit) {
-        isIptvEnabled = settingsManager.isIptvEnabled()
-        isDriveEnabled = settingsManager.isIntraDriveEnabled()
-    }
 
     // Apps Hub and Quick Access Dialog States
     var isHubExpanded by remember { mutableStateOf(false) }
@@ -389,20 +378,7 @@ fun SmbBrowserScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 1. Live TV Icon (if enabled)
-                                if (isIptvEnabled) {
-                                    IconButton(onClick = {
-                                        isHubExpanded = false
-                                        onIptvClick()
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Tv,
-                                            contentDescription = "Live TV",
-                                            tint = topBarTextColor
-                                        )
-                                    }
-                                }
-                                // 2. WebDrop (Zero-Friction LAN Share)
+                                // 1. WebDrop (Zero-Friction LAN Share)
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     showWebDropDialog = true
@@ -413,49 +389,25 @@ fun SmbBrowserScreen(
                                         tint = topBarTextColor
                                     )
                                 }
-                                // 3. IntraDrive (Network Storage / WebDAV)
-                                if (isDriveEnabled) {
-                                    IconButton(onClick = {
-                                        isHubExpanded = false
-                                        showIntraDriveDialog = true
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Filled.FolderShared,
-                                            contentDescription = "IntraDrive",
-                                            tint = topBarTextColor
-                                        )
-                                    }
-                                }
-                                // 4. Chat Icon (Quick jump back to chats)
+                                // 2. IntraDrive (Network Storage / WebDAV)
                                 IconButton(onClick = {
                                     isHubExpanded = false
-                                    onBack()
+                                    showIntraDriveDialog = true
                                 }) {
                                     Icon(
-                                        imageVector = Icons.Filled.ChatBubble,
-                                        contentDescription = "Chats",
+                                        imageVector = Icons.Filled.FolderShared,
+                                        contentDescription = "IntraDrive",
                                         tint = topBarTextColor
                                     )
                                 }
-                                // 5. Smart Home Icon
+                                // 3. FTP / Network Protocol (Future placeholder / toast)
                                 IconButton(onClick = {
                                     isHubExpanded = false
-                                    onIntraHomeClick()
+                                    Toast.makeText(context, "FTP & Cloud storage coming soon! 🌐", Toast.LENGTH_SHORT).show()
                                 }) {
                                     Icon(
-                                        imageVector = Icons.Filled.Home,
-                                        contentDescription = "Intra Home",
-                                        tint = topBarTextColor
-                                    )
-                                }
-                                // 6. Settings Icon
-                                IconButton(onClick = {
-                                    isHubExpanded = false
-                                    onSettingsClick()
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Settings,
-                                        contentDescription = "Settings",
+                                        imageVector = Icons.Filled.CloudQueue,
+                                        contentDescription = "FTP & Cloud",
                                         tint = topBarTextColor
                                     )
                                 }
