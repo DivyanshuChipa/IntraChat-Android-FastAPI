@@ -448,22 +448,22 @@ private fun generateWebBrowserHtml(folder: File, relativePath: String): String {
 </head>
 <body>
   <div class="container">
-    <h1>🗄️ IntraDrive — Network Storage</h1>
+    <h1>IntraDrive — Network Storage</h1>
     <div class="hint">
-      💡 <b>Windows File Explorer Tip:</b> Right-click <b>This PC</b> ➔ <b>Map network drive</b> ➔ Paste: <code>${escapeXml("http://" + (if (relativePath.isEmpty()) "/drive" else "/drive/$relativePath"))}</code> to mount as <b>Z: Drive</b>!
+      <b>Windows File Explorer Tip:</b> Right-click <b>This PC</b> ➔ <b>Map network drive</b> ➔ Paste: <code>${escapeXml("http://" + (if (relativePath.isEmpty()) "/drive" else "/drive/$relativePath"))}</code> to mount as <b>Z: Drive</b>
     </div>
     <div>
 """)
     if (relativePath.isNotEmpty()) {
-        sb.append("""      <a class="item" href="../"><span class="name">📁 .. (Parent Directory)</span></a>""")
+        sb.append("""      <a class="item" href="../"><span class="name">[Parent Directory] ..</span></a>""")
     }
     for (item in items) {
-        val icon = if (item.isDirectory) "📁" else "📄"
+        val prefix = if (item.isDirectory) "[Folder]" else "[File]"
         val href = item.name + (if (item.isDirectory) "/" else "")
-        val sizeStr = if (item.isDirectory) "Folder" else "${item.length() / 1024} KB"
+        val sizeStr = if (item.isDirectory) "Directory" else "${item.length() / 1024} KB"
         sb.append("""
       <a class="item" href="${escapeXml(href)}">
-        <span class="name">$icon ${escapeXml(item.name)}</span>
+        <span class="name">$prefix ${escapeXml(item.name)}</span>
         <span class="meta">$sizeStr</span>
       </a>
 """)

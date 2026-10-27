@@ -426,8 +426,7 @@ fun SmbBrowserScreen(
                                     is SmbUiState.ServerList -> "Intra Network Explorer"
                                     is SmbUiState.ShareList -> "Shares on ${state.ip}"
                                     is SmbUiState.DirectoryBrowser -> {
-                                        val prefix = if (state.protocol == NetworkProtocol.WEBDAV) "🗄️ " else "📁 "
-                                        prefix + (if (state.currentPath.isEmpty()) state.shareName else state.currentPath.substringAfterLast("/"))
+                                        if (state.currentPath.isEmpty()) state.shareName else state.currentPath.substringAfterLast("/")
                                     }
                                 },
                                 color = topBarTextColor,
@@ -589,39 +588,88 @@ fun SmbBrowserScreen(
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text("Connect to Custom IP", color = Color.White, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(8.dp))
+                                // Clean Modern Segmented Tab Selector
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color.Black.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                                        .padding(4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    // Protocol Selector Chips
-                                    FilterChip(
-                                        selected = selectedProtocol == NetworkProtocol.SMB,
-                                        onClick = {
-                                            selectedProtocol = NetworkProtocol.SMB
-                                            manualPort = "445"
-                                        },
-                                        label = { Text("📁 SMB (Windows / Samba)") },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = Color(0xFF6741A8),
-                                            selectedLabelColor = Color.White
-                                        )
-                                    )
-                                    FilterChip(
-                                        selected = selectedProtocol == NetworkProtocol.WEBDAV,
-                                        onClick = {
-                                            selectedProtocol = NetworkProtocol.WEBDAV
-                                            manualPort = "8000"
-                                        },
-                                        label = { Text("🗄️ IntraDrive / WebDAV") },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = Color(0xFF6741A8),
-                                            selectedLabelColor = Color.White
-                                        )
-                                    )
+                                    // SMB Option
+                                    val isSmb = selectedProtocol == NetworkProtocol.SMB
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .background(
+                                                if (isSmb) Color(0xFF6741A8) else Color.Transparent,
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable {
+                                                selectedProtocol = NetworkProtocol.SMB
+                                                manualPort = "445"
+                                            }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Folder,
+                                                contentDescription = null,
+                                                tint = if (isSmb) Color.White else Color.White.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "SMB / Samba",
+                                                color = if (isSmb) Color.White else Color.White.copy(alpha = 0.6f),
+                                                fontSize = 13.sp,
+                                                fontWeight = if (isSmb) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                    }
+
+                                    // WebDAV Option
+                                    val isWebDav = selectedProtocol == NetworkProtocol.WEBDAV
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .background(
+                                                if (isWebDav) Color(0xFF6741A8) else Color.Transparent,
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable {
+                                                selectedProtocol = NetworkProtocol.WEBDAV
+                                                manualPort = "8000"
+                                            }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.FolderShared,
+                                                contentDescription = null,
+                                                tint = if (isWebDav) Color.White else Color.White.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "IntraDrive (WebDAV)",
+                                                color = if (isWebDav) Color.White else Color.White.copy(alpha = 0.6f),
+                                                fontSize = 13.sp,
+                                                fontWeight = if (isWebDav) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                    }
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
