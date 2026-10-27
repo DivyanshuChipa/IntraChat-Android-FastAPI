@@ -624,7 +624,7 @@ fun SmbBrowserScreen(
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                text = "SMB / Samba",
+                                                text = "SMB",
                                                 color = if (isSmb) Color.White else Color.White.copy(alpha = 0.6f),
                                                 fontSize = 13.sp,
                                                 fontWeight = if (isSmb) FontWeight.Bold else FontWeight.Normal
@@ -660,7 +660,7 @@ fun SmbBrowserScreen(
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                text = "IntraDrive (WebDAV)",
+                                                text = "IntraDrive",
                                                 color = if (isWebDav) Color.White else Color.White.copy(alpha = 0.6f),
                                                 fontSize = 13.sp,
                                                 fontWeight = if (isWebDav) FontWeight.Bold else FontWeight.Normal
@@ -678,7 +678,7 @@ fun SmbBrowserScreen(
                                     OutlinedTextField(
                                         value = manualIpAddress,
                                         onValueChange = { manualIpAddress = it },
-                                        placeholder = { Text("IP (e.g. 192.168.1.10)", color = Color.LightGray) },
+                                        placeholder = { Text("IP(e.g.192.168..)", color = Color.LightGray) },
                                         singleLine = true,
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedTextColor = Color.White,
@@ -772,7 +772,7 @@ fun SmbBrowserScreen(
                                             fontSize = 15.sp
                                         )
                                         Text(
-                                            "Connect directly to $localBaseUrl/drive",
+                                            "Connect to intra_server $localBaseUrl/drive",
                                             color = Color.White.copy(alpha = 0.7f),
                                             fontSize = 12.sp,
                                             maxLines = 1,
@@ -1056,7 +1056,7 @@ fun SmbBrowserScreen(
                             modifier = Modifier.clickable { isAnonymous = true }.fillMaxWidth().padding(vertical = 4.dp)
                         ) {
                             RadioButton(selected = isAnonymous, onClick = { isAnonymous = true })
-                            Text("Connect as Anonymous / Guest", color = MaterialTheme.colorScheme.onSurface)
+                            Text("Anonymous User", color = MaterialTheme.colorScheme.onSurface)
                         }
 
                         Row(
