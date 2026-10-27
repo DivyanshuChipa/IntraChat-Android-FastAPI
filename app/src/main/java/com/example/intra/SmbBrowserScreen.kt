@@ -603,7 +603,7 @@ fun SmbBrowserScreen(
                                             .weight(1f)
                                             .background(
                                                 if (isSmb) Color(0xFF6741A8) else Color.Transparent,
-                                                RoundedCornerShape(8.dp)
+                                                RoundedCornerShape(12.dp)
                                             )
                                             .clickable {
                                                 selectedProtocol = NetworkProtocol.SMB
@@ -639,7 +639,7 @@ fun SmbBrowserScreen(
                                             .weight(1f)
                                             .background(
                                                 if (isWebDav) Color(0xFF6741A8) else Color.Transparent,
-                                                RoundedCornerShape(8.dp)
+                                                RoundedCornerShape(30.dp)
                                             )
                                             .clickable {
                                                 selectedProtocol = NetworkProtocol.WEBDAV
@@ -678,7 +678,8 @@ fun SmbBrowserScreen(
                                     OutlinedTextField(
                                         value = manualIpAddress,
                                         onValueChange = { manualIpAddress = it },
-                                        placeholder = { Text("IP(e.g.192.168..)", color = Color.LightGray) },
+                                        placeholder = { Text("IP  (e.g.192.168..)", color = Color.LightGray) },
+                                        shape = RoundedCornerShape(30.dp), // 👈 YE LINE ADD KARO
                                         singleLine = true,
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedTextColor = Color.White,
@@ -695,6 +696,7 @@ fun SmbBrowserScreen(
                                         value = manualPort,
                                         onValueChange = { manualPort = it },
                                         placeholder = { Text("Port") },
+                                        shape = RoundedCornerShape(30.dp), // 👈 YE LINE ADD KARO
                                         singleLine = true,
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedTextColor = Color.White,
@@ -750,7 +752,7 @@ fun SmbBrowserScreen(
                                             Toast.makeText(context, "Server host not available", Toast.LENGTH_SHORT).show()
                                         }
                                     },
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(30.dp),
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF6741A8).copy(alpha = 0.35f))
                             ) {
                                 Row(
@@ -1126,7 +1128,7 @@ fun SmbBrowserScreen(
     activeDownloadProgress?.let { progress ->
         Dialog(onDismissRequest = {}) {
             Card(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
