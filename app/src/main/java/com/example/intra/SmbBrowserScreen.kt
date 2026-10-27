@@ -445,8 +445,8 @@ fun SmbBrowserScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(end = 8.dp)
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    .horizontalScroll(rememberScrollState(), reverseScrolling = true),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // 1. WebDrop (Zero-Friction LAN Share)
