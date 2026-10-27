@@ -36,6 +36,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Locale
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+
 sealed class SmbUiState {
     object Scanning : SmbUiState()
     data class ServerList(val servers: List<String>) : SmbUiState()
@@ -51,10 +55,27 @@ sealed class SmbUiState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmbBrowserScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onIptvClick: () -> Unit = {},
+    onIntraHomeClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val settingsManager = remember { SettingsManager(context) }
+
+    // Feature toggles
+    var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
+    var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
+    LaunchedEffect(Unit) {
+        isIptvEnabled = settingsManager.isIptvEnabled()
+        isDriveEnabled = settingsManager.isIntraDriveEnabled()
+    }
+
+    // Apps Hub and Quick Access Dialog States
+    var isHubExpanded by remember { mutableStateOf(false) }
+    var showWebDropDialog by remember { mutableStateOf(false) }
+    var showIntraDriveDialog by remember { mutableStateOf(false) }
 
     // UI State management
     var uiState by remember { mutableStateOf<SmbUiState>(SmbUiState.Scanning) }
@@ -330,24 +351,130 @@ fun SmbBrowserScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = when (val state = uiState) {
-                            is SmbUiState.Scanning -> "Scanning Local Network..."
-                            is SmbUiState.ServerList -> "Select SMB Server"
-                            is SmbUiState.ShareList -> "Shares on ${state.ip}"
-                            is SmbUiState.DirectoryBrowser -> {
-                                if (state.currentPath.isEmpty()) state.shareName else state.currentPath.substringAfterLast("/")
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        AnimatedVisibility(
+                            visible = !isHubExpanded,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            Text(
+                                text = when (val state = uiState) {
+                                    is SmbUiState.Scanning -> "Scanning Network..."
+                                    is SmbUiState.ServerList -> "Intra Network (SMB)"
+                                    is SmbUiState.ShareList -> "Shares on ${state.ip}"
+                                    is SmbUiState.DirectoryBrowser -> {
+                                        if (state.currentPath.isEmpty()) state.shareName else state.currentPath.substringAfterLast("/")
+                                    }
+                                },
+                                color = topBarTextColor,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = isHubExpanded,
+                            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(end = 8.dp)
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 1. Live TV Icon (if enabled)
+                                if (isIptvEnabled) {
+                                    IconButton(onClick = {
+                                        isHubExpanded = false
+                                        onIptvClick()
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Tv,
+                                            contentDescription = "Live TV",
+                                            tint = topBarTextColor
+                                        )
+                                    }
+                                }
+                                // 2. WebDrop (Zero-Friction LAN Share)
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    showWebDropDialog = true
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.NearMe,
+                                        contentDescription = "WebDrop",
+                                        tint = topBarTextColor
+                                    )
+                                }
+                                // 3. IntraDrive (Network Storage / WebDAV)
+                                if (isDriveEnabled) {
+                                    IconButton(onClick = {
+                                        isHubExpanded = false
+                                        showIntraDriveDialog = true
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.FolderShared,
+                                            contentDescription = "IntraDrive",
+                                            tint = topBarTextColor
+                                        )
+                                    }
+                                }
+                                // 4. Chat Icon (Quick jump back to chats)
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    onBack()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ChatBubble,
+                                        contentDescription = "Chats",
+                                        tint = topBarTextColor
+                                    )
+                                }
+                                // 5. Smart Home Icon
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    onIntraHomeClick()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Home,
+                                        contentDescription = "Intra Home",
+                                        tint = topBarTextColor
+                                    )
+                                }
+                                // 6. Settings Icon
+                                IconButton(onClick = {
+                                    isHubExpanded = false
+                                    onSettingsClick()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Settings,
+                                        contentDescription = "Settings",
+                                        tint = topBarTextColor
+                                    )
+                                }
                             }
-                        },
-                        color = topBarTextColor,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = { handleBackPress() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = topBarTextColor)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { isHubExpanded = !isHubExpanded }) {
+                        Icon(
+                            imageVector = if (isHubExpanded) Icons.Filled.Clear else Icons.Filled.Apps,
+                            contentDescription = "Toggle Hub",
+                            tint = topBarTextColor
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = topBarColor)
@@ -861,5 +988,27 @@ fun SmbBrowserScreen(
                 onDismiss = { activeViewerFile = null }
             )
         }
+    }
+
+    // ----------------------------------------------------
+    // Render WebDrop QR & Link Dialog
+    // ----------------------------------------------------
+    if (showWebDropDialog) {
+        WebDropDialog(
+            baseUrl = settingsManager.getBaseUrl(),
+            isDark = isDark,
+            onDismiss = { showWebDropDialog = false }
+        )
+    }
+
+    // ----------------------------------------------------
+    // Render IntraDrive QR & Link Dialog
+    // ----------------------------------------------------
+    if (showIntraDriveDialog) {
+        IntraDriveDialog(
+            baseUrl = settingsManager.getBaseUrl(),
+            isDark = isDark,
+            onDismiss = { showIntraDriveDialog = false }
+        )
     }
 }

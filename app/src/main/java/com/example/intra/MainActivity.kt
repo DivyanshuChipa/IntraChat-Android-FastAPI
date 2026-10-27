@@ -268,7 +268,21 @@ class MainActivity : ComponentActivity() {
 
                             showAbout -> AboutScreen { showAbout = false }
 
-                            showSmbBrowser -> SmbBrowserScreen(onBack = { showSmbBrowser = false })
+                            showSmbBrowser -> SmbBrowserScreen(
+                                onBack = { showSmbBrowser = false },
+                                onIptvClick = {
+                                    showSmbBrowser = false
+                                    showIptv = true
+                                },
+                                onIntraHomeClick = {
+                                    showSmbBrowser = false
+                                    showIntraHome = true
+                                },
+                                onSettingsClick = {
+                                    showSmbBrowser = false
+                                    showSettings = true
+                                }
+                            )
 
                             showIntraHome -> IntraHomeScreen(onBack = { showIntraHome = false })
 
