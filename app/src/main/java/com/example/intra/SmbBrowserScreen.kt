@@ -40,6 +40,11 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 
+enum class NetworkProtocol {
+    SMB,
+    WEBDAV
+}
+
 sealed class SmbUiState {
     object Scanning : SmbUiState()
     data class ServerList(val servers: List<String>) : SmbUiState()
@@ -48,7 +53,8 @@ sealed class SmbUiState {
         val ip: String,
         val shareName: String,
         val currentPath: String,
-        val items: List<SmbFileItem>
+        val items: List<SmbFileItem>,
+        val protocol: NetworkProtocol = NetworkProtocol.SMB
     ) : SmbUiState()
 }
 
@@ -66,6 +72,10 @@ fun SmbBrowserScreen(
     var isHubExpanded by remember { mutableStateOf(false) }
     var showWebDropDialog by remember { mutableStateOf(false) }
     var showIntraDriveDialog by remember { mutableStateOf(false) }
+
+    // Protocol Selection & Port
+    var selectedProtocol by remember { mutableStateOf(NetworkProtocol.SMB) }
+    var manualPort by remember { mutableStateOf("445") }
 
     // UI State management
     var uiState by remember { mutableStateOf<SmbUiState>(SmbUiState.Scanning) }
@@ -96,18 +106,26 @@ fun SmbBrowserScreen(
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
 
-    // SharedPreferences for SMB login credentials caching
+    // SharedPreferences for SMB/WebDAV login credentials caching
     val sharedPrefs = remember { context.getSharedPreferences("smb_auth_cache", Context.MODE_PRIVATE) }
 
     // Helper to open/load directory
-    fun openDirectory(shareName: String, path: String) {
+    fun openDirectory(shareName: String, path: String, protocol: NetworkProtocol = selectedProtocol) {
         scope.launch {
             scanningProgress = true
-            val items = SmbHelper.listDirectory(shareName, path)
+            val items = if (protocol == NetworkProtocol.WEBDAV) {
+                WebDavHelper.listDirectory(path)
+            } else {
+                SmbHelper.listDirectory(shareName, path)
+            }
             scanningProgress = false
 
-            val ip = SmbHelper.currentConnectedIp ?: ""
-            uiState = SmbUiState.DirectoryBrowser(ip, shareName, path, items)
+            val ip = if (protocol == NetworkProtocol.WEBDAV) {
+                "${WebDavHelper.currentConnectedHost ?: ""}:${WebDavHelper.currentConnectedPort}"
+            } else {
+                SmbHelper.currentConnectedIp ?: ""
+            }
+            uiState = SmbUiState.DirectoryBrowser(ip, shareName, path, items, protocol)
         }
     }
 
@@ -140,14 +158,24 @@ fun SmbBrowserScreen(
                     }
                     activeDownloadProgress = 0f
 
-                    val success = SmbHelper.uploadFile(
-                        shareName = state.shareName,
-                        targetPath = state.currentPath,
-                        fileName = displayName,
-                        context = context,
-                        fileUri = uri,
-                        onProgress = { activeDownloadProgress = it }
-                    )
+                    val success = if (state.protocol == NetworkProtocol.WEBDAV) {
+                        WebDavHelper.uploadFile(
+                            targetPath = state.currentPath,
+                            fileName = displayName,
+                            context = context,
+                            fileUri = uri,
+                            onProgress = { activeDownloadProgress = it }
+                        )
+                    } else {
+                        SmbHelper.uploadFile(
+                            shareName = state.shareName,
+                            targetPath = state.currentPath,
+                            fileName = displayName,
+                            context = context,
+                            fileUri = uri,
+                            onProgress = { activeDownloadProgress = it }
+                        )
+                    }
 
                     if (success) {
                         successCount++
@@ -164,7 +192,7 @@ fun SmbBrowserScreen(
                     Toast.makeText(context, "$successCount of $totalCount files uploaded.", Toast.LENGTH_SHORT).show()
                 }
 
-                openDirectory(state.shareName, state.currentPath)
+                openDirectory(state.shareName, state.currentPath, state.protocol)
             }
         }
     }
@@ -205,26 +233,43 @@ fun SmbBrowserScreen(
         }
     }
 
-    // Connect to server
-    fun connectToServer(ip: String) {
+    // Connect to server (supports both SMB and WebDAV)
+    fun connectToServer(ip: String, protocol: NetworkProtocol = selectedProtocol, customPort: Int? = null) {
         scope.launch {
             val auth = SmbAuth(isAnonymous, username, password)
             scanningProgress = true
-            val success = SmbHelper.connect(ip, auth)
-            scanningProgress = false
 
-            if (success) {
-                saveCredentialsToCache(ip)
-                showAuthDialog = null
-                val shares = SmbHelper.listShares()
-                if (shares.isNotEmpty()) {
-                    uiState = SmbUiState.ShareList(ip, shares)
+            if (protocol == NetworkProtocol.WEBDAV) {
+                val port = customPort ?: manualPort.toIntOrNull() ?: 8000
+                val success = WebDavHelper.connect(ip, port, auth)
+                scanningProgress = false
+
+                if (success) {
+                    saveCredentialsToCache("${ip}_${port}")
+                    showAuthDialog = null
+                    selectedProtocol = NetworkProtocol.WEBDAV
+                    openDirectory("IntraDrive", "", NetworkProtocol.WEBDAV)
                 } else {
-                    Toast.makeText(context, "No shares found on this server.", Toast.LENGTH_SHORT).show()
-                    uiState = SmbUiState.ShareList(ip, emptyList())
+                    Toast.makeText(context, "WebDAV connection failed. Ensure Intra Server is running on port $port.", Toast.LENGTH_LONG).show()
                 }
             } else {
-                Toast.makeText(context, "Connection failed. Please check credentials or IP.", Toast.LENGTH_LONG).show()
+                val success = SmbHelper.connect(ip, auth)
+                scanningProgress = false
+
+                if (success) {
+                    saveCredentialsToCache(ip)
+                    showAuthDialog = null
+                    selectedProtocol = NetworkProtocol.SMB
+                    val shares = SmbHelper.listShares()
+                    if (shares.isNotEmpty()) {
+                        uiState = SmbUiState.ShareList(ip, shares)
+                    } else {
+                        Toast.makeText(context, "No shares found on this server.", Toast.LENGTH_SHORT).show()
+                        uiState = SmbUiState.ShareList(ip, emptyList())
+                    }
+                } else {
+                    Toast.makeText(context, "SMB connection failed. Please check credentials or IP.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
@@ -238,7 +283,7 @@ fun SmbBrowserScreen(
     }
 
     // Download and handle file tap
-    fun handleFileClick(shareName: String, fileItem: SmbFileItem) {
+    fun handleFileClick(shareName: String, fileItem: SmbFileItem, protocol: NetworkProtocol = selectedProtocol) {
         val extension = fileItem.name.substringAfterLast('.', "").lowercase()
         val isImage = extension in listOf("jpg", "jpeg", "png", "webp", "gif")
         val isVideo = extension in listOf("mp4", "mkv", "avi", "mov", "3gp")
@@ -249,20 +294,29 @@ fun SmbBrowserScreen(
             activeDownloadProgress = 0f
 
             val destFile = if (isImage || isVideo) {
-                File(context.cacheDir, "smb_temp_${fileItem.name}")
+                File(context.cacheDir, "network_temp_${fileItem.name}")
             } else {
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val intraSmbDir = File(downloadsDir, "Intra_SMB").apply { if (!exists()) mkdirs() }
-                File(intraSmbDir, fileItem.name)
+                val targetSubdir = if (protocol == NetworkProtocol.WEBDAV) "Intra_Drive" else "Intra_SMB"
+                val intraFolder = File(downloadsDir, targetSubdir).apply { if (!exists()) mkdirs() }
+                File(intraFolder, fileItem.name)
             }
 
-            val success = SmbHelper.downloadFile(
-                shareName = shareName,
-                filePath = fileItem.path,
-                destFile = destFile,
-                totalSize = fileItem.size,
-                onProgress = { activeDownloadProgress = it }
-            )
+            val success = if (protocol == NetworkProtocol.WEBDAV) {
+                WebDavHelper.downloadFile(
+                    filePath = fileItem.path,
+                    destFile = destFile,
+                    onProgress = { activeDownloadProgress = it }
+                )
+            } else {
+                SmbHelper.downloadFile(
+                    shareName = shareName,
+                    filePath = fileItem.path,
+                    destFile = destFile,
+                    totalSize = fileItem.size,
+                    onProgress = { activeDownloadProgress = it }
+                )
+            }
 
             activeDownloadProgress = null
 
@@ -277,7 +331,8 @@ fun SmbBrowserScreen(
                         null,
                         null
                     )
-                    Toast.makeText(context, "Downloaded to Downloads/Intra_SMB/${fileItem.name}", Toast.LENGTH_LONG).show()
+                    val targetSubdir = if (protocol == NetworkProtocol.WEBDAV) "Intra_Drive" else "Intra_SMB"
+                    Toast.makeText(context, "Downloaded to Downloads/$targetSubdir/${fileItem.name}", Toast.LENGTH_LONG).show()
                 }
             } else {
                 Toast.makeText(context, "Download failed.", Toast.LENGTH_SHORT).show()
@@ -296,22 +351,37 @@ fun SmbBrowserScreen(
             }
             is SmbUiState.ShareList -> {
                 SmbHelper.disconnect()
+                WebDavHelper.disconnect()
                 startScan()
             }
             is SmbUiState.DirectoryBrowser -> {
-                if (state.currentPath.isEmpty()) {
-                    uiState = SmbUiState.ShareList(state.ip, emptyList())
-                    scope.launch {
-                        val shares = SmbHelper.listShares()
-                        uiState = SmbUiState.ShareList(state.ip, shares)
+                if (state.protocol == NetworkProtocol.WEBDAV) {
+                    if (state.currentPath.isEmpty()) {
+                        WebDavHelper.disconnect()
+                        startScan()
+                    } else {
+                        val parentPath = if (state.currentPath.contains("/")) {
+                            state.currentPath.substringBeforeLast("/")
+                        } else {
+                            ""
+                        }
+                        openDirectory(state.shareName, parentPath, state.protocol)
                     }
                 } else {
-                    val parentPath = if (state.currentPath.contains("/")) {
-                        state.currentPath.substringBeforeLast("/")
+                    if (state.currentPath.isEmpty()) {
+                        uiState = SmbUiState.ShareList(state.ip, emptyList())
+                        scope.launch {
+                            val shares = SmbHelper.listShares()
+                            uiState = SmbUiState.ShareList(state.ip, shares)
+                        }
                     } else {
-                        ""
+                        val parentPath = if (state.currentPath.contains("/")) {
+                            state.currentPath.substringBeforeLast("/")
+                        } else {
+                            ""
+                        }
+                        openDirectory(state.shareName, parentPath, state.protocol)
                     }
-                    openDirectory(state.shareName, parentPath)
                 }
             }
         }
@@ -353,10 +423,11 @@ fun SmbBrowserScreen(
                             Text(
                                 text = when (val state = uiState) {
                                     is SmbUiState.Scanning -> "Scanning Network..."
-                                    is SmbUiState.ServerList -> "Intra Network (SMB)"
+                                    is SmbUiState.ServerList -> "Intra Network Explorer"
                                     is SmbUiState.ShareList -> "Shares on ${state.ip}"
                                     is SmbUiState.DirectoryBrowser -> {
-                                        if (state.currentPath.isEmpty()) state.shareName else state.currentPath.substringAfterLast("/")
+                                        val prefix = if (state.protocol == NetworkProtocol.WEBDAV) "🗄️ " else "📁 "
+                                        prefix + (if (state.currentPath.isEmpty()) state.shareName else state.currentPath.substringAfterLast("/"))
                                     }
                                 },
                                 color = topBarTextColor,
@@ -520,12 +591,46 @@ fun SmbBrowserScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Protocol Selector Chips
+                                    FilterChip(
+                                        selected = selectedProtocol == NetworkProtocol.SMB,
+                                        onClick = {
+                                            selectedProtocol = NetworkProtocol.SMB
+                                            manualPort = "445"
+                                        },
+                                        label = { Text("📁 SMB (Windows / Samba)") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0xFF6741A8),
+                                            selectedLabelColor = Color.White
+                                        )
+                                    )
+                                    FilterChip(
+                                        selected = selectedProtocol == NetworkProtocol.WEBDAV,
+                                        onClick = {
+                                            selectedProtocol = NetworkProtocol.WEBDAV
+                                            manualPort = "8000"
+                                        },
+                                        label = { Text("🗄️ IntraDrive / WebDAV") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0xFF6741A8),
+                                            selectedLabelColor = Color.White
+                                        )
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     OutlinedTextField(
                                         value = manualIpAddress,
                                         onValueChange = { manualIpAddress = it },
-                                        placeholder = { Text("e.g. 192.168.31.106", color = Color.LightGray) },
+                                        placeholder = { Text("IP (e.g. 192.168.1.10)", color = Color.LightGray) },
                                         singleLine = true,
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedTextColor = Color.White,
@@ -535,9 +640,25 @@ fun SmbBrowserScreen(
                                             focusedContainerColor = Color.Transparent,
                                             unfocusedContainerColor = Color.Transparent
                                         ),
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.weight(1.8f)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    OutlinedTextField(
+                                        value = manualPort,
+                                        onValueChange = { manualPort = it },
+                                        placeholder = { Text("Port") },
+                                        singleLine = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White,
+                                            focusedBorderColor = Color.White,
+                                            unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                                            focusedContainerColor = Color.Transparent,
+                                            unfocusedContainerColor = Color.Transparent
+                                        ),
+                                        modifier = Modifier.weight(0.9f)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     IconButton(
                                         onClick = {
                                             if (manualIpAddress.trim().isNotEmpty()) {
@@ -549,8 +670,72 @@ fun SmbBrowserScreen(
                                         },
                                         modifier = Modifier.background(Color(0xFF25BB4B), RoundedCornerShape(8.dp))
                                     ) {
-                                        Icon(Icons.Filled.Add, contentDescription = "Add IP", tint = Color.White)
+                                        Icon(Icons.Filled.ArrowForward, contentDescription = "Connect", tint = Color.White)
                                     }
+                                }
+                            }
+                        }
+
+                        // Quick access to Local Server IntraDrive (if configured in settings)
+                        val localBaseUrl = settingsManager.getBaseUrl()
+                        if (localBaseUrl.isNotBlank()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                                    .clickable {
+                                        val host = try {
+                                            java.net.URI(localBaseUrl).host ?: ""
+                                        } catch (_: Exception) { "" }
+                                        val port = try {
+                                            val p = java.net.URI(localBaseUrl).port
+                                            if (p != -1) p else 8000
+                                        } catch (_: Exception) { 8000 }
+
+                                        if (host.isNotEmpty()) {
+                                            selectedProtocol = NetworkProtocol.WEBDAV
+                                            manualIpAddress = host
+                                            manualPort = port.toString()
+                                            loadCachedCredentials("${host}_${port}")
+                                            showAuthDialog = host
+                                        } else {
+                                            Toast.makeText(context, "Server host not available", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF6741A8).copy(alpha = 0.35f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.FolderShared,
+                                        contentDescription = null,
+                                        tint = Color(0xFF00E676),
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Quick Connect: IntraDrive",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp
+                                        )
+                                        Text(
+                                            "Connect directly to $localBaseUrl/drive",
+                                            color = Color.White.copy(alpha = 0.7f),
+                                            fontSize = 12.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Filled.ChevronRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.6f)
+                                    )
                                 }
                             }
                         }
@@ -659,9 +844,9 @@ fun SmbBrowserScreen(
                                         .fillMaxWidth()
                                         .clickable {
                                             if (item.isDirectory) {
-                                                openDirectory(state.shareName, item.path)
+                                                openDirectory(state.shareName, item.path, state.protocol)
                                             } else {
-                                                handleFileClick(state.shareName, item)
+                                                handleFileClick(state.shareName, item, state.protocol)
                                             }
                                         }
                                         .padding(vertical = 10.dp, horizontal = 12.dp),
@@ -757,15 +942,22 @@ fun SmbBrowserScreen(
                                 val state = uiState
                                 if (state is SmbUiState.DirectoryBrowser && newFolderName.trim().isNotEmpty()) {
                                     scope.launch {
-                                        val success = SmbHelper.createFolder(
-                                            shareName = state.shareName,
-                                            parentPath = state.currentPath,
-                                            folderName = newFolderName.trim()
-                                        )
+                                        val success = if (state.protocol == NetworkProtocol.WEBDAV) {
+                                            WebDavHelper.createFolder(
+                                                parentPath = state.currentPath,
+                                                folderName = newFolderName.trim()
+                                            )
+                                        } else {
+                                            SmbHelper.createFolder(
+                                                shareName = state.shareName,
+                                                parentPath = state.currentPath,
+                                                folderName = newFolderName.trim()
+                                            )
+                                        }
                                         showCreateFolderDialog = false
                                         if (success) {
                                             Toast.makeText(context, "Folder created!", Toast.LENGTH_SHORT).show()
-                                            openDirectory(state.shareName, state.currentPath)
+                                            openDirectory(state.shareName, state.currentPath, state.protocol)
                                         } else {
                                             Toast.makeText(context, "Failed to create folder.", Toast.LENGTH_SHORT).show()
                                         }
@@ -804,7 +996,7 @@ fun SmbBrowserScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Connect to SMB server at $ip",
+                        text = "Connect to ${if (selectedProtocol == NetworkProtocol.WEBDAV) "WebDAV / IntraDrive" else "SMB"} server at $ip",
                         fontSize = 13.sp,
                         color = Color.Gray
                     )

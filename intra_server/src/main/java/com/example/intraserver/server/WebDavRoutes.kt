@@ -157,9 +157,21 @@ private suspend fun handleWebDavRequest(
             }
 
             if (targetFile.isDirectory) {
-                // If accessed via a normal web browser, show a slick directory browser
                 val accept = call.request.header("Accept") ?: ""
-                if (accept.contains("text/html")) {
+                val format = call.request.queryParameters["format"] ?: ""
+                if (accept.contains("application/json") || format == "json") {
+                    val array = org.json.JSONArray()
+                    val children = targetFile.listFiles()?.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() })) ?: emptyList()
+                    for (child in children) {
+                        array.put(org.json.JSONObject().apply {
+                            put("name", child.name)
+                            put("isDirectory", child.isDirectory)
+                            put("size", if (child.isDirectory) 0L else child.length())
+                            put("lastModified", child.lastModified())
+                        })
+                    }
+                    call.respondText(array.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+                } else if (accept.contains("text/html")) {
                     val html = generateWebBrowserHtml(targetFile, decodedPath)
                     call.respondText(html, ContentType.Text.Html, HttpStatusCode.OK)
                 } else {
