@@ -12,7 +12,11 @@ import requests
 from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
 
 from lumir.engine import lumir_engine
-from messages import create_delivery_entries, save_message
+from messages import (
+    create_delivery_entries,
+    mark_message_delivered_for_user,
+    save_message,
+)
 from users import get_ai_config
 
 router = APIRouter(prefix="/api/lumir", tags=["Lumir Voice"])
@@ -247,7 +251,13 @@ async def lumir_voice_turn(
                 "timestamp": int(datetime.now(IST).timestamp() * 1000),
             }
         )
-        asyncio.create_task(send_to_user(sender, ws_payload))
+
+        async def _deliver_voice_reply():
+            sent = await send_to_user(sender, ws_payload)
+            if sent:
+                mark_message_delivered_for_user(reply_id, sender)
+
+        asyncio.create_task(_deliver_voice_reply())
     except Exception as e:
         print(f"⚠️ Failed to save voice call messages to DB: {e}")
 
