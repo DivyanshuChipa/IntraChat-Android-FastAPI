@@ -1,9 +1,9 @@
 import requests
 import json
-import base64 # 👈 NAYA IMPORT AANKHON KE LIYE
+import base64
 import os
 
-def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None, is_voice_mode: bool = False):
+def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None, is_voice_mode: bool = False, custom_system_prompt: str = None):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
 
@@ -17,27 +17,40 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
 
     fallback_model = config.get("ai_fallback", "gemma3:270m")
 
-    system_prompt = f"""You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
+    if custom_system_prompt:
+        system_prompt = custom_system_prompt
+    else:
+        system_prompt = f"""You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
     You live inside the 'Intra' LAN messenger network. 
     Your creator is an engineer known as 'Divya'. 
     The user you are currently chatting with is named '{sender}'. Address them by their name naturally in conversation."""
 
-    if is_voice_mode:
-        system_prompt += f"""\n\n[CRITICAL: LIVE VOICE PHONE CALL MODE ACTIVE]
+        if is_voice_mode:
+            system_prompt += f"""\n\n[CRITICAL: LIVE VOICE PHONE CALL MODE ACTIVE]
     - You are on a real-time phone call with {sender}. Your words will be read aloud immediately by TTS.
     - Reply like a real person on a phone: keep responses very brief, natural, and conversational (strictly 1 to 2 short sentences).
     - NEVER use markdown formatting (no asterisks **, no bold, no headers #, no bullet points).
     - NEVER use emojis, ascii art, or symbols (e.g. no ✨, 😂, 🚀), because TTS reads them awkwardly.
     - You are female. When speaking Hindi/Urdu, strictly use female grammar (e.g. 'रही हूँ', 'बताऊँगी', 'सुन रही हूँ', NOT 'रहा हूँ')."""
-    else:
-        system_prompt += "\n    Always reply in a helpful and concise manner."
+        else:
+            system_prompt += "\n    Always reply in a helpful and concise manner."
 
-    # 🧠 NEW: INJECT FACTS INVISIBLY
-    if user_facts:
-        system_prompt += f"\n\nHere are some important facts you must remember about {sender}:\n"
-        for fact in user_facts:
-            system_prompt += f"- {fact}\n"
-        system_prompt += "\nUse these facts to personalize your responses, but DO NOT mention that you are reading from a memory list."
+        # 🧠 COGNITIVE AMYGDALA FACTS INJECTION (with Emotional State awareness)
+        if user_facts:
+            system_prompt += f"\n\nHere are some active cognitive memories & emotional impressions about {sender}:\n"
+            for item in user_facts:
+                if isinstance(item, dict):
+                    fact_str = item.get("fact", "")
+                    valence = item.get("valence", 0.0)
+                    mood_hint = ""
+                    if valence > 0.3:
+                        mood_hint = " (associated with happiness/comfort/joy)"
+                    elif valence < -0.3:
+                        mood_hint = " (associated with stress/pain/sadness - be empathetic and gentle)"
+                    system_prompt += f"- {fact_str}{mood_hint}\n"
+                else:
+                    system_prompt += f"- {item}\n"
+            system_prompt += "\nUse these memories organically to personalize your tone and conversation. NEVER explicitly say 'According to my memory' or 'I found in my database'."
 
     # 🧠 GEMMA-SPECIFIC HISTORY FIX
     # Gemma models sometimes ignore the 'system' role. 
@@ -68,11 +81,9 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
             messages[0]["content"] = f"{system_prompt}\n\n{messages[0]['content']}"
 
     # 👁️ VISION LOGIC: Agar image aayi hai, toh use Base64 mein encode karke message mein jodo
-
     if image_path and os.path.exists(image_path):
         try:
             with open(image_path, "rb") as img_file:
-                # Image ko text (Base64) mein convert karo
                 base64_string = base64.b64encode(img_file.read()).decode('utf-8')
                 user_message["images"] = [base64_string]
                 print(f"👁️ [VISION] Image successfully attached for Ollama!")
@@ -87,7 +98,6 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
         print(f"🤖 [LUMIR DEBUG] SENDING TO OLLAMA MODEL: {target_model} {mode_text}")
         print(f"👤 USER: {sender}")
 
-        # Base64 string bohot lambi hoti hai, isliye terminal pe spam na ho uske liye usko hata kar print karenge
         if not is_fallback:
             debug_messages = json.loads(json.dumps(messages)) # Deep copy
             if "images" in debug_messages[-1]:
@@ -118,8 +128,6 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
     except Exception as e:
         print(f"⚠️ [LUMIR FALLBACK ALERT] Main model '{main_model}' failed: {e}. Shifting to '{fallback_model}'...")
         try:
-            # 🛑 SAFETY NET: Baby model (Fallback) text-only hota hai.
-            # Agar image payload mein hai, toh usko delete kar do warna baby crash ho jayega!
             for msg in messages:
                 if "images" in msg:
                     del msg["images"]

@@ -6,6 +6,9 @@ import re
 import psutil
 import requests
 from .memory import search_facts_in_chroma, save_fact_to_chroma
+from .memory_brain import save_cognitive_memory, recall_cognitive_memories, prune_decayed_memories
+from .extractor import extract_synthetic_amygdala_fact
+from .tool_router import resolve_autonomous_tool_intent
 
 # To access users.py and messages.py from the parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -256,6 +259,45 @@ class LumirEngine:
         # 2. Basic Utility Commands
         if text in ["hi", "hello", "hey"]:
             return {"type": "text", "text": "👋 Hello! I am Lumir, your LAN assistant. Type /help to see what I can do."}
+
+        # ⚡ AUTONOMOUS AGENTIC TOOL ROUTING (Natural Language Intent)
+        has_img = bool(file_url or (sender in self.user_context and self.user_context[sender]))
+        auto_tool = resolve_autonomous_tool_intent(original_text, has_image_in_context=has_img)
+        if auto_tool:
+            action = auto_tool["tool"]
+            if action == "server_status":
+                print(f"🤖 [AUTONOMOUS TOOL] Triggered Server Status for {sender}")
+                return get_server_status()
+            elif action == "weather":
+                print(f"🤖 [AUTONOMOUS TOOL] Triggered Weather Report for {sender}")
+                return get_weather(lat, lon)
+            elif action == "youtube_options":
+                yt_link = auto_tool["link"]
+                print(f"🤖 [AUTONOMOUS TOOL] Detected YouTube Link: {yt_link} for {sender}")
+                if sender not in self.user_context:
+                    self.user_context[sender] = []
+                self.user_context[sender].append(yt_link)
+                return {
+                    "type": "utility_options",
+                    "text": "🎥 YouTube Link detected! Choose download format:",
+                    "options": [
+                        "🎵 YT MP3",
+                        "🎬 YT MP4 - 480p",
+                        "🎬 YT MP4 - 720p",
+                        "🎬 YT MP4 - Highest"
+                    ]
+                }
+            elif action == "ocr":
+                print(f"🤖 [AUTONOMOUS TOOL] Triggered OCR for {sender}")
+                target_image = file_url or (self.user_context.get(sender)[-1] if self.user_context.get(sender) else None)
+                if target_image:
+                    res = extract_text_from_image(target_image)
+                    if sender in self.user_context:
+                        del self.user_context[sender]
+                    if res["success"]:
+                        return {"type": "text", "text": f"📄 **Extracted Text:**\n\n{res['text']}"}
+                    else:
+                        return {"type": "text", "text": res["message"]}
 
         # 🟢 NAYA CODE: Commands ko yahan pakdo!
         if text == "/server":
@@ -551,38 +593,39 @@ class LumirEngine:
                 is_smart = current_model.lower() in smart_models_list
 
                 # ==========================================
-                # 🕵️‍♂️ THE FACT DIGGER (Background Memory Extractor)
+                # 🧬 SYNTHETIC AMYGDALA & COGNITIVE MEMORY EXTRACTOR
                 # ==========================================
-                # Expanded triggers to catch slightly less obvious declarations (e.g. "bhi pasand", "is my favorite")
-                trigger_words = ["i like", "mera naam", "mujhe pasand", "i am", "remember", "mera plan", "mai", "mera", "mujhe", "love", "hate", "favorite", "bhi pasand", "hamesha", "kabhi nahi"]
-                
-                # Sirf tab extract karo jab Smart Model ho aur trigger word use hua ho
-                if is_smart and any(tw in text.lower() for tw in trigger_words):
+                if is_smart:
                     try:
-                        print(f"🕵️‍♂️ [FACT DIGGER] Triggered for {sender}...")
-                        # Improved prompt to ensure it captures preferences properly
-                        extract_prompt = f"Analyze the following message and extract any personal fact, preference, or declaration about the user. Return ONLY the factual statement. If the message does not contain any personal fact or preference, reply with exactly 'NONE'. Message: '{text}'"
-                        fact = ask_ai(prompt=extract_prompt, config=config, history=[], sender=sender)
-                        
-                        if fact and "NONE" not in fact.upper() and len(fact) < 150:
-                            # 🌟 SAVE TO CHROMA DB INSTEAD OF SQLITE
-                            save_fact_to_chroma(sender, fact)
-                            print(f"💾 [CHROMA FACT SAVED]: {fact}")
+                        cognitive_data = extract_synthetic_amygdala_fact(text=original_text, ask_ai_fn=ask_ai, config=config, sender=sender)
+                        if cognitive_data:
+                            save_cognitive_memory(
+                                sender=sender,
+                                fact=cognitive_data["fact"],
+                                importance=cognitive_data["importance"],
+                                valence=cognitive_data["valence"],
+                                arousal=cognitive_data["arousal"],
+                                category=cognitive_data["category"],
+                                tags=cognitive_data["tags"]
+                            )
+                            save_fact_to_chroma(sender, cognitive_data["fact"])
                     except Exception as e:
-                        print(f"⚠️ [FACT DIGGER ERROR]: {e}")
+                        print(f"⚠️ [AMYGDALA EXTRACTOR ERROR]: {e}")
 
-                # 🌟 THE MAGIC: Ab saare facts nahi nikalenge!
-                # Sirf wo facts nikalenge jo user ke current question ('text') se match karte hain!
-
-                # 🚪 THE INTENT GATEWAY: Agar user ka message bahut chota ya generic hai, toh DB mat dhoondho.
+                # 🚪 INTENT GATEWAY: Fetch active neuro-memories with Ebbinghaus retention
                 generic_chitchat = ["hi", "hello", "hey", "kya chal raha hai", "ok", "acha", "hmm", "bye", "good morning", "good night", "kaisi ho", "kaise ho"]
-                is_generic = text.strip().lower() in generic_chitchat or len(text.split()) < 3
+                is_generic = text.strip().lower() in generic_chitchat or len(text.split()) < 2
 
                 if is_smart and not is_generic:
-                    print("🚪 [INTENT GATEWAY]: Query seems substantive, searching long-term memory...")
-                    user_facts_list = search_facts_in_chroma(sender, text)
+                    print("🚪 [COGNITIVE RECALL]: Substantive query detected. Scanning synaptic connectome...")
+                    cognitive_mems = recall_cognitive_memories(sender, text, n_candidates=4)
+                    if cognitive_mems:
+                        user_facts_list = cognitive_mems
+                    else:
+                        legacy_facts = search_facts_in_chroma(sender, text)
+                        user_facts_list = legacy_facts if legacy_facts else None
                 else:
-                    print("🚪 [INTENT GATEWAY]: Query is generic/chit-chat. Bypassing long-term memory search.")
+                    print("🚪 [INTENT GATEWAY]: Query is generic chit-chat. Bypassing cognitive recall.")
                     user_facts_list = None
 
                 if not is_smart:
