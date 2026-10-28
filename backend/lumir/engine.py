@@ -8,7 +8,8 @@ import requests
 from .memory import search_facts_in_chroma, save_fact_to_chroma
 from .memory_brain import save_cognitive_memory, recall_cognitive_memories, prune_decayed_memories
 from .extractor import extract_synthetic_amygdala_fact
-from .tool_router import resolve_autonomous_tool_intent
+from .tool_router import resolve_autonomous_tool_intent, DEFAULT_NODE2_URL
+from .summarizer import consolidate_recent_chats
 
 # To access users.py and messages.py from the parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -75,6 +76,8 @@ class LumirEngine:
     def __init__(self):
         # 🧠 Bot ki Memory: Sender -> Last Image URL
         self.user_context = {}
+        # 📊 Neocortex Consolidator Turn Counter: Sender -> message count
+        self.turn_counters = {}
 
     def process(self, text: str, file_url: str = None, sender: str = "Unknown", lat: float = None, lon: float = None, is_voice_mode: bool = False):
         original_text = text.strip()
@@ -662,6 +665,25 @@ class LumirEngine:
                 # Taaki agli chat mein bina matlab wapas itni heavy Base64 image na jaye!
                 if target_image_path and sender in self.user_context:
                     del self.user_context[sender]
+
+                # 🧠 NEOCORTEX PERIODIC CONSOLIDATION TRIGGER (Every 15 messages)
+                self.turn_counters[sender] = self.turn_counters.get(sender, 0) + 1
+                if self.turn_counters[sender] >= 15:
+                    self.turn_counters[sender] = 0
+                    try:
+                        print(f"🌙 [NEOCORTEX]: Turn threshold reached for {sender}. Triggering memory consolidation...")
+                        recent_msgs = get_lumir_history(sender, limit=16)
+                        # Consolidate via Node 2 (Qwen 0.5B) or fallback to Node 1 Main Model
+                        node2_url = config.get("node2_llama_url", DEFAULT_NODE2_URL)
+                        consolidate_recent_chats(
+                            username=sender,
+                            recent_messages=recent_msgs,
+                            node2_url=node2_url,
+                            main_ai_fn=ask_ai,
+                            config=config
+                        )
+                    except Exception as cons_err:
+                        print(f"⚠️ [NEOCORTEX CONSOLIDATION TRIGGER ERROR]: {cons_err}")
 
                 safe_reply = ai_reply.replace("\n", "  ").strip()
                 safe_reply = re.sub(' +', ' ', safe_reply)

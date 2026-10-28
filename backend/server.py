@@ -74,6 +74,7 @@ def verify_admin(x_admin_key: str = Header(None)):
 # ================= BACKGROUND TASKS & SCHEDULER =================
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from tasks import sync_weather_data, hourly_sentinel_check, cleanup_yt_downloads, cleanup_webdrop_files
+from lumir.night_worker import run_nightly_neocortex_consolidation
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
