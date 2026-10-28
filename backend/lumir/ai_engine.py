@@ -3,6 +3,22 @@ import json
 import base64
 import os
 
+_CACHED_SOUL = None
+
+def get_soul_instructions() -> str:
+    global _CACHED_SOUL
+    if _CACHED_SOUL is not None:
+        return _CACHED_SOUL
+    soul_file = os.path.join(os.path.dirname(__file__), "soul.md")
+    if os.path.exists(soul_file):
+        try:
+            with open(soul_file, "r", encoding="utf-8") as f:
+                _CACHED_SOUL = f.read().strip()
+                return _CACHED_SOUL
+        except Exception as e:
+            print(f"[SOUL LOAD ERROR]: {e}")
+    return "You are Lumir, a loyal and witty AI companion."
+
 def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None, is_voice_mode: bool = False, custom_system_prompt: str = None):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
@@ -20,10 +36,12 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
     if custom_system_prompt:
         system_prompt = custom_system_prompt
     else:
-        system_prompt = f"""You are Lumir, a highly intelligent, friendly, and witty AI assistant. 
-    You live inside the 'Intra' LAN messenger network. 
-    Your creator is an engineer known as 'Divya'. 
-    The user you are currently chatting with is named '{sender}'. Address them by their name naturally in conversation."""
+        soul_core = get_soul_instructions()
+        system_prompt = f"""{soul_core}
+
+Current context:
+- The user you are currently chatting with is named '{sender}'. Address them naturally by name when appropriate.
+"""
 
         if is_voice_mode:
             system_prompt += f"""\n\n[CRITICAL: LIVE VOICE PHONE CALL MODE ACTIVE]
