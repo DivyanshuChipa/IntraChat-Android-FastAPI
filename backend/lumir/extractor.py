@@ -1,23 +1,22 @@
 import json
 import re
+import requests
 from typing import Optional, Dict
 
-def extract_synthetic_amygdala_fact(text: str, ask_ai_fn, config: dict, sender: str = "User") -> Optional[Dict]:
+DEFAULT_NODE2_URL = "http://192.168.31.94:8080"
+
+def extract_synthetic_amygdala_fact(
+    text: str,
+    ask_ai_fn,
+    config: dict,
+    sender: str = "User",
+    node2_url: str = DEFAULT_NODE2_URL
+) -> Optional[Dict]:
     """
     Synthetic Amygdala & Hippocampus Feature Extractor:
-    Analyzes user text to detect if there's any personal declaration, preference,
-    emotional state, or core identity fact.
-    
-    Returns structured dict:
-      {
-        "fact": "Divya feels stressed about the Intra project deadline",
-        "importance": 7.5,
-        "valence": -0.6,       # Negative (dukh/stress) to Positive (sukhi/happiness)
-        "arousal": 0.8,       # Intensity/excitement
-        "category": "emotion", # preference, identity, emotion, goal, event
-        "tags": ["intra", "deadline", "stress"]
-      }
-    Or None if message is generic banter / chit-chat.
+    Orchestrated by Corpus Callosum:
+    - 1st Priority: Node 2 (Qwen 0.5B via llama.cpp) -> Ultra fast (~200ms JSON), zero load on cloud model.
+    - Fallback: Node 1 (Main Ollama) if Node 2 is offline.
     """
     text_clean = text.strip()
     if not text_clean or len(text_clean.split()) < 2:
@@ -49,20 +48,49 @@ Output ONLY the JSON object, nothing else."""
 
     user_prompt = f"Sender: {sender}\nMessage: \"{text_clean}\""
 
-    try:
-        # Call the configured AI model for extraction
-        raw_response = ask_ai_fn(
-            prompt=user_prompt,
-            config=config,
-            history=[],
-            sender=sender,
-            custom_system_prompt=system_prompt
-        )
+    raw_response = None
 
-        if not raw_response or "has_fact" not in raw_response:
+    # 1. First priority: Offload to Node 2 (Qwen 0.5B on llama.cpp)
+    target_node2 = config.get("node2_llama_url", node2_url) if config else node2_url
+    if target_node2:
+        try:
+            url = f"{target_node2.rstrip('/')}/v1/chat/completions"
+            payload = {
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": 0.1,
+                "max_tokens": 150,
+                "response_format": {"type": "json_object"}
+            }
+            resp = requests.post(url, json=payload, timeout=2.5)
+            if resp.status_code == 200:
+                raw_response = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                print(f"[AMYGDALA - NODE 2]: Qwen extracted memory/emotion for {sender}")
+        except Exception as e:
+            # Node 2 offline or timed out, silent fallback
+            pass
+
+    # 2. Fallback to Node 1 Main Model if Node 2 did not respond
+    if not raw_response and ask_ai_fn:
+        try:
+            raw_response = ask_ai_fn(
+                prompt=user_prompt,
+                config=config,
+                history=[],
+                sender=sender,
+                custom_system_prompt=system_prompt
+            )
+            print(f"[AMYGDALA - NODE 1 FALLBACK]: Main AI extracted memory for {sender}")
+        except Exception as e:
+            print(f"[EXTRACTOR ERROR]: {e}")
             return None
 
-        # Clean code block backticks if LLM wraps in ```json
+    if not raw_response or "has_fact" not in raw_response:
+        return None
+
+    try:
         cleaned = raw_response.strip()
         cleaned = re.sub(r"^```json\s*", "", cleaned, flags=re.IGNORECASE)
         cleaned = re.sub(r"^```\s*", "", cleaned)
@@ -100,5 +128,5 @@ Output ONLY the JSON object, nothing else."""
         }
 
     except Exception as e:
-        print(f"⚠️ [EXTRACTOR ERROR]: {e}")
+        print(f"[EXTRACTOR JSON PARSE ERROR]: {e}")
         return None
