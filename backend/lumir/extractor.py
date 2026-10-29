@@ -51,11 +51,12 @@ Output ONLY the JSON object, nothing else."""
     raw_response = None
 
     # 1. First priority: Offload to Node 2 (Qwen 0.5B on llama.cpp)
-    target_node2 = config.get("node2_llama_url", node2_url) if config else node2_url
+    target_node2 = (config.get("node2_llama_url") if config else None) or node2_url or DEFAULT_NODE2_URL
     if target_node2:
         try:
             url = f"{target_node2.rstrip('/')}/v1/chat/completions"
             payload = {
+                "model": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -64,13 +65,14 @@ Output ONLY the JSON object, nothing else."""
                 "max_tokens": 150,
                 "response_format": {"type": "json_object"}
             }
-            resp = requests.post(url, json=payload, timeout=2.5)
+            resp = requests.post(url, json=payload, timeout=5.0)
             if resp.status_code == 200:
                 raw_response = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                print(f"[AMYGDALA - NODE 2]: Qwen extracted memory/emotion for {sender}")
+                print(f"🧠 [AMYGDALA - NODE 2]: Qwen successfully extracted memory/emotion for {sender}")
+            else:
+                print(f"⚠️ [AMYGDALA - NODE 2 HTTP {resp.status_code}]: {resp.text[:100]}")
         except Exception as e:
-            # Node 2 offline or timed out, silent fallback
-            pass
+            print(f"⚠️ [AMYGDALA - NODE 2 FAILED]: {e.__class__.__name__}: {e}")
 
     # 2. Fallback to Node 1 Main Model if Node 2 did not respond
     if not raw_response and ask_ai_fn:
