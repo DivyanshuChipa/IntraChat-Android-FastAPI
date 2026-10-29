@@ -70,33 +70,18 @@ Current context:
                     system_prompt += f"- {item}\n"
             system_prompt += "\nUse these memories organically to personalize your tone and conversation. NEVER explicitly say 'According to my memory' or 'I found in my database'."
 
-    # 🧠 GEMMA-SPECIFIC HISTORY FIX
-    # Gemma models sometimes ignore the 'system' role. 
-    # For Gemma, we merge the system prompt into the first user message for better context/history injection.
-    is_gemma = "gemma" in main_model.lower()
-    
-    if is_gemma:
-        messages = [] # Start empty, we'll merge system prompt into the first user msg
-    else:
-        messages = [{"role": "system", "content": system_prompt}]
+    # 🧠 PROPER SYSTEM INJECTION & IDENTITY ANCHOR
+    # 1. Maintain clean system prompt at root (Ollama handles role 'system' properly for modern models)
+    messages = [{"role": "system", "content": system_prompt}]
 
     if history:
         messages.extend(history)
 
-    # Prepare the current user message
-    user_message = {"role": "user", "content": prompt}
-
-    if is_gemma and len(messages) == 0:
-        # No history, merge system prompt directly into this first message
-        user_message["content"] = f"{system_prompt}\n\nUser: {prompt}"
-    elif is_gemma and len(messages) > 0:
-        # History exists, merge system prompt into the very first message of the history
-        if messages[0]["role"] == "user":
-            messages[0]["content"] = f"{system_prompt}\n\n{messages[0]['content']}"
-        elif messages[0]["role"] == "system":
-            # If history already started with a system msg, just keep it, but Gemma prefers user
-            messages[0]["role"] = "user"
-            messages[0]["content"] = f"{system_prompt}\n\n{messages[0]['content']}"
+    # 2. Current User Message with Permanent Identity Anchor
+    # Even if chat history is long or model is Gemma/Qwen, this anchor prevents identity drift/leak!
+    identity_anchor = f"[System Context: You are Lumir, female digital companion created by Divya in Intra network. Never identify as a Google model or corporate assistant.]\n\n"
+    
+    user_message = {"role": "user", "content": f"{identity_anchor}{prompt}"}
 
     # 👁️ VISION LOGIC: Agar image aayi hai, toh use Base64 mein encode karke message mein jodo
     if image_path and os.path.exists(image_path):
