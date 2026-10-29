@@ -57,6 +57,18 @@ Instead of hardcoding every utility into Lumir, introduce a modular "Addon" syst
 
 ---
 
+### 5. Prefrontal Cortex Agentic ReAct Loop (Autonomous Multi-Step Goal Execution)
+- **Concept:** Transform Lumir from a single-turn conversational bot into a multi-step autonomous problem solver inspired by the human Prefrontal Cortex (Executive Function).
+- **Core Loop (Think ➔ Act ➔ Observe ➔ Repeat):**
+  1. **Goal Formation:** User provides a compound or complex instruction (e.g. *"Find the last two photos I sent, extract text from both, and summarize what they are about"*).
+  2. **Micro-Step Deliberation (Fast Orchestrator via Node 2):** Uses the lightweight fast model (Qwen 0.5B on Node 2) to break down the task into small execution steps.
+  3. **Tool Invocation:** Runs tools step-by-step (e.g. Image Fetch ➔ OCR ➔ Text Combine).
+  4. **Observation & Guardrails:** Evaluates each step's outcome. If intermediate failure occurs, tries alternate path. Guarded by a strict `MAX_LOOPS = 4` to prevent infinite compute cycles.
+  5. **Final Synthesis (via Node 1 31B Cloud):** Formulates the final natural, warm response to the user once all sub-tasks are complete.
+- **Why It's Great:** Enables Lumir to handle chained actions and real-world compound tasks autonomously without requiring the user to issue 5 separate manual commands.
+
+---
+
 ## 📱 Intra Portable Node: Embedded Phone Server ("Host as Server Mode")
 
 ### Vision & Problem Statement
