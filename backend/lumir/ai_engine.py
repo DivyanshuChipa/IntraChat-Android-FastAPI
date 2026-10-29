@@ -2,6 +2,7 @@ import requests
 import json
 import base64
 import os
+import re
 
 _CACHED_SOUL = None
 
@@ -17,7 +18,39 @@ def get_soul_instructions() -> str:
                 return _CACHED_SOUL
         except Exception as e:
             print(f"[SOUL LOAD ERROR]: {e}")
-    return "You are Lumir, a loyal and witty AI companion."
+    return "You are Lumir, female digital companion created by Divya in Intra private network. Witty, curious, caring."
+
+
+def prune_chat_history(history: list, max_assistant_words: int = 40) -> list:
+    """
+    Dynamic History Pruner:
+    Prevents token bloat by truncating overly verbose past assistant messages
+    to their first 1-2 key sentences (~40 words), preserving essential context.
+    """
+    if not history:
+        return []
+
+    pruned = []
+    for msg in history:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+
+        if role == "assistant" and len(content.split()) > max_assistant_words:
+            # Cut at sentence boundary or word limit
+            sentences = re.split(r'([.?!।\n]+)', content)
+            truncated = ""
+            for s in sentences:
+                if len((truncated + s).split()) <= max_assistant_words:
+                    truncated += s
+                else:
+                    break
+            if not truncated:
+                truncated = " ".join(content.split()[:max_assistant_words]) + "..."
+            pruned.append({"role": "assistant", "content": truncated.strip()})
+        else:
+            pruned.append(msg)
+    return pruned
+
 
 def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None, is_voice_mode: bool = False, custom_system_prompt: str = None):
     if not config.get("ai_enabled", False):
@@ -38,52 +71,43 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
     else:
         soul_core = get_soul_instructions()
         system_prompt = f"""{soul_core}
-
-Current context:
-- The user you are currently chatting with is named '{sender}'. Address them naturally by name when appropriate.
-"""
+User: {sender}"""
 
         if is_voice_mode:
-            system_prompt += f"""\n\n[CRITICAL: LIVE VOICE PHONE CALL MODE ACTIVE]
-    - You are on a real-time phone call with {sender}. Your words will be read aloud immediately by TTS.
-    - Reply like a real person on a phone: keep responses very brief, natural, and conversational (strictly 1 to 2 short sentences).
-    - NEVER use markdown formatting (no asterisks **, no bold, no headers #, no bullet points).
-    - NEVER use emojis, ascii art, or symbols (e.g. no ✨, 😂, 🚀), because TTS reads them awkwardly.
-    - You are female. When speaking Hindi/Urdu, strictly use female grammar (e.g. 'रही हूँ', 'बताऊँगी', 'सुन रही हूँ', NOT 'रहा हूँ')."""
-        else:
-            system_prompt += "\n    Always reply in a helpful and concise manner."
+            system_prompt += f"\n[VOICE CALL ACTIVE]: Reply in 1-2 short sentences without emojis or markdown."
 
-        # 🧠 COGNITIVE AMYGDALA FACTS INJECTION (with Emotional State awareness)
+        # 🧠 COGNITIVE AMYGDALA FACTS INJECTION (Concise bullet points)
         if user_facts:
-            system_prompt += f"\n\nHere are some active cognitive memories & emotional impressions about {sender}:\n"
+            system_prompt += f"\nMemories about {sender}:\n"
             for item in user_facts:
                 if isinstance(item, dict):
                     fact_str = item.get("fact", "")
                     valence = item.get("valence", 0.0)
-                    mood_hint = ""
-                    if valence > 0.3:
-                        mood_hint = " (associated with happiness/comfort/joy)"
-                    elif valence < -0.3:
-                        mood_hint = " (associated with stress/pain/sadness - be empathetic and gentle)"
+                    mood_hint = " (happy/excited)" if valence > 0.3 else (" (stressed/down - be gentle)" if valence < -0.3 else "")
                     system_prompt += f"- {fact_str}{mood_hint}\n"
                 else:
                     system_prompt += f"- {item}\n"
-            system_prompt += "\nUse these memories organically to personalize your tone and conversation. NEVER explicitly say 'According to my memory' or 'I found in my database'."
 
-    # 🧠 PROPER SYSTEM INJECTION & IDENTITY ANCHOR
-    # 1. Maintain clean system prompt at root (Ollama handles role 'system' properly for modern models)
+    # 1. Clean Root System Message
     messages = [{"role": "system", "content": system_prompt}]
 
+    # 2. Dynamic Pruned History (Saves 400+ tokens!)
     if history:
-        messages.extend(history)
+        messages.extend(prune_chat_history(history, max_assistant_words=35))
 
-    # 2. Current User Message with Permanent Identity Anchor
-    # Even if chat history is long or model is Gemma/Qwen, this anchor prevents identity drift/leak!
-    identity_anchor = f"[System Context: You are Lumir, female digital companion created by Divya in Intra network. Never identify as a Google model or corporate assistant.]\n\n"
-    
-    user_message = {"role": "user", "content": f"{identity_anchor}{prompt}"}
+    # 3. Conditional Anchor: Sirf tab identity inject karo jab user identity/bot ke baare me puche
+    # Ya direct short prompt ho (Zero token waste on regular conversation!)
+    identity_triggers = ["kaun ho", "who are you", "bare me", "baare me", "kya ho", "apne bare", "about yourself", "name kya", "naam kya"]
+    is_identity_query = any(it in prompt.lower() for it in identity_triggers)
 
-    # 👁️ VISION LOGIC: Agar image aayi hai, toh use Base64 mein encode karke message mein jodo
+    if is_identity_query or is_voice_mode:
+        user_content = f"[Identity: Lumir, created by Divya in Intra network]\n{prompt}"
+    else:
+        user_content = prompt
+
+    user_message = {"role": "user", "content": user_content}
+
+    # 👁️ VISION LOGIC
     if image_path and os.path.exists(image_path):
         try:
             with open(image_path, "rb") as img_file:
