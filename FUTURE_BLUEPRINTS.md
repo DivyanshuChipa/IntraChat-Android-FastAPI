@@ -32,28 +32,21 @@ Instead of hardcoding every utility into Lumir, introduce a modular "Addon" syst
 - **Reporting:** Sending `/money report` triggers Lumir to summarize the month's spending, perhaps even generating a small chart or a neat tabular summary in the chat.
 - **Future Expansion:** Smart OCR where users send a photo of a receipt, and Lumir automatically extracts the total and asks, "Add $15 to expenses?"
 
-### 3. Tier 2 Memory Summary System (ChromaDB Optimization)
-- **Current State:** Lumir uses ChromaDB to recall past facts.
-- **The Problem:** Over time, exact chat logs get messy and context limits are hit.
-- **The Upgrade:** Introduce a background worker (Summarizer). It periodically reads older chats, condenses them into solid, summarized facts (e.g., "User bought a new bike in Jan 2024"), and updates ChromaDB.
-- **Benefit:** Gives Lumir a much sharper long-term memory without overloading the LLM's prompt window with raw, unstructured past conversations.
+### 3. Tier 2 Memory Summary System (Neocortex Sleep Consolidation) [COMPLETED]
+- **Implementation Status:** Fully implemented and active in backend (`lumir/summarizer.py` & `lumir/night_worker.py`).
+- **How it works:**
+  1. **Periodic Consolidation:** Triggers automatically every 15 conversation turns to condense raw messages into long-term identity facts.
+  2. **Biological Sleep Cycle (3:00 AM Cron):** A nightly background worker scans active users, summarizes their days, crystallizes vital memories, and executes **Synaptic Pruning** to flush decayed, dead memories ($R < 0.05$).
+  3. **Distributed Execution:** Runs on Node 2 (Qwen 0.5B via llama.cpp) to offload compute, with an automatic silent fallback to Node 1 Main Model if Node 2 is offline.
 
-### 4. Cognitive Memory Architecture (Ebbinghaus Decay, Associative Graph & Personality Curves)
-- **Concept:** Human beings do not remember everything equally forever. Instead of static database rows, Lumir's mind simulates human neuro-cognitive memory retention and emotional dynamics.
-- **Key Mechanics:**
-  1. **Ebbinghaus Forgetting Curve (Memory Decay):**
-     - Each memory has an `importance_weight` (1-10) and timestamp.
-     - Casual banter ("I had pasta for lunch") decays naturally over days ($R = e^{-t / S}$).
-     - Core facts (birthdays, health, key personal goals, passwords/preferences) have near-zero decay.
-  2. **Spaced Reinforcement (Memory Crystallization):**
-     - Every time a user mentions a topic or Lumir recalls it, the memory's `reinforcement_count` increments (+1).
-     - Frequently referenced details permanently crystallize into long-term identity nodes.
-  3. **Associative Connectome Graph (Brain-Scan Concept Linking):**
-     - Memories are interconnected like synapses: e.g., `Chai ➔ Evening ➔ Divya's Favorite ➔ Ginger`.
-     - When a topic arises, related nodes light up automatically, allowing Lumir to make organic, proactive connections ("It's evening, did you brew your usual ginger tea, Divya?").
-  4. **Dynamic Personality Bell Curve (Mood & Energy Arc):**
-     - Rather than acting as a static text-generator, Lumir maintains an internal emotional state (e.g., Playful, Reflective, Caring, Focused) that moves along a bell curve based on conversation tone and time of day.
-- **Why It's Great:** Transforms Lumir from a generic assistant into a truly personal, living digital companion who feels genuinely human.
+### 4. Cognitive Neuro-Memory & Living Soul Architecture [COMPLETED]
+- **Implementation Status:** Fully operational in production backend (`memory_brain.py`, `extractor.py`, `soul.md`, `tool_router.py`).
+- **Delivered Capabilities:**
+  1. **Ebbinghaus Forgetting Curve ($R = e^{-\Delta t / S}$):** Casual memories naturally decay over time, while high-importance core facts stay retained.
+  2. **Hebbian Synaptic Plasticity & Crystallization:** Frequent topics increase their `reinforcement_count`, permanently crystallizing into immune identity nodes (Decay = 0).
+  3. **Synthetic Amygdala:** Analyzes emotional `valence` (pain/sadness vs joy/comfort) and `arousal` on Node 2 Qwen, dynamically conditioning Lumir's tone to be gentle during stress and enthusiastic during coding/wins.
+  4. **Autonomous Corpus Callosum Tool Routing:** User statements in natural Hindi/Hinglish (e.g. *"aaj mosam kaisa hai"*, *"server load check kar"*, YouTube links) auto-execute backend tools without slash commands.
+  5. **Persistent Soul Engine (`soul.md`):** Dense persona guardrails ensure Lumir never identifies as a corporate bot, stays fiercely loyal to Divya, and speaks with authentic female Hindi inflection.
 
 ---
 
