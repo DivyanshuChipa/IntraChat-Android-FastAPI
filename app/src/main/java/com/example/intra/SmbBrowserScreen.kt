@@ -95,6 +95,7 @@ fun SmbBrowserScreen(
 
     // File view state (for internal video/image play/display)
     var activeViewerFile by remember { mutableStateOf<Pair<String, Boolean>?>(null) } // Pair(filePath/URI, isVideo)
+    var activeAudioPlayer by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair(audioUrl/Path, fileName)
 
     // Progress state for download/upload operations
     var activeDownloadProgress by remember { mutableStateOf<Float?>(null) }
@@ -287,18 +288,23 @@ fun SmbBrowserScreen(
         val extension = fileItem.name.substringAfterLast('.', "").lowercase()
         val isImage = extension in listOf("jpg", "jpeg", "png", "webp", "gif")
         val isVideo = extension in listOf("mp4", "mkv", "avi", "mov", "3gp")
+        val isAudio = extension in listOf("mp3", "wav", "m4a", "flac", "aac", "ogg", "opus", "wma")
 
-        // 🚀 SMART WEBDAV / INTRADRIVE INSTANT PREVIEW:
-        // Agar file Image ya Video hai aur hum IntraDrive (WebDAV) se connected hain,
+        // 🚀 SMART WEBDAV / INTRADRIVE INSTANT PREVIEW & AUDIO STREAMING:
+        // Agar file Image, Video ya Audio hai aur hum IntraDrive (WebDAV) se connected hain,
         // to use pehle phone me poora download karne ki bilkul zaroorat nahi hai!
         // WebDAV seedha standard HTTP streaming URL provide karta hai, jisse Coil (ImageViewer) aur
-        // ExoPlayer (VideoPlayer) bina 1 second wait kiye turant live preview open kar dete hain.
-        // User ko agar image/video phone me save karni hogi, to ImageViewer ke andar Download (⬇️)
+        // ExoPlayer (VideoPlayer & AudioPlayerDialog) bina 1 second wait kiye turant live playback start kar dete hain.
+        // User ko agar audio phone me save karni hogi, to AudioPlayer ke andar Download (⬇️)
         // button se 1-tap me save kar sakta hai.
-        if (protocol == NetworkProtocol.WEBDAV && (isImage || isVideo)) {
+        if (protocol == NetworkProtocol.WEBDAV && (isImage || isVideo || isAudio)) {
             val directStreamUrl = WebDavHelper.getFileUrl(fileItem.path)
             if (directStreamUrl != null) {
-                activeViewerFile = Pair(directStreamUrl, isVideo)
+                if (isAudio) {
+                    activeAudioPlayer = Pair(directStreamUrl, fileItem.name)
+                } else {
+                    activeViewerFile = Pair(directStreamUrl, isVideo)
+                }
                 return
             }
         }
@@ -308,7 +314,7 @@ fun SmbBrowserScreen(
             activeDownloadName = fileItem.name
             activeDownloadProgress = 0f
 
-            val destFile = if (isImage || isVideo) {
+            val destFile = if (isImage || isVideo || isAudio) {
                 File(context.cacheDir, "network_temp_${fileItem.name}")
             } else {
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -336,7 +342,9 @@ fun SmbBrowserScreen(
             activeDownloadProgress = null
 
             if (success && destFile.exists()) {
-                if (isImage || isVideo) {
+                if (isAudio) {
+                    activeAudioPlayer = Pair(destFile.absolutePath, fileItem.name)
+                } else if (isImage || isVideo) {
                     activeViewerFile = Pair(destFile.absolutePath, isVideo)
                 } else {
                     // Trigger MediaScanner so the system Files/Downloads app indexes the file instantly
@@ -1050,6 +1058,17 @@ fun SmbBrowserScreen(
                 onDismiss = { activeViewerFile = null }
             )
         }
+    }
+
+    // ----------------------------------------------------
+    // Internal Audio Player Dialog (ExoPlayer + Vinyl Disc)
+    // ----------------------------------------------------
+    activeAudioPlayer?.let { audio ->
+        AudioPlayerDialog(
+            audioUrl = audio.first,
+            fileName = audio.second,
+            onDismiss = { activeAudioPlayer = null }
+        )
     }
 
     // ----------------------------------------------------

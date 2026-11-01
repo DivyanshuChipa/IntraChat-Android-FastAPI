@@ -77,6 +77,7 @@ fun WebDropScreen(
     var uploadStatusText by remember { mutableStateOf("") }
     var fileToDelete by remember { mutableStateOf<WebDropFileItem?>(null) }
     var activeViewerFile by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    var activeAudioPlayer by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     // Clipboard / Text State
     var texts by remember { mutableStateOf<List<WebDropTextItem>>(emptyList()) }
@@ -319,6 +320,7 @@ fun WebDropScreen(
         val extension = fileItem.name.substringAfterLast('.', "").lowercase()
         val isImage = extension in listOf("jpg", "jpeg", "png", "webp", "gif")
         val isVideo = extension in listOf("mp4", "mkv", "avi", "mov", "3gp")
+        val isAudio = extension in listOf("mp3", "wav", "m4a", "flac", "aac", "ogg", "opus", "wma")
 
         val fullUrl = if (fileItem.url.startsWith("http")) {
             fileItem.url
@@ -326,7 +328,9 @@ fun WebDropScreen(
             "${settingsManager.getBaseUrl().removeSuffix("/")}${fileItem.url}"
         }
 
-        if (isImage || isVideo) {
+        if (isAudio) {
+            activeAudioPlayer = Pair(fullUrl, fileItem.name)
+        } else if (isImage || isVideo) {
             activeViewerFile = Pair(fullUrl, isVideo)
         } else {
             scope.launch {
@@ -928,7 +932,7 @@ fun WebDropScreen(
         )
     }
 
-    // Media Viewer dialogs
+    // Media Viewer dialogs (Video / Image / Audio)
     activeViewerFile?.let { viewer ->
         val fileUri = viewer.first
         val isVideo = viewer.second
@@ -944,6 +948,14 @@ fun WebDropScreen(
                 onDismiss = { activeViewerFile = null }
             )
         }
+    }
+
+    activeAudioPlayer?.let { audio ->
+        AudioPlayerDialog(
+            audioUrl = audio.first,
+            fileName = audio.second,
+            onDismiss = { activeAudioPlayer = null }
+        )
     }
 }
 
