@@ -209,7 +209,24 @@ fun shareImageLink(context: Context, url: String) {
     context.startActivity(Intent.createChooser(intent, "Share Image via"))
 }
 
-// Helper Function: Download Logic (Direct LAN via IntraDownloader)
+// Helper Function: Download Logic (Direct LAN via IntraDownloader or Local Cache Copy)
 fun downloadImage(context: Context, url: String) {
-    IntraDownloader.downloadMedia(context, url, isVideo = false)
+    if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
+        // Direct LAN HTTP streaming URL (jaise WebDAV / IntraDrive / WebDrop)
+        IntraDownloader.downloadMedia(context, url, isVideo = false)
+    } else {
+        // Local temporary file path (jaise SMB cache se save karna)
+        try {
+            val srcFile = java.io.File(url)
+            val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            val intraDir = java.io.File(downloadsDir, "Intra").apply { if (!exists()) mkdirs() }
+            val cleanName = srcFile.name.removePrefix("network_temp_")
+            val destFile = java.io.File(intraDir, cleanName)
+            srcFile.copyTo(destFile, overwrite = true)
+            android.media.MediaScannerConnection.scanFile(context, arrayOf(destFile.absolutePath), null, null)
+            Toast.makeText(context, "Saved to Downloads/Intra! 📁", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Save failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+        }
+    }
 }

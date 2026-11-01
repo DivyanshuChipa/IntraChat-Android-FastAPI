@@ -288,6 +288,21 @@ fun SmbBrowserScreen(
         val isImage = extension in listOf("jpg", "jpeg", "png", "webp", "gif")
         val isVideo = extension in listOf("mp4", "mkv", "avi", "mov", "3gp")
 
+        // 🚀 SMART WEBDAV / INTRADRIVE INSTANT PREVIEW:
+        // Agar file Image ya Video hai aur hum IntraDrive (WebDAV) se connected hain,
+        // to use pehle phone me poora download karne ki bilkul zaroorat nahi hai!
+        // WebDAV seedha standard HTTP streaming URL provide karta hai, jisse Coil (ImageViewer) aur
+        // ExoPlayer (VideoPlayer) bina 1 second wait kiye turant live preview open kar dete hain.
+        // User ko agar image/video phone me save karni hogi, to ImageViewer ke andar Download (⬇️)
+        // button se 1-tap me save kar sakta hai.
+        if (protocol == NetworkProtocol.WEBDAV && (isImage || isVideo)) {
+            val directStreamUrl = WebDavHelper.getFileUrl(fileItem.path)
+            if (directStreamUrl != null) {
+                activeViewerFile = Pair(directStreamUrl, isVideo)
+                return
+            }
+        }
+
         scope.launch {
             isUploadingProgress = false
             activeDownloadName = fileItem.name

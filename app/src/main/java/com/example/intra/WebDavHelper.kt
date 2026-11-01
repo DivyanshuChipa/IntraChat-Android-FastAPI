@@ -37,6 +37,27 @@ object WebDavHelper {
         return "http://$host:$currentConnectedPort/drive"
     }
 
+    /**
+     * 🚀 Direct HTTP Streaming URL Generator for IntraDrive / WebDAV
+     *
+     * WebDAV files on IntraServer are directly accessible via standard HTTP GET!
+     * Ye helper function kisi bhi WebDAV file ka direct network URL bana deta hai
+     * (jaise: http://192.168.1.5:8000/drive/my_folder/photo.jpg).
+     *
+     * Iska fayda:
+     * ImageViewer (Coil) aur VideoPlayer (ExoPlayer) bina pehle local storage me download kiye,
+     * turant 0-second me instant live streaming / preview dikha sakte hain!
+     */
+    fun getFileUrl(filePath: String): String? {
+        val host = currentConnectedHost ?: return null
+        val port = currentConnectedPort
+        val cleanPath = filePath.trim().trimStart('/')
+        val encodedPath = "/" + cleanPath.split("/").joinToString("/") {
+            URLEncoder.encode(it, "UTF-8").replace("+", "%20")
+        }
+        return "http://$host:$port/drive$encodedPath"
+    }
+
     fun disconnect() {
         currentConnectedHost = null
         currentConnectedPort = 8000
