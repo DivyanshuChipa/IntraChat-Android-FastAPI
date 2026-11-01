@@ -229,6 +229,69 @@ fun Route.webDropRoutes(
             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.BadRequest)
         }
     }
+
+    // 5.1 Delete single text snippet by ID
+    delete("/api/drop/text/{id}") {
+        val id = call.parameters["id"]?.toLongOrNull() ?: -1L
+        val removed = sharedTexts.removeAll { it.optLong("id", -1L) == id }
+        if (removed) {
+            ConnectionManager.log("🗑️ [WebDrop] Deleted text snippet $id")
+            val res = JSONObject().apply {
+                put("success", true)
+                put("message", "Text snippet deleted")
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        } else {
+            val res = JSONObject().apply {
+                put("success", false)
+                put("message", "Text snippet not found")
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.NotFound)
+        }
+    }
+
+    // 5.2 Delete text snippet fallback (POST)
+    post("/api/drop/text/delete") {
+        val raw = call.receiveText()
+        val json = try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
+        val id = json.optLong("id", -1L)
+        val removed = sharedTexts.removeAll { it.optLong("id", -1L) == id }
+        if (removed) {
+            ConnectionManager.log("🗑️ [WebDrop] Deleted text snippet $id via POST")
+            val res = JSONObject().apply {
+                put("success", true)
+                put("message", "Text snippet deleted")
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        } else {
+            val res = JSONObject().apply {
+                put("success", false)
+                put("message", "Text snippet not found")
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.NotFound)
+        }
+    }
+
+    // 5.3 Clear all text snippets
+    post("/api/drop/text/clear") {
+        sharedTexts.clear()
+        ConnectionManager.log("🧹 [WebDrop] Cleared all clipboard snippets")
+        val res = JSONObject().apply {
+            put("success", true)
+            put("message", "Clipboard cleared")
+        }
+        call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+    }
+
+    delete("/api/drop/texts") {
+        sharedTexts.clear()
+        ConnectionManager.log("🧹 [WebDrop] Cleared all clipboard snippets")
+        val res = JSONObject().apply {
+            put("success", true)
+            put("message", "Clipboard cleared")
+        }
+        call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+    }
 }
 
 /**

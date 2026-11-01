@@ -29,6 +29,9 @@ class TextDropItem(BaseModel):
 class DeleteFileRequest(BaseModel):
     filename: str
 
+class DeleteTextRequest(BaseModel):
+    id: int
+
 def _get_target_file(raw_name: str) -> Optional[Path]:
     """Finds the target file checking unquoted names and fallback directories."""
     unquoted = urllib.parse.unquote(raw_name).strip()
@@ -194,3 +197,31 @@ async def add_shared_text(item: TextDropItem):
         shared_texts.pop()
     
     return {"success": True, "entry": entry}
+
+@router.delete("/api/drop/text/{text_id}")
+async def delete_shared_text(text_id: int):
+    """Deletes a shared clipboard snippet by ID."""
+    global shared_texts
+    initial_len = len(shared_texts)
+    shared_texts = [t for t in shared_texts if t.get("id") != text_id]
+    if len(shared_texts) < initial_len:
+        return {"success": True, "message": "Text snippet deleted"}
+    return JSONResponse(status_code=404, content={"success": False, "message": "Text snippet not found"})
+
+@router.post("/api/drop/text/delete")
+async def delete_shared_text_post(req: DeleteTextRequest):
+    """Fallback POST endpoint to delete a shared clipboard snippet."""
+    global shared_texts
+    initial_len = len(shared_texts)
+    shared_texts = [t for t in shared_texts if t.get("id") != req.id]
+    if len(shared_texts) < initial_len:
+        return {"success": True, "message": "Text snippet deleted"}
+    return JSONResponse(status_code=404, content={"success": False, "message": "Text snippet not found"})
+
+@router.post("/api/drop/text/clear")
+@router.delete("/api/drop/texts")
+async def clear_shared_texts():
+    """Clears all shared clipboard snippets."""
+    global shared_texts
+    shared_texts.clear()
+    return {"success": True, "message": "Clipboard cleared"}

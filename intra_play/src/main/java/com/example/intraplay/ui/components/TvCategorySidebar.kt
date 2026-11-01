@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.intraplay.ui.TvAccentCyan
 import com.example.intraplay.ui.TvBackground
 import com.example.intraplay.ui.TvFocusBorder
+import com.example.intraplay.ui.TvSelectedCard
 import com.example.intraplay.ui.TvSurface
 import com.example.intraplay.ui.TvTextPrimary
 import com.example.intraplay.ui.TvTextSecondary
@@ -113,7 +114,7 @@ fun TvCategorySidebar(
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
                     shape = RoundedCornerShape(8.dp),
-                    backgroundColor = if (isSelected) Color(0xFF1E293B) else Color.Transparent,
+                    backgroundColor = if (isSelected) TvSelectedCard else Color.Transparent,
                     focusedBorderColor = TvFocusBorder,
                     unfocusedBorderColor = if (isSelected) TvFocusBorder.copy(alpha = 0.5f) else Color.Transparent,
                     onClick = { onCategorySelected(item.id) }

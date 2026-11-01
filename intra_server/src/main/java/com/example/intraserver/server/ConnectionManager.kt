@@ -15,14 +15,23 @@ object ConnectionManager {
     private val sessions = ConcurrentHashMap<String, MutableSet<DefaultWebSocketServerSession>>()
     private val mutex = Mutex()
 
-    // Live log listener for Dashboard UI
+    // Live log listener for Dashboard UI & In-memory log buffer
     var onLogEvent: ((String) -> Unit)? = null
+    val recentLogs = java.util.concurrent.CopyOnWriteArrayList<String>()
 
     fun log(message: String) {
         val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
         val formatted = "[$timestamp] $message"
         android.util.Log.d("IntraServer", formatted)
+        recentLogs.add(formatted)
+        if (recentLogs.size > 500) {
+            recentLogs.removeAt(0)
+        }
         onLogEvent?.invoke(formatted)
+    }
+
+    fun clearLogs() {
+        recentLogs.clear()
     }
 
     suspend fun connect(username: String, session: DefaultWebSocketServerSession) {

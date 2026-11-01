@@ -445,6 +445,44 @@
       color: #fff;
     }
 
+    .link-btn {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .link-btn:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .del-snippet-btn {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .del-snippet-btn:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
     /* QR MODAL */
     .modal-overlay {
       position: fixed;
@@ -561,8 +599,16 @@
     <!-- TAB 2: CLIPBOARD / TEXT -->
     <div id="tab-clipboard" class="clipboard-section" style="display: none;">
       <div class="clipboard-input-box">
-        <textarea class="clipboard-textarea" id="clipboard-input" placeholder="Type or paste any link, Wi-Fi password, or text note to share across devices..."></textarea>
-        <button class="clipboard-btn" onclick="shareText()">🚀 Share to LAN</button>
+        <textarea class="clipboard-textarea" id="clipboard-input" placeholder="Type or paste any link, Wi-Fi password, or text note to share across devices... (Ctrl+Enter to drop)"></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 11px; color: var(--text-muted);">Press Ctrl+Enter to drop instantly</span>
+          <button class="clipboard-btn" onclick="shareText()">🚀 Share to LAN</button>
+        </div>
+      </div>
+
+      <div id="clipboard-header-actions" style="display: none; justify-content: space-between; align-items: center; padding: 0 4px;">
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Recent LAN Snippets</span>
+        <button class="del-snippet-btn" onclick="clearSnippets()" style="padding: 4px 10px; font-size: 11px;">🗑️ Clear All</button>
       </div>
 
       <div id="snippets-list" style="display: flex; flex-direction: column; gap: 10px;">
@@ -772,19 +818,29 @@
         const data = await res.json();
         if (data.success) {
           const list = document.getElementById("snippets-list");
-          if (data.texts.length === 0) {
+          const clipActions = document.getElementById("clipboard-header-actions");
+          if (clipActions) {
+            clipActions.style.display = data.texts && data.texts.length > 0 ? "flex" : "none";
+          }
+          if (!data.texts || data.texts.length === 0) {
             list.innerHTML = `<div class="empty-state">No shared text snippets yet.</div>`;
             return;
           }
           list.innerHTML = data.texts.map(s => {
             const dateStr = new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const isUrl = /^https?:\/\//i.test(s.text.trim());
+            const urlButton = isUrl ? `<a href="${escapeHtml(s.text.trim())}" target="_blank" rel="noopener noreferrer" class="link-btn">🔗 Open</a>` : '';
             return `
               <div class="snippet-card">
-                <div>
+                <div style="flex: 1; min-width: 0;">
                   <div class="snippet-text">${escapeHtml(s.text)}</div>
-                  <div class="snippet-meta">From ${s.sender} • ${dateStr}</div>
+                  <div class="snippet-meta">From ${escapeHtml(s.sender || 'Guest')} • ${dateStr}</div>
                 </div>
-                <button class="copy-btn" onclick="copySnippet('${escapeQuotes(s.text)}')">📋 Copy</button>
+                <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
+                  ${urlButton}
+                  <button class="copy-btn" onclick="copySnippet(this, '${escapeQuotes(s.text)}')">📋 Copy</button>
+                  <button class="del-snippet-btn" onclick="deleteSnippet(${s.id})" title="Delete Snippet">🗑️</button>
+                </div>
               </div>
             `;
           }).join("");
@@ -815,8 +871,49 @@
       }
     }
 
-    function copySnippet(text) {
+    async function deleteSnippet(id) {
+      if (!id) return;
+      try {
+        const res = await fetch(`/api/drop/text/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          loadSnippets();
+          return;
+        }
+      } catch (_) {}
+      try {
+        await fetch("/api/drop/text/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: id })
+        });
+        loadSnippets();
+      } catch (e) {
+        console.error("Failed to delete snippet", e);
+      }
+    }
+
+    async function clearSnippets() {
+      if (!confirm("Are you sure you want to clear all shared snippets?")) return;
+      try {
+        await fetch("/api/drop/text/clear", { method: "POST" });
+        loadSnippets();
+      } catch (e) {
+        console.error("Failed to clear snippets", e);
+      }
+    }
+
+    function copySnippet(btn, text) {
       navigator.clipboard.writeText(text).then(() => {
+        if (btn) {
+          const orig = btn.innerHTML;
+          btn.innerHTML = "✅ Copied!";
+          btn.style.background = "var(--accent)";
+          setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.style.background = "";
+          }, 1800);
+        }
+      }).catch(() => {
         alert("Copied to clipboard!");
       });
     }
@@ -873,6 +970,12 @@
 
     // Initial Load & Auto-polling every 6 seconds
     loadFiles();
+    document.getElementById("clipboard-input")?.addEventListener("keydown", function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        shareText();
+      }
+    });
     setInterval(() => {
       loadFiles();
       if (document.getElementById("tab-clipboard").style.display !== "none") {

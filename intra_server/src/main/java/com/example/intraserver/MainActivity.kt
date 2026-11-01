@@ -15,6 +15,7 @@ import com.example.intraserver.db.ServerDatabase
 import com.example.intraserver.service.ServerService
 import com.example.intraserver.ui.AdminScreen
 import com.example.intraserver.ui.ServerDashboard
+import com.example.intraserver.ui.theme.IntraServerTheme
 import com.example.intraserver.util.NetworkUtils
 
 class MainActivity : ComponentActivity() {
@@ -36,7 +37,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MaterialTheme {
+            IntraServerTheme {
                 val isServerRunning by ServerService.isServerRunning.collectAsState()
                 val serverIp by ServerService.serverIp.collectAsState()
                 val serverPort by ServerService.serverPort.collectAsState()

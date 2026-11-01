@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.example.intraplay.ui.TvCardBorder
 import com.example.intraplay.ui.TvFocusBorder
 import com.example.intraplay.ui.TvSurface
 
@@ -33,7 +34,7 @@ fun TvFocusableCard(
     shape: Shape = RoundedCornerShape(12.dp),
     backgroundColor: Color = TvSurface,
     focusedBorderColor: Color = TvFocusBorder,
-    unfocusedBorderColor: Color = Color(0xFF30363D),
+    unfocusedBorderColor: Color = TvCardBorder,
     borderWidth: Dp = 2.5.dp,
     scaleAmount: Float = 1.06f,
     content: @Composable (isFocused: Boolean) -> Unit

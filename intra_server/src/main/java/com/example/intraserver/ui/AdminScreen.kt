@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -93,6 +94,20 @@ fun AdminScreen(
         storageUsedMb = String.format(java.util.Locale.US, "%.2f", totalBytes / (1024.0 * 1024.0))
     }
 
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val colorScheme = MaterialTheme.colorScheme
+    val topBarColor = if (isDark) colorScheme.primaryContainer else com.example.intraserver.ui.theme.IntraPurple
+    val topBarTextColor = if (isDark) colorScheme.onPrimaryContainer else Color.White
+
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = topBarColor.toArgb()
+            androidx.core.view.WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+        }
+    }
+
     LaunchedEffect(Unit) {
         refreshData()
     }
@@ -102,17 +117,17 @@ fun AdminScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("👑 Admin Panel", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text("👑 Admin Panel", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = topBarTextColor)
                         Spacer(Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isServerRunning) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFFEF4444).copy(alpha = 0.2f))
+                                .background(if (isServerRunning) Color(0xFF10B981).copy(alpha = 0.25f) else Color(0xFFEF4444).copy(alpha = 0.25f))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = if (isServerRunning) "PORT $serverPort" else "STOPPED",
-                                color = if (isServerRunning) Color(0xFF10B981) else Color(0xFFEF4444),
+                                color = if (isServerRunning) Color(0xFF6EE7B7) else Color(0xFFFCA5A5),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -121,7 +136,7 @@ fun AdminScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = topBarTextColor)
                     }
                 },
                 actions = {
@@ -129,11 +144,14 @@ fun AdminScreen(
                         refreshData()
                         Toast.makeText(context, "Refreshed ✅", Toast.LENGTH_SHORT).show()
                     }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = topBarTextColor)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = topBarColor,
+                    titleContentColor = topBarTextColor,
+                    actionIconContentColor = topBarTextColor,
+                    navigationIconContentColor = topBarTextColor
                 )
             )
         }

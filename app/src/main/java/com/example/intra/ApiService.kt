@@ -108,6 +108,23 @@ interface ApiService {
         @Body request: WebDropDeleteRequest
     ): Response<WebDropCommonResponse>
 
+    // --- LAN Clipboard Endpoints ---
+    @GET("api/drop/texts")
+    suspend fun getWebDropTexts(): Response<WebDropTextsResponse>
+
+    @POST("api/drop/text")
+    suspend fun postWebDropText(
+        @Body request: WebDropTextRequest
+    ): Response<WebDropTextPostResponse>
+
+    @POST("api/drop/text/delete")
+    suspend fun deleteWebDropText(
+        @Body request: WebDropDeleteTextRequest
+    ): Response<WebDropCommonResponse>
+
+    @POST("api/drop/text/clear")
+    suspend fun clearWebDropTexts(): Response<WebDropCommonResponse>
+
 }
 
 // ================= WEBDROP DATA MODELS =================
@@ -139,4 +156,30 @@ data class WebDropDeleteRequest(
 data class WebDropCommonResponse(
     val success: Boolean,
     val message: String?
+)
+
+data class WebDropTextItem(
+    val id: Long,
+    val text: String,
+    val sender: String? = "Guest",
+    val timestamp: Long = 0L
+)
+
+data class WebDropTextsResponse(
+    val success: Boolean,
+    val texts: List<WebDropTextItem>?
+)
+
+data class WebDropTextRequest(
+    val text: String,
+    val sender: String? = "Android User"
+)
+
+data class WebDropTextPostResponse(
+    val success: Boolean,
+    val entry: WebDropTextItem?
+)
+
+data class WebDropDeleteTextRequest(
+    val id: Long
 )

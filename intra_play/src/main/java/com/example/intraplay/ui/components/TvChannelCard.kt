@@ -35,7 +35,9 @@ import coil.compose.AsyncImage
 import com.example.intraplay.data.IptvChannel
 import com.example.intraplay.ui.TvAccentCyan
 import com.example.intraplay.ui.TvFavoriteGold
+import com.example.intraplay.ui.TvCardBorder
 import com.example.intraplay.ui.TvFocusBorder
+import com.example.intraplay.ui.TvSelectedCard
 import com.example.intraplay.ui.TvSurface
 import com.example.intraplay.ui.TvTextPrimary
 import com.example.intraplay.ui.TvTextSecondary
@@ -54,9 +56,9 @@ fun TvChannelCard(
             .height(130.dp),
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        backgroundColor = if (isPlaying) Color(0xFF1E293B) else TvSurface,
+        backgroundColor = if (isPlaying) TvSelectedCard else TvSurface,
         focusedBorderColor = TvFocusBorder,
-        unfocusedBorderColor = if (isPlaying) TvFocusBorder.copy(alpha = 0.5f) else Color(0xFF30363D)
+        unfocusedBorderColor = if (isPlaying) TvFocusBorder.copy(alpha = 0.5f) else TvCardBorder
     ) { isFocused ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -75,7 +77,7 @@ fun TvChannelCard(
                         modifier = Modifier
                             .size(46.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF0F172A)),
+                            .background(Color(0xFF1B1429)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (!channel.logoUrl.isNullOrBlank()) {

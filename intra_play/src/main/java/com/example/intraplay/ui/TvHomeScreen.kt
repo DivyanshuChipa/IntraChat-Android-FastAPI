@@ -55,6 +55,7 @@ import com.example.intraplay.data.IptvHelper
 import com.example.intraplay.data.TvSettingsManager
 import com.example.intraplay.ui.components.TvCategorySidebar
 import com.example.intraplay.ui.components.TvChannelCard
+import com.example.intraplay.ui.TvCardBorder
 import com.example.intraplay.ui.components.TvPlayerView
 import kotlinx.coroutines.launch
 
@@ -316,7 +317,7 @@ fun TvHomeScreen() {
                             onValueChange = { tempUrl = it },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = TvFocusBorder,
-                                unfocusedBorderColor = Color(0xFF334155),
+                                unfocusedBorderColor = TvCardBorder,
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White
                             ),
@@ -353,7 +354,7 @@ fun TvHomeScreen() {
                         Text("Reset Default", color = Color(0xFF94A3B8))
                     }
                 },
-                containerColor = Color(0xFF1E293B),
+                containerColor = Color(0xFF1B152B),
                 shape = RoundedCornerShape(16.dp)
             )
         }

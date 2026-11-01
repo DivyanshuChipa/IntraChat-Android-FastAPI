@@ -43,6 +43,7 @@ import com.example.intraplay.data.IptvChannel
 import com.example.intraplay.ui.TvAccentCyan
 import com.example.intraplay.ui.TvFavoriteGold
 import com.example.intraplay.ui.TvFocusBorder
+import com.example.intraplay.ui.TvSelectedCard
 import com.example.intraplay.ui.TvTextPrimary
 
 @OptIn(UnstableApi::class)
@@ -143,7 +144,7 @@ fun TvPlayerView(
                     TvFocusableCard(
                         onClick = onToggleFavorite,
                         shape = CircleShape,
-                        backgroundColor = Color(0xFF1E293B).copy(alpha = 0.8f),
+                        backgroundColor = TvSelectedCard.copy(alpha = 0.8f),
                         focusedBorderColor = TvFavoriteGold,
                         modifier = Modifier.size(38.dp)
                     ) { _ ->
@@ -162,7 +163,7 @@ fun TvPlayerView(
                     TvFocusableCard(
                         onClick = onToggleFullscreen,
                         shape = CircleShape,
-                        backgroundColor = Color(0xFF1E293B).copy(alpha = 0.8f),
+                        backgroundColor = TvSelectedCard.copy(alpha = 0.8f),
                         focusedBorderColor = TvFocusBorder,
                         modifier = Modifier.size(38.dp)
                     ) { _ ->
@@ -200,7 +201,7 @@ fun TvPlayerView(
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    color = Color(0xFF1E293B).copy(alpha = 0.9f),
+                    color = TvSelectedCard.copy(alpha = 0.9f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(
