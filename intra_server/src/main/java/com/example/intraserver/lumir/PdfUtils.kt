@@ -45,6 +45,52 @@ object PdfUtils {
     }
 
     /**
+     * 🛡️ Memory-safe Bitmap decoder: Reads image dimensions first and calculates `inSampleSize`
+     * to prevent OutOfMemoryError when loading huge 50-108MP camera photos on Android.
+     */
+    private fun decodeSampledBitmap(file: File, maxDim: Int = 1800): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(file.absolutePath, options)
+
+            val rawW = options.outWidth
+            val rawH = options.outHeight
+            if (rawW <= 0 || rawH <= 0) return null
+
+            var inSampleSize = 1
+            if (rawW > maxDim || rawH > maxDim) {
+                val halfW = rawW / 2
+                val halfH = rawH / 2
+                while ((halfW / inSampleSize) >= maxDim && (halfH / inSampleSize) >= maxDim) {
+                    inSampleSize *= 2
+                }
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+
+            BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
+        } catch (_: OutOfMemoryError) {
+            // Extreme low-memory fallback with higher sampling
+            try {
+                val fallbackOpts = BitmapFactory.Options().apply {
+                    inSampleSize = 4
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                }
+                BitmapFactory.decodeFile(file.absolutePath, fallbackOpts)
+            } catch (_: Throwable) {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
      * 📄 Convert one or more images into a multi-page PDF document.
      * Fits each photo into a standard A4 page (595x842 pt) while preserving aspect ratio.
      */
@@ -66,8 +112,8 @@ object PdfUtils {
             for (file in inputFiles) {
                 if (!file.exists() || file.length() == 0L) continue
 
-                // Check decoded bitmap
-                val rawBitmap = BitmapFactory.decodeFile(file.absolutePath) ?: continue
+                // Check decoded bitmap with memory-safe downsampling
+                val rawBitmap = decodeSampledBitmap(file, maxDim = 1800) ?: continue
                 val orientedBitmap = fixOrientation(file, rawBitmap)
 
                 val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
