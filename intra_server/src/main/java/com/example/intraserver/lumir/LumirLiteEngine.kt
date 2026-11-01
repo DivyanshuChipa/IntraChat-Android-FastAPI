@@ -61,7 +61,8 @@ object LumirLiteEngine {
                             options = listOf(
                                 "🛂 Passport A6 (6 Photos)",
                                 "🛂 Passport A6 (9 Photos)",
-                                "🗜️ Compress Image"
+                                "🗜️ Compress Image",
+                                "📄 Convert to PDF"
                             )
                         )
                     }
@@ -127,7 +128,29 @@ object LumirLiteEngine {
             }
         }
 
-        // 5. Command: MERGE PDF
+        // 5. Command: CONVERT IMAGES TO PDF (Multi-Image Support)
+        if (text == "###topdf###" || text.contains("topdf") || text.contains("convert to pdf") ||
+            text.contains("images to pdf") || text.contains("image to pdf") || text == "📄 convert to pdf"
+        ) {
+            val userImages = userContext[sender]?.map { File(uploadsDir, it.substringAfterLast("/")) }
+                ?.filter {
+                    it.exists() && it.extension.lowercase() in listOf("jpg", "jpeg", "png", "webp", "bmp")
+                } ?: emptyList()
+
+            if (userImages.isEmpty()) {
+                return LumirResponse(text = "⚠️ PDF banane ke liye kam se kam 1 photo bhejo!")
+            }
+
+            val res = PdfUtils.convertImagesToPdf(userImages, uploadsDir)
+            if (res.success) {
+                userContext.remove(sender)
+                return LumirResponse(text = res.message, mediaUrl = res.fileUrl, fileName = res.fileName)
+            } else {
+                return LumirResponse(text = "❌ " + res.message)
+            }
+        }
+
+        // 6. Command: MERGE PDF
         if (text.contains("merge") || text.startsWith("/merge") || text == "🔗 merge pdfs") {
             val userFiles = userContext[sender]?.map { File(uploadsDir, it.substringAfterLast("/")) }
                 ?.filter { it.exists() && it.extension.equals("pdf", ignoreCase = true) }
@@ -138,10 +161,11 @@ object LumirLiteEngine {
             }
 
             val res = PdfUtils.mergePdfs(userFiles, uploadsDir)
-            return if (res.success) {
-                LumirResponse(text = res.message, mediaUrl = res.fileUrl, fileName = res.fileName)
+            if (res.success) {
+                userContext.remove(sender)
+                return LumirResponse(text = res.message, mediaUrl = res.fileUrl, fileName = res.fileName)
             } else {
-                LumirResponse(text = "❌ " + res.message)
+                return LumirResponse(text = "❌ " + res.message)
             }
         }
 
@@ -165,6 +189,9 @@ object LumirLiteEngine {
                     🗜️ **Image Compression**:
                     • Bhejo image aur bolo: `Compress 50kb` ya `Compress 100kb`
                     
+                    📄 **Convert Photos to PDF**:
+                    • 1 ya zyada photos bhejo aur bolo: `Convert to PDF`
+
                     📄 **PDF Tools**:
                     • 2 ya zyada PDFs bhejo aur bolo: `Merge PDFs`
                     
