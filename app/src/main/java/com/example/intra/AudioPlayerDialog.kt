@@ -1,3 +1,4 @@
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.example.intra
 
 import android.content.ContentValues
@@ -10,6 +11,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.media.audiofx.Visualizer
+import androidx.compose.ui.res.painterResource
 import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -33,6 +36,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -91,12 +95,89 @@ fun AudioPlayerDialog(
     // Vinyl Disc Rotation (Spins when playing, stops when paused)
     var currentRotation by remember { mutableFloatStateOf(0f) }
 
+    // 🎵 Real-Time Audio Spectrum (FFT) Beat Level
+    var rawBeatLevel by remember { mutableFloatStateOf(0f) }
+
+    // Rhythmic organic pulse fallback (active if hardware FFT isn't available)
+    val fallbackTransition = rememberInfiniteTransition(label = "fallback_pulse")
+    val rhythmicFallback by fallbackTransition.animateFloat(
+        initialValue = 0.0f,
+        targetValue = 0.28f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "rhythmic_fallback"
+    )
+
+    val currentBeatIntensity = if (rawBeatLevel > 0.05f) rawBeatLevel else if (isPlaying) rhythmicFallback else 0f
+
+    // ⚡ Spring Physics: Aura bounces and punches like a real subwoofer on beats!
+    val animatedAuraScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1.0f + (currentBeatIntensity * 0.22f) else 1.0f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 350f),//iter changes hai
+        label = "aura_beat_scale"
+    )
+    val animatedAuraAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) (0.12f + currentBeatIntensity * 0.50f).coerceIn(0.35f, 0.98f) else 0.25f,
+        animationSpec = tween(durationMillis = 110),
+        label = "aura_beat_alpha"
+    )
+
     // Initialize ExoPlayer
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(audioUrl)))
             prepare()
             playWhenReady = true
+        }
+    }
+
+    // 🎧 Attach Android Native Visualizer to ExoPlayer's Audio Session
+    DisposableEffect(exoPlayer) {
+        var visualizer: Visualizer? = null
+        try {
+            val audioSessionId = exoPlayer.audioSessionId
+            if (audioSessionId != 0) {
+                visualizer = Visualizer(audioSessionId).apply {
+                    captureSize = Visualizer.getCaptureSizeRange()[0] // 128 bytes (super lightweight)
+                    setDataCaptureListener(
+                        object : Visualizer.OnDataCaptureListener {
+                            override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
+
+                            override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                                if (fft != null && fft.size >= 8 && isPlaying) {
+                                    // Extract Bass / Low-mid frequency energy from FFT bins 2..7
+                                    val r0 = fft[2].toInt()
+                                    val i0 = fft[3].toInt()
+                                    val r1 = fft[4].toInt()
+                                    val i1 = fft[5].toInt()
+                                    val r2 = fft[6].toInt()
+                                    val i2 = fft[7].toInt()
+                                    val energy = Math.sqrt((r0 * r0 + i0 * i0 + r1 * r1 + i1 * i1 + r2 * r2 + i2 * i2).toDouble()).toFloat()
+                                    val norm = ((energy - 22f) / 40f).coerceIn(0f, 1.8f)
+                                    rawBeatLevel = norm
+                                } else {
+                                    rawBeatLevel = 0f
+                                }
+                            }
+                        },
+                        Visualizer.getMaxCaptureRate() / 2,
+                        false, // waveform disabled
+                        true   // FFT enabled
+                    )
+                    enabled = true
+                }
+            }
+        } catch (_: Throwable) {
+            // Graceful fallback to rhythmic beats if device restricts visualizer
+        }
+
+        onDispose {
+            try {
+                visualizer?.enabled = false
+                visualizer?.release()
+            } catch (_: Throwable) {}
         }
     }
 
@@ -246,78 +327,114 @@ fun AudioPlayerDialog(
                         .padding(horizontal = 22.dp, vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // 1. TOP BAR: Title badge + Download + Close buttons
+                    // 1. TOP BAR: [Logo + Music] + [Download] on Left, and [Close] on Right
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // LAN Audio stream badge
-                        Surface(
-                            color = Color(0xFF6741A8).copy(alpha = 0.25f),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(0.8.dp, Color(0xFFA855F7).copy(alpha = 0.4f))
+                        // LEFT GROUP: Intra Logo + "Music" badge, followed by Download button
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            // Intra Music Badge with official ic_vec2 vector
+                            Surface(
+                                color = Color(0xFF6741A8).copy(alpha = 0.28f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(0.8.dp, Color(0xFFA855F7).copy(alpha = 0.45f))
                             ) {
-                                Text(
-                                    text = if (isBuffering) "⚡ BUFFERING..." else "🎧 INTRA MUSIC",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFC084FC)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_vec2),
+                                        contentDescription = "Intra Logo",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isBuffering) "Buffering..." else "Music",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFE9D5FF)
+                                    )
+                                }
                             }
-                        }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Download button (Saves song locally)
+                            // Download Button placed right next to Music badge
                             IconButton(
                                 onClick = {
                                     downloadAudioFile(context, audioUrl, fileName)
                                 },
                                 modifier = Modifier
-                                    .size(38.dp)
+                                    .size(36.dp)
                                     .background(Color.White.copy(alpha = 0.08f), CircleShape)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Download,
                                     contentDescription = "Save to Downloads",
                                     tint = Color(0xFFD8B4FE),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            // Close dialog button
-                            IconButton(
-                                onClick = onDismiss,
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = Color.White.copy(alpha = 0.85f),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(19.dp)
                                 )
                             }
                         }
+
+                        // RIGHT GROUP: Close Button
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    // 2. CENTER PIECE: Rotating Vinyl Disc with Album Art or Music Icon
+                    // 2. CENTER PIECE: Signature Aura Glow + Rotating Vinyl Disc
                     Box(
-                        modifier = Modifier
-                            .size(220.dp)
-                            .shadow(elevation = 16.dp, shape = CircleShape)
-                            .rotate(currentRotation),
+                        modifier = Modifier.size(255.dp),
                         contentAlignment = Alignment.Center
                     ) {
+                        // 🌟 BACKLIGHT AURA GLOW (Intra Tri-Color: Pink -> Violet -> Gold)
+                        // Reacts in REAL-TIME to audio bass spectrum frequencies via Android FFT!
+                        Box(
+                            modifier = Modifier
+                                .size(235.dp)
+                                .graphicsLayer {
+                                    scaleX = animatedAuraScale
+                                    scaleY = animatedAuraScale
+                                    alpha = animatedAuraAlpha
+                                }
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFEC4899).copy(alpha = 0.75f), // Core Neon Pink
+                                            Color(0xFFA855F7).copy(alpha = 0.55f), // Electric Violet halo
+                                            Color(0xFFF59E0B).copy(alpha = 0.35f), // Warm Golden Amber
+                                            Color.Transparent                      // Diffuse feathered edge
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                )
+                        )
+
+                        // 💿 ROTATING VINYL RECORD (Floats over the backlight aura)
+                        Box(
+                            modifier = Modifier
+                                .size(215.dp)
+                                .shadow(elevation = 16.dp, shape = CircleShape)
+                                .rotate(currentRotation),
+                            contentAlignment = Alignment.Center
+                        ) {
                         // Outer Vinyl Record Grooves
                         Box(
                             modifier = Modifier
@@ -388,8 +505,9 @@ fun AudioPlayerDialog(
                             )
                         }
                     }
+                    } // End of Centerpiece Container (Aura + Vinyl)
 
-                    Spacer(modifier = Modifier.height(26.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     // 3. TRACK INFORMATION (Title + Artist)
                     Text(
