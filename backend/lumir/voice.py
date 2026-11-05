@@ -44,6 +44,8 @@ def get_local_whisper():
     return _local_whisper_model
 
 
+HINDI_PROMPT = os.getenv("WHISPER_PROMPT", "Hindi aur Hinglish me baat-cheet. Namaste Lumir, kya haal hai, kaise ho, main theek hoon.")
+
 def local_transcribe(audio_bytes: bytes) -> str:
     """Fallback STT: Runs faster-whisper tiny on Node 1 safely avoiding PyAV metadata_errors bug."""
     model = get_local_whisper()
@@ -82,7 +84,7 @@ def local_transcribe(audio_bytes: bytes) -> str:
                 pass
 
         if audio_data is not None and len(audio_data) > 0:
-            segments, _ = model.transcribe(audio_data, beam_size=1)
+            segments, _ = model.transcribe(audio_data, beam_size=1, initial_prompt=HINDI_PROMPT)
             return " ".join(seg.text for seg in segments).strip()
 
         # 3. Fallback to file path transcribe if numpy decoding failed
@@ -91,7 +93,7 @@ def local_transcribe(audio_bytes: bytes) -> str:
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                 tmp.write(audio_bytes)
                 tmp_path = tmp.name
-            segments, _ = model.transcribe(tmp_path, beam_size=1)
+            segments, _ = model.transcribe(tmp_path, beam_size=1, initial_prompt=HINDI_PROMPT)
             return " ".join(seg.text for seg in segments).strip()
         finally:
             if tmp_path and os.path.exists(tmp_path):

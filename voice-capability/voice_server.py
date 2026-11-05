@@ -43,7 +43,11 @@ app.add_middleware(
 whisper_model = None
 piper_voice = None
 
-DEFAULT_WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
+DEFAULT_WHISPER_MODEL = os.getenv("WHISPER_MODEL", "tiny")
+HINDI_PROMPT = os.getenv(
+    "WHISPER_PROMPT",
+    "Hindi aur Hinglish me baat-cheet. Namaste Lumir, kya haal hai, kaise ho, main theek hoon."
+)
 DEFAULT_PIPER_MODEL_NAME = os.getenv("PIPER_MODEL", "en_US-lessac-medium")
 
 
@@ -249,7 +253,7 @@ def safe_transcribe(stt, audio_path: str):
             audio_data = audio_data.mean(axis=1)  # stereo to mono
 
         if sr == 16000:
-            return stt.transcribe(audio_data, beam_size=1)
+            return stt.transcribe(audio_data, beam_size=1, initial_prompt=HINDI_PROMPT)
         else:
             # Resample linearly if needed
             duration = len(audio_data) / sr
@@ -259,10 +263,10 @@ def safe_transcribe(stt, audio_path: str):
                 np.arange(len(audio_data)),
                 audio_data,
             ).astype(np.float32)
-            return stt.transcribe(resampled, beam_size=1)
+            return stt.transcribe(resampled, beam_size=1, initial_prompt=HINDI_PROMPT)
     except Exception:
         # Fallback to standard transcribe on file path
-        return stt.transcribe(audio_path, beam_size=1)
+        return stt.transcribe(audio_path, beam_size=1, initial_prompt=HINDI_PROMPT)
 
 
 @app.post("/api/stt")

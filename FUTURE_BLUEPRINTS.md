@@ -339,3 +339,24 @@ When a user asks about a specific person or topic (e.g., *"Bhai Chintu kya kar r
 - **Step 1 (Intent & Trigger Emission):** Lumir emits a structured internal token, e.g., `*loopsummary: chintu*`.
 - **Step 2 (Regex / Backend Hook):** Python backend catches the pattern, fetches only `Chintu`'s isolated 20-word profile/digest from SQLite, and passes it into the next iteration.
 - **Step 3 (Contextual Response):** Lumir responds accurately with zero token bloating, zero confusion across family members, and strict privacy boundary preservation.
+
+
+---
+
+## 🎙️ Dynamic STT Profiles & Web Admin Toggle (Low / Medium / High)
+
+### 1. Vision & Core Rationale
+In real-world deployment, different hardware setups and user environments demand different trade-offs:
+- Fast conversational banter needs ultra-low latency (<200ms).
+- Heavy accents or noisy environments benefit from deeper acoustic modeling.
+Instead of hardcoding a model or requiring terminal restarts on Node 2, the system will support dynamic **STT Quality Profiles** toggled on the fly via the Web Admin Panel.
+
+### 2. The Three Quality Profiles
+1. **⚡ Fast (`tiny` - Default):** ~75 MB RAM, **~100ms - 200ms** latency. Blazing fast, ideal for English and quick banter.
+2. **⚖️ Balanced (`base`):** ~140 MB RAM, **~300ms - 400ms** latency. Good general-purpose balance for multi-language usage.
+3. **🎯 Precision (`small`):** ~460 MB RAM, **~700ms - 900ms** latency. Maximum accuracy for regional Hindi/Hinglish phonetics.
+
+### 3. Execution Pipeline
+1. **Admin Panel UI (`admin.html`):** Dropdown under *AI & Lumir Voice Settings* saving to SQLite `config` table (`voice_stt_profile`).
+2. **Turn Router (`backend/lumir/voice.py`):** Forwards the selected profile dynamically as a query param to Node 2 (`/api/stt?model=tiny`).
+3. **Voice Capability (`voice_server.py`):** Lazy-loads and caches requested Whisper model instances in memory for zero-lag profile switching.
