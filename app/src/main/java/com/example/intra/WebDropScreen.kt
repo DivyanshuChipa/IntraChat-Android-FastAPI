@@ -78,6 +78,7 @@ fun WebDropScreen(
     var fileToDelete by remember { mutableStateOf<WebDropFileItem?>(null) }
     var activeViewerFile by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
     var activeAudioPlayer by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var activePdfViewer by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     // Clipboard / Text State
     var texts by remember { mutableStateOf<List<WebDropTextItem>>(emptyList()) }
@@ -321,6 +322,7 @@ fun WebDropScreen(
         val isImage = extension in listOf("jpg", "jpeg", "png", "webp", "gif")
         val isVideo = extension in listOf("mp4", "mkv", "avi", "mov", "3gp")
         val isAudio = extension in listOf("mp3", "wav", "m4a", "flac", "aac", "ogg", "opus", "wma")
+        val isPdf = extension == "pdf"
 
         val fullUrl = if (fileItem.url.startsWith("http")) {
             fileItem.url
@@ -328,7 +330,9 @@ fun WebDropScreen(
             "${settingsManager.getBaseUrl().removeSuffix("/")}${fileItem.url}"
         }
 
-        if (isAudio) {
+        if (isPdf) {
+            activePdfViewer = Pair(fullUrl, fileItem.name)
+        } else if (isAudio) {
             activeAudioPlayer = Pair(fullUrl, fileItem.name)
         } else if (isImage || isVideo) {
             activeViewerFile = Pair(fullUrl, isVideo)
@@ -955,6 +959,14 @@ fun WebDropScreen(
             audioUrl = audio.first,
             fileName = audio.second,
             onDismiss = { activeAudioPlayer = null }
+        )
+    }
+
+    activePdfViewer?.let { pdf ->
+        PdfViewerDialog(
+            pdfUrl = pdf.first,
+            fileName = pdf.second,
+            onDismiss = { activePdfViewer = null }
         )
     }
 }

@@ -73,6 +73,8 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     var videoUrlToPlay by remember { mutableStateOf<String?>(null) }
     var imageUrlToView by remember { mutableStateOf<String?>(null) }
+    var audioToPlay by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var pdfToView by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     // Set Status Bar Color
     val view = LocalView.current
@@ -138,6 +140,22 @@ fun ChatScreen(
         ImageViewerDialog(
             imageUrl = imageUrlToView!!,
             onDismiss = { imageUrlToView = null }
+        )
+    }
+
+    audioToPlay?.let { audio ->
+        AudioPlayerDialog(
+            audioUrl = audio.first,
+            fileName = audio.second,
+            onDismiss = { audioToPlay = null }
+        )
+    }
+
+    pdfToView?.let { pdf ->
+        PdfViewerDialog(
+            pdfUrl = pdf.first,
+            fileName = pdf.second,
+            onDismiss = { pdfToView = null }
         )
     }
 
@@ -263,6 +281,8 @@ fun ChatScreen(
                         message = msg,
                         onVideoClick = { url -> videoUrlToPlay = url },
                         onImageClick = { url -> imageUrlToView = url },
+                        onAudioClick = { url, name -> audioToPlay = Pair(url, name) },
+                        onPdfClick = { url, name -> pdfToView = Pair(url, name) },
                         onOptionSelected = { cmd -> viewModel.sendOptionCommand(receiverName, cmd) }
                     )
                 }

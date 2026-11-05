@@ -27,6 +27,9 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,6 +61,8 @@ fun MessageBubble(
     message: ChatMessage,
     onVideoClick: (String) -> Unit = {},
     onImageClick: (String) -> Unit = {},
+    onAudioClick: (String, String) -> Unit = { _, _ -> },
+    onPdfClick: (String, String) -> Unit = { _, _ -> },
     onOptionSelected: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -244,6 +249,8 @@ fun MessageBubble(
 
                 val isImage = fileExtension in listOf("jpg", "jpeg", "png", "gif", "webp")
                 val isVideo = fileExtension in listOf("mp4", "mkv", "avi", "mov", "webm")
+                val isAudio = fileExtension in listOf("mp3", "wav", "m4a", "flac", "aac", "ogg", "opus", "wma")
+                val isPdf = fileExtension == "pdf"
 
                 if (message.isLoading) {
                     if (message.localUri != null && (isImage || isVideo)) {
@@ -373,6 +380,8 @@ fun MessageBubble(
                             imageVector = when {
                                 isImage -> Icons.Default.Image
                                 isVideo -> Icons.Default.VideoLibrary
+                                isAudio -> Icons.Default.MusicNote
+                                isPdf -> Icons.Default.PictureAsPdf
                                 else -> Icons.Default.InsertDriveFile
                             },
                             contentDescription = null,
@@ -408,7 +417,11 @@ fun MessageBubble(
                                 else
                                     baseUrl + message.fileUrl
 
-                                if (isVideo) {
+                                if (isPdf) {
+                                    onPdfClick(finalUrl, fileName)
+                                } else if (isAudio) {
+                                    onAudioClick(finalUrl, fileName)
+                                } else if (isVideo) {
                                     onVideoClick(finalUrl)
                                 } else if (isImage) {
                                     onImageClick(finalUrl)
@@ -429,13 +442,23 @@ fun MessageBubble(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
-                            Icons.Default.Download,
+                            imageVector = when {
+                                isPdf -> Icons.Default.PictureAsPdf
+                                isAudio -> Icons.Default.MusicNote
+                                isImage || isVideo -> Icons.Default.Visibility
+                                else -> Icons.Default.Download
+                            },
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            if (isImage || isVideo) "View" else "Open",
+                            when {
+                                isPdf -> "View PDF"
+                                isAudio -> "Play Audio"
+                                isImage || isVideo -> "View"
+                                else -> "Open"
+                            },
                             fontSize = 13.sp
                         )
                     }
