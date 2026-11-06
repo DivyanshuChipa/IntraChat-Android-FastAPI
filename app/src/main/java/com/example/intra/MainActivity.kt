@@ -14,6 +14,10 @@ import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -235,7 +239,8 @@ class MainActivity : ComponentActivity() {
                     if (!isAuthenticated) {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
-                        when {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            when {
                             sharedUris.isNotEmpty() || sharedText.value != null -> {
                                 ShareScreen(
                                     sharedUris = sharedUris,
@@ -435,7 +440,23 @@ class MainActivity : ComponentActivity() {
                                 onIptvClick = { showIptv = true }
                             )
                         }
+
+                        // 💊 Floating Minimalist Bottom Music Player (Spotify / Apple Music style)
+                        MiniPlayerPill(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(bottom = 12.dp, start = 16.dp, end = 16.dp)
+                        )
+
+                        // 💿 Fullscreen Vinyl Player Dialog (Revealed when expanded or on track play)
+                        if (IntraAudioPlayerManager.isFullPlayerVisible) {
+                            AudioPlayerDialog(
+                                onDismiss = { IntraAudioPlayerManager.hideFullPlayer() }
+                            )
+                        }
                     }
+                }
                 }
             }
         }

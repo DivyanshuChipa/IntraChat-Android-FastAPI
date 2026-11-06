@@ -95,7 +95,6 @@ fun SmbBrowserScreen(
 
     // File view state (for internal video/image play/display)
     var activeViewerFile by remember { mutableStateOf<Pair<String, Boolean>?>(null) } // Pair(filePath/URI, isVideo)
-    var activeAudioPlayer by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair(audioUrl/Path, fileName)
     var activePdfViewer by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair(pdfUrl/Path, fileName)
 
     // Progress state for download/upload operations
@@ -303,7 +302,7 @@ fun SmbBrowserScreen(
                 if (isPdf) {
                     activePdfViewer = Pair(directStreamUrl, fileItem.name)
                 } else if (isAudio) {
-                    activeAudioPlayer = Pair(directStreamUrl, fileItem.name)
+                    IntraAudioPlayerManager.play(context, directStreamUrl, fileItem.name)
                 } else {
                     activeViewerFile = Pair(directStreamUrl, isVideo)
                 }
@@ -347,7 +346,7 @@ fun SmbBrowserScreen(
                 if (isPdf) {
                     activePdfViewer = Pair(destFile.absolutePath, fileItem.name)
                 } else if (isAudio) {
-                    activeAudioPlayer = Pair(destFile.absolutePath, fileItem.name)
+                    IntraAudioPlayerManager.play(context, destFile.absolutePath, fileItem.name)
                 } else if (isImage || isVideo) {
                     activeViewerFile = Pair(destFile.absolutePath, isVideo)
                 } else {
@@ -1064,16 +1063,7 @@ fun SmbBrowserScreen(
         }
     }
 
-    // ----------------------------------------------------
-    // Internal Audio Player Dialog (ExoPlayer + Vinyl Disc)
-    // ----------------------------------------------------
-    activeAudioPlayer?.let { audio ->
-        AudioPlayerDialog(
-            audioUrl = audio.first,
-            fileName = audio.second,
-            onDismiss = { activeAudioPlayer = null }
-        )
-    }
+
 
     // ----------------------------------------------------
     // Internal PDF Viewer Dialog (Native Android PdfRenderer)

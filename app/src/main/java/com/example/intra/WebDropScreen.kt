@@ -77,7 +77,6 @@ fun WebDropScreen(
     var uploadStatusText by remember { mutableStateOf("") }
     var fileToDelete by remember { mutableStateOf<WebDropFileItem?>(null) }
     var activeViewerFile by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
-    var activeAudioPlayer by remember { mutableStateOf<Pair<String, String>?>(null) }
     var activePdfViewer by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     // Clipboard / Text State
@@ -333,7 +332,7 @@ fun WebDropScreen(
         if (isPdf) {
             activePdfViewer = Pair(fullUrl, fileItem.name)
         } else if (isAudio) {
-            activeAudioPlayer = Pair(fullUrl, fileItem.name)
+            IntraAudioPlayerManager.play(context, fullUrl, fileItem.name)
         } else if (isImage || isVideo) {
             activeViewerFile = Pair(fullUrl, isVideo)
         } else {
@@ -954,13 +953,7 @@ fun WebDropScreen(
         }
     }
 
-    activeAudioPlayer?.let { audio ->
-        AudioPlayerDialog(
-            audioUrl = audio.first,
-            fileName = audio.second,
-            onDismiss = { activeAudioPlayer = null }
-        )
-    }
+
 
     activePdfViewer?.let { pdf ->
         PdfViewerDialog(
