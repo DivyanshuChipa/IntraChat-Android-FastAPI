@@ -81,6 +81,12 @@ fun ContactListScreen(
     var isThumbArcKnobEnabled by remember { mutableStateOf(settingsManager.isThumbArcKnobEnabled()) }
     var selectedHubIndex by remember { mutableIntStateOf(0) }
 
+    // State for Profile Dialog & Hub Dialogs
+    var selectedProfileForDialog by remember { mutableStateOf<ProfileDialogData?>(null) }
+    var isHubExpanded by remember { mutableStateOf(false) }
+    var showWebDropDialog by remember { mutableStateOf(false) }
+    var showIntraDriveDialog by remember { mutableStateOf(false) }
+
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()
         isIptvEnabled = settingsManager.isIptvEnabled()
@@ -125,12 +131,6 @@ fun ContactListScreen(
     }
 
     var searchQuery by remember { mutableStateOf("") }
-
-    // State for Profile Dialog
-    var selectedProfileForDialog by remember { mutableStateOf<ProfileDialogData?>(null) }
-    var isHubExpanded by remember { mutableStateOf(false) }
-    var showWebDropDialog by remember { mutableStateOf(false) }
-    var showIntraDriveDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = colorScheme.surface,
@@ -181,15 +181,7 @@ fun ContactListScreen(
                                     modifier = Modifier
                                         .padding(horizontal = 8.dp)
                                         .clip(RoundedCornerShape(20.dp))
-                                        .background(
-                                            Brush.horizontalGradient(
-                                                listOf(
-                                                    Color(0xFF8E24AA).copy(alpha = 0.35f),
-                                                    Color(0xFFE91E63).copy(alpha = 0.35f),
-                                                    Color(0xFFFFB300).copy(alpha = 0.35f)
-                                                )
-                                            )
-                                        )
+                                        .background(topBarTextColor.copy(alpha = 0.18f))
                                         .clickable {
                                             isHubExpanded = false
                                             activeItem.onClick()
@@ -419,6 +411,7 @@ fun ContactListScreen(
                         }
                     }
                 }
+            }
             }
 
             // 🎛️ EXPERIMENTAL: Hub Remote Thumb Arc Knob Overlay

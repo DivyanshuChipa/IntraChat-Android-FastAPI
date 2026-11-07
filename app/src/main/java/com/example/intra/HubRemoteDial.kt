@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -47,8 +47,9 @@ data class HubItem(
  * 🎛️ HubRemoteDial: An ergonomic, thumb-friendly curved arc slider/knob.
  *
  * Controls the TopBar tools from the natural thumb zone (Bottom-Right or Bottom-Left in Left-Handed Mode).
- * Uses clean Material 3 styling accented with the signature Lumir hair gradient:
- * Deep Purple (#8E24AA) ➔ Vibrant Pink (#E91E63) ➔ Warm Amber (#FFB300).
+ * Uses clean, native Material You (M3) colors matching the TopBar palette:
+ * - Light Mode: Intra Purple (#6741A8)
+ * - Dark Mode: MaterialTheme.colorScheme.primaryContainer / primary
  */
 @Composable
 fun HubRemoteDial(
@@ -62,6 +63,8 @@ fun HubRemoteDial(
 ) {
     if (items.isEmpty()) return
 
+    val isDark = isSystemInDarkTheme()
+    val topBarAccentColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF6741A8)
     val haptic = LocalHapticFeedback.current
     val currentItem = items.getOrElse(selectedIndex.coerceIn(0, items.size - 1)) { items[0] }
 
@@ -76,24 +79,13 @@ fun HubRemoteDial(
         label = "KnobPosition"
     )
 
-    // Lumir Hair Signature Gradient
-    val lumirGradient = remember {
-        Brush.horizontalGradient(
-            listOf(
-                Color(0xFF8E24AA), // Deep Purple
-                Color(0xFFE91E63), // Vibrant Pink
-                Color(0xFFFFB300)  // Warm Amber
-            )
-        )
-    }
-
     Surface(
         modifier = modifier
             .width(230.dp)
-            .shadow(12.dp, RoundedCornerShape(28.dp)),
+            .shadow(10.dp, RoundedCornerShape(28.dp)),
         shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp).copy(alpha = 0.96f),
-        border = BorderStroke(1.5.dp, lumirGradient)
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp).copy(alpha = 0.98f),
+        border = BorderStroke(1.dp, topBarAccentColor.copy(alpha = 0.35f))
     ) {
         Column(
             modifier = Modifier
@@ -109,27 +101,19 @@ fun HubRemoteDial(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Focused Item Pill
+                // Focused Item Pill (Material You Theme Accent)
                 Row(
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .clip(CircleShape)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0xFF8E24AA).copy(alpha = 0.20f),
-                                    Color(0xFFE91E63).copy(alpha = 0.20f),
-                                    Color(0xFFFFB300).copy(alpha = 0.20f)
-                                )
-                            )
-                        )
+                        .background(topBarAccentColor.copy(alpha = 0.14f))
                         .padding(horizontal = 10.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = currentItem.icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = topBarAccentColor,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(6.dp))
@@ -161,9 +145,8 @@ fun HubRemoteDial(
             // ==========================================
             // 2. CURVED ARC KNOB TRACK (CANVAS)
             // ==========================================
-            val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            val activeColor = Color(0xFFE91E63)
-            val amberColor = Color(0xFFFFB300)
+            val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+            val activeColor = topBarAccentColor
 
             Box(
                 modifier = Modifier
@@ -217,7 +200,7 @@ fun HubRemoteDial(
                     drawPath(
                         path = path,
                         color = trackColor,
-                        style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round)
+                        style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                     )
 
                     // Draw Discrete Detent Ticks
@@ -228,7 +211,7 @@ fun HubRemoteDial(
                         val isSelected = i == selectedIndex
                         if (isSelected) {
                             drawCircle(
-                                color = amberColor.copy(alpha = 0.4f),
+                                color = activeColor.copy(alpha = 0.25f),
                                 radius = 7.dp.toPx(),
                                 center = pt
                             )
@@ -249,20 +232,16 @@ fun HubRemoteDial(
                     // Draw Draggable Knob Bead
                     val knobPt = getPoint(animatedFraction)
 
-                    // Knob Outer Glow
+                    // Knob Outer Glow Halo
                     drawCircle(
-                        color = Color(0xFFE91E63).copy(alpha = 0.25f),
-                        radius = 17.dp.toPx(),
+                        color = activeColor.copy(alpha = 0.20f),
+                        radius = 16.dp.toPx(),
                         center = knobPt
                     )
 
-                    // Knob Body (Lumir Gradient)
+                    // Knob Solid Body (Theme Accent)
                     drawCircle(
-                        brush = Brush.radialGradient(
-                            listOf(Color(0xFFFFB300), Color(0xFFE91E63), Color(0xFF8E24AA)),
-                            center = knobPt,
-                            radius = 14.dp.toPx()
-                        ),
+                        color = activeColor,
                         radius = 13.dp.toPx(),
                         center = knobPt
                     )
@@ -270,7 +249,7 @@ fun HubRemoteDial(
                     // Knob Inner Center Core
                     drawCircle(
                         color = Color.White,
-                        radius = 4.dp.toPx(),
+                        radius = 4.5.dp.toPx(),
                         center = knobPt
                     )
                 }
@@ -288,8 +267,8 @@ fun HubRemoteDial(
                     .height(38.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = topBarAccentColor,
+                    contentColor = Color.White
                 ),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
             ) {
