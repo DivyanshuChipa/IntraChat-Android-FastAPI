@@ -56,6 +56,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.activity.compose.BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +87,18 @@ fun ContactListScreen(
     var isHubExpanded by remember { mutableStateOf(false) }
     var showWebDropDialog by remember { mutableStateOf(false) }
     var showIntraDriveDialog by remember { mutableStateOf(false) }
+
+    // 🔙 System Back Button: Close Hub/Dialogs first if open, instead of minimizing app
+    BackHandler(
+        enabled = isHubExpanded || selectedProfileForDialog != null || showWebDropDialog || showIntraDriveDialog
+    ) {
+        when {
+            selectedProfileForDialog != null -> selectedProfileForDialog = null
+            showWebDropDialog -> showWebDropDialog = false
+            showIntraDriveDialog -> showIntraDriveDialog = false
+            isHubExpanded -> isHubExpanded = false
+        }
+    }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()

@@ -59,6 +59,7 @@ import com.example.intra.ui.chat.components.MessageBubble
 import com.example.intra.ui.chat.components.MessageInputBar
 import com.example.intra.ui.chat.components.TypingIndicatorUI
 import kotlinx.coroutines.delay
+import androidx.activity.compose.BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +76,16 @@ fun ChatScreen(
     var videoUrlToPlay by remember { mutableStateOf<String?>(null) }
     var imageUrlToView by remember { mutableStateOf<String?>(null) }
     var pdfToView by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    // 🔙 System Back Button / Edge Swipe Gesture Handler
+    BackHandler {
+        when {
+            videoUrlToPlay != null -> videoUrlToPlay = null
+            imageUrlToView != null -> imageUrlToView = null
+            pdfToView != null -> pdfToView = null
+            else -> onBackClick()
+        }
+    }
 
     // Set Status Bar Color
     val view = LocalView.current

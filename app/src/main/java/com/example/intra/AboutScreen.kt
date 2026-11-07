@@ -22,12 +22,18 @@ import androidx.compose.ui.unit.sp
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
     onBack: () -> Unit
 ) {
+    // 🔙 System Back Button / Edge Swipe Gesture Handler
+    BackHandler {
+        onBack()
+    }
+
     val context = LocalContext.current
 
     Scaffold(

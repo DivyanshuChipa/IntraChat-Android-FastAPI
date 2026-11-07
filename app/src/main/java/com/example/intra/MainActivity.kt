@@ -24,6 +24,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.intra.MyApplication.AppState
 import com.example.intra.database.ChatDatabase
@@ -31,6 +34,19 @@ import com.example.intra.ui.theme.IntraTheme
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+
+enum class MainScreenDestination {
+    SHARE,
+    CALL,
+    ABOUT,
+    SMB,
+    WEBDROP,
+    INTRA_HOME,
+    IPTV,
+    SETTINGS,
+    CHAT,
+    CONTACTS
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -240,207 +256,265 @@ class MainActivity : ComponentActivity() {
                     if (!isAuthenticated) {
                         AuthScreen(viewModel = authViewModel, onAuthenticated = {})
                     } else {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            when {
-                            sharedUris.isNotEmpty() || sharedText.value != null -> {
-                                ShareScreen(
-                                    sharedUris = sharedUris,
-                                    sharedText = sharedText.value,
-                                    mimeType = sharedMimeType.value,
-                                    onBack = {
-                                        sharedUris.clear()
-                                        sharedText.value = null
-                                        sharedMimeType.value = null
-                                    },
-                                    onSend = { receiver ->
-                                        if (sharedText.value != null) {
-                                            chatViewModel.openChat(receiver)
-                                            chatViewModel.inputMessage.value = sharedText.value!!
-                                            chatViewModel.sendMessage(receiver)
-                                            currentChatReceiver = receiver
-                                        } else if (sharedUris.isNotEmpty()) {
-                                            val files = sharedUris.mapNotNull { uriToTempFile(this@MainActivity, it) }
-                                            if (files.isNotEmpty()) {
-                                                chatViewModel.openChat(receiver)
-                                                chatViewModel.uploadMultipleFiles(files, receiver)
-                                                currentChatReceiver = receiver
-                                            }
-                                        }
-                                        sharedUris.clear()
-                                        sharedText.value = null
-                                        sharedMimeType.value = null
-                                    }
-                                )
-                            }
-
-                            showAbout -> AboutScreen { showAbout = false }
-
-                            showSmbBrowser -> SmbBrowserScreen(
-                                onBack = { showSmbBrowser = false },
-                                onWebDropClick = {
-                                    showSmbBrowser = false
-                                    showWebDrop = true
-                                }
-                            )
-
-                            showWebDrop -> WebDropScreen(onBack = { showWebDrop = false })
-
-                            showIntraHome -> IntraHomeScreen(onBack = { showIntraHome = false })
-
-                            showIptv -> IptvScreen(onBack = { showIptv = false })
-
-                            showSettings -> SettingsScreen(
-                                onLogoutConfirmed = {
-                                    authViewModel.logout()
-                                    WsManager.disconnect()
-                                    val serviceIntent = Intent(this@MainActivity, IntraBackgroundService::class.java)
-                                    stopService(serviceIntent)
-                                    showSettings = false
-                                    currentChatReceiver = null
-                                },
-                                onBack = { showSettings = false },
-                                onNavigateToAbout = { showAbout = true }
-                            )
-
-                            callViewModel.callState.value.status != CallStatus.IDLE -> {
-                                val isLumir = callViewModel.callState.value.targetUser.equals("Lumir", ignoreCase = true)
-                                CallScreen(
-                                    state = callViewModel.callState.value,
-                                    lumirVoiceStatus = if (isLumir) {
-                                        when {
-                                            lumirVoiceManager.isListening -> "🎙️ Listening... (Speak now)"
-                                            lumirVoiceManager.isThinking -> "⏳ Thinking (Processing with Node 2)..."
-                                            lumirVoiceManager.isSpeaking -> "🔊 Lumir is Speaking..."
-                                            else -> "🎙️ Tap Mic to Speak"
-                                        }
-                                    } else null,
-                                    lumirSubtitle = if (isLumir) {
-                                        if (lumirVoiceManager.isSpeaking || lumirVoiceManager.isThinking) lumirVoiceManager.lumirTranscript
-                                        else lumirVoiceManager.userTranscript
-                                    } else null,
-
-                                    onRejectCall = {
-                                        val target = callViewModel.callState.value.targetUser
-                                        if (target.isNotEmpty()) {
-                                            val json = JSONObject().apply {
-                                                put("type", "call_rejected")
-                                                put("receiver", target)
-                                            }
-                                            chatViewModel.sendRawSignal(json.toString())
-                                        }
-                                        cleanupCall(callViewModel, webRTCClient, lumirVoiceManager)
-                                    },
-
-                                    onEndCall = {
-                                        cleanupCall(callViewModel, webRTCClient, lumirVoiceManager)
-                                    },
-
-                                    onAcceptCall = {
-                                        val offer = callViewModel.pendingOfferSdp
-
-                                        if (offer == null) {
-                                            Log.w("CALL", "Accept pressed but offer NOT FOUND in ViewModel")
-                                            return@CallScreen
-                                        }
-
-                                        ringtoneManager.stop()
-
-                                        webRTCClient.answerCall(
-                                            callViewModel.callState.value.targetUser,
-                                            offer
-                                        )
-                                        callViewModel.onCallConnected()
-                                        proximitySensor.deactivate(true)
-                                    },
-
-                                    onToggleMute = {
-                                        if (isLumir) {
-                                            if (lumirVoiceManager.isListening) {
-                                                lumirVoiceManager.stopListening()
-                                            } else {
-                                                lumirVoiceManager.startListening()
-                                            }
-                                        } else {
-                                            val newMute = !callViewModel.callState.value.isMuted
-                                            webRTCClient.toggleMute(newMute)
-                                            callViewModel.updateMuteState(newMute)
-                                        }
-                                    },
-
-                                    onToggleSpeaker = {
-                                        val newState =
-                                            !callViewModel.callState.value.isSpeakerOn
-                                        webRTCClient.toggleSpeaker(newState)
-                                        callViewModel.updateSpeakerState(newState)
-                                        if (newState) proximitySensor.deactivate(true)
-                                        else proximitySensor.activate()
-                                    }
-                                )
-                            }
-
-                            currentChatReceiver != null -> {
-                                val contact = contactViewModel.contacts.find { it.username == currentChatReceiver }
-                                val receiverPhotoUrl = contact?.profilePhoto?.let {
-                                    settingsManager.getBaseUrl().removeSuffix("/") + it
-                                }
-
-                                ChatScreen(
-                                    viewModel = chatViewModel,
-                                    receiverName = currentChatReceiver!!,
-                                    receiverPhotoUrl = receiverPhotoUrl,
-
-                                    onAttachClick = {
-                                    currentUploadViewModel = chatViewModel
-                                    currentUploadReceiver = currentChatReceiver
-                                    filePickerLauncher.launch("*/*")
-                                },
-
-                                onBackClick = {
-                                    chatViewModel.closeChat()
-                                    currentChatReceiver = null
-                                },
-
-                                onStartCall = {
-                                    val target = currentChatReceiver!!
-                                    val contact =
-                                        contactViewModel.contacts.find { it.username == target }
-
-                                    val photo =
-                                        contact?.profilePhoto?.let {
-                                            settingsManager.getBaseUrl()
-                                                .removeSuffix("/") + it
-                                        }
-
-                                    if (target.equals("Lumir", ignoreCase = true)) {
-                                        // 🤖 LUMIR AI VOICE CALL
-                                        chatViewModel.sendCallRequest(target)
-                                        callViewModel.onStartOutgoingCall(target, photo)
-                                        callViewModel.onCallConnected()
-                                        lumirVoiceManager.startSession()
-                                        proximitySensor.deactivate(true)
-                                    } else {
-                                        // 👤 HUMAN WEBRTC PEER CALL
-                                        chatViewModel.sendCallRequest(target)
-                                        callViewModel.onStartOutgoingCall(target, photo)
-                                        webRTCClient.startCall(target)
-                                        proximitySensor.deactivate(true)
-                                    }
-                                }
-                                )
-                            }
-
-                            else -> ContactListScreen(
-                                username = chatViewModel.currentUsername,
-                                typingStatuses = chatViewModel.typingStatuses,
-                                activeChatUser = chatViewModel.activeChatUser, // 🆕 STEP 6: Pass active chat
-                                onChatClick = { currentChatReceiver = it },
-                                onSettingsClick = { showSettings = true },
-                                onSmbClick = { showSmbBrowser = true },
-                                onWebDropClick = { showWebDrop = true },
-                                onIntraHomeClick = { showIntraHome = true },
-                                onIptvClick = { showIptv = true }
-                            )
+                        val currentDestination = when {
+                            sharedUris.isNotEmpty() || sharedText.value != null -> MainScreenDestination.SHARE
+                            callViewModel.callState.value.status != CallStatus.IDLE -> MainScreenDestination.CALL
+                            showAbout -> MainScreenDestination.ABOUT
+                            showSmbBrowser -> MainScreenDestination.SMB
+                            showWebDrop -> MainScreenDestination.WEBDROP
+                            showIntraHome -> MainScreenDestination.INTRA_HOME
+                            showIptv -> MainScreenDestination.IPTV
+                            showSettings -> MainScreenDestination.SETTINGS
+                            currentChatReceiver != null -> MainScreenDestination.CHAT
+                            else -> MainScreenDestination.CONTACTS
                         }
+
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AnimatedContent(
+                                targetState = currentDestination,
+                                transitionSpec = {
+                                    if (initialState == MainScreenDestination.CONTACTS && targetState != MainScreenDestination.CONTACTS) {
+                                        // Forward Navigation (Opening Chat, Settings, SMB, WebDrop, etc.)
+                                        (slideInHorizontally(
+                                            initialOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() },
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f)
+                                        ) + fadeIn(animationSpec = tween(220)))
+                                            .togetherWith(
+                                                slideOutHorizontally(
+                                                    targetOffsetX = { fullWidth -> -(fullWidth * 0.20f).toInt() },
+                                                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f)
+                                                ) + fadeOut(animationSpec = tween(180))
+                                            )
+                                    } else if (targetState == MainScreenDestination.CONTACTS && initialState != MainScreenDestination.CONTACTS) {
+                                        // Backward Navigation (Returning to Contacts)
+                                        (slideInHorizontally(
+                                            initialOffsetX = { fullWidth -> -(fullWidth * 0.20f).toInt() },
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f)
+                                        ) + fadeIn(animationSpec = tween(220)))
+                                            .togetherWith(
+                                                slideOutHorizontally(
+                                                    targetOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() },
+                                                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f)
+                                                ) + fadeOut(animationSpec = tween(180))
+                                            )
+                                    } else {
+                                        // Subscreen to subscreen (e.g. Settings to About)
+                                        (slideInHorizontally(
+                                            initialOffsetX = { (it * 0.3f).toInt() },
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f)
+                                        ) + fadeIn(animationSpec = tween(200)))
+                                            .togetherWith(
+                                                slideOutHorizontally(
+                                                    targetOffsetX = { -(it * 0.2f).toInt() },
+                                                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f)
+                                                ) + fadeOut(animationSpec = tween(180))
+                                            )
+                                    }
+                                },
+                                label = "MainScreenTransition",
+                                modifier = Modifier.fillMaxSize()
+                            ) { destination ->
+                                when (destination) {
+                                    MainScreenDestination.SHARE -> {
+                                        ShareScreen(
+                                            sharedUris = sharedUris,
+                                            sharedText = sharedText.value,
+                                            mimeType = sharedMimeType.value,
+                                            onBack = {
+                                                sharedUris.clear()
+                                                sharedText.value = null
+                                                sharedMimeType.value = null
+                                            },
+                                            onSend = { receiver ->
+                                                if (sharedText.value != null) {
+                                                    chatViewModel.openChat(receiver)
+                                                    chatViewModel.inputMessage.value = sharedText.value!!
+                                                    chatViewModel.sendMessage(receiver)
+                                                    currentChatReceiver = receiver
+                                                } else if (sharedUris.isNotEmpty()) {
+                                                    val files = sharedUris.mapNotNull { uriToTempFile(this@MainActivity, it) }
+                                                    if (files.isNotEmpty()) {
+                                                        chatViewModel.openChat(receiver)
+                                                        chatViewModel.uploadMultipleFiles(files, receiver)
+                                                        currentChatReceiver = receiver
+                                                    }
+                                                }
+                                                sharedUris.clear()
+                                                sharedText.value = null
+                                                sharedMimeType.value = null
+                                            }
+                                        )
+                                    }
+
+                                    MainScreenDestination.ABOUT -> AboutScreen { showAbout = false }
+
+                                    MainScreenDestination.SMB -> SmbBrowserScreen(
+                                        onBack = { showSmbBrowser = false },
+                                        onWebDropClick = {
+                                            showSmbBrowser = false
+                                            showWebDrop = true
+                                        }
+                                    )
+
+                                    MainScreenDestination.WEBDROP -> WebDropScreen(onBack = { showWebDrop = false })
+
+                                    MainScreenDestination.INTRA_HOME -> IntraHomeScreen(onBack = { showIntraHome = false })
+
+                                    MainScreenDestination.IPTV -> IptvScreen(onBack = { showIptv = false })
+
+                                    MainScreenDestination.SETTINGS -> SettingsScreen(
+                                        onLogoutConfirmed = {
+                                            authViewModel.logout()
+                                            WsManager.disconnect()
+                                            val serviceIntent = Intent(this@MainActivity, IntraBackgroundService::class.java)
+                                            stopService(serviceIntent)
+                                            showSettings = false
+                                            currentChatReceiver = null
+                                        },
+                                        onBack = { showSettings = false },
+                                        onNavigateToAbout = { showAbout = true }
+                                    )
+
+                                    MainScreenDestination.CALL -> {
+                                        val isLumir = callViewModel.callState.value.targetUser.equals("Lumir", ignoreCase = true)
+                                        CallScreen(
+                                            state = callViewModel.callState.value,
+                                            lumirVoiceStatus = if (isLumir) {
+                                                when {
+                                                    lumirVoiceManager.isListening -> "🎙️ Listening... (Speak now)"
+                                                    lumirVoiceManager.isThinking -> "⏳ Thinking (Processing with Node 2)..."
+                                                    lumirVoiceManager.isSpeaking -> "🔊 Lumir is Speaking..."
+                                                    else -> "🎙️ Tap Mic to Speak"
+                                                }
+                                            } else null,
+                                            lumirSubtitle = if (isLumir) {
+                                                if (lumirVoiceManager.isSpeaking || lumirVoiceManager.isThinking) lumirVoiceManager.lumirTranscript
+                                                else lumirVoiceManager.userTranscript
+                                            } else null,
+
+                                            onRejectCall = {
+                                                val target = callViewModel.callState.value.targetUser
+                                                if (target.isNotEmpty()) {
+                                                    val json = JSONObject().apply {
+                                                        put("type", "call_rejected")
+                                                        put("receiver", target)
+                                                    }
+                                                    chatViewModel.sendRawSignal(json.toString())
+                                                }
+                                                cleanupCall(callViewModel, webRTCClient, lumirVoiceManager)
+                                            },
+
+                                            onEndCall = {
+                                                cleanupCall(callViewModel, webRTCClient, lumirVoiceManager)
+                                            },
+
+                                            onAcceptCall = {
+                                                val offer = callViewModel.pendingOfferSdp
+
+                                                if (offer == null) {
+                                                    Log.w("CALL", "Accept pressed but offer NOT FOUND in ViewModel")
+                                                    return@CallScreen
+                                                }
+
+                                                ringtoneManager.stop()
+
+                                                webRTCClient.answerCall(
+                                                    callViewModel.callState.value.targetUser,
+                                                    offer
+                                                )
+                                                callViewModel.onCallConnected()
+                                                proximitySensor.deactivate(true)
+                                            },
+
+                                            onToggleMute = {
+                                                if (isLumir) {
+                                                    if (lumirVoiceManager.isListening) {
+                                                        lumirVoiceManager.stopListening()
+                                                    } else {
+                                                        lumirVoiceManager.startListening()
+                                                    }
+                                                } else {
+                                                    val newMute = !callViewModel.callState.value.isMuted
+                                                    webRTCClient.toggleMute(newMute)
+                                                    callViewModel.updateMuteState(newMute)
+                                                }
+                                            },
+
+                                            onToggleSpeaker = {
+                                                val newState =
+                                                    !callViewModel.callState.value.isSpeakerOn
+                                                webRTCClient.toggleSpeaker(newState)
+                                                callViewModel.updateSpeakerState(newState)
+                                                if (newState) proximitySensor.deactivate(true)
+                                                else proximitySensor.activate()
+                                            }
+                                        )
+                                    }
+
+                                    MainScreenDestination.CHAT -> {
+                                        val contact = contactViewModel.contacts.find { it.username == currentChatReceiver }
+                                        val receiverPhotoUrl = contact?.profilePhoto?.let {
+                                            settingsManager.getBaseUrl().removeSuffix("/") + it
+                                        }
+
+                                        ChatScreen(
+                                            viewModel = chatViewModel,
+                                            receiverName = currentChatReceiver ?: "",
+                                            receiverPhotoUrl = receiverPhotoUrl,
+
+                                            onAttachClick = {
+                                                currentUploadViewModel = chatViewModel
+                                                currentUploadReceiver = currentChatReceiver
+                                                filePickerLauncher.launch("*/*")
+                                            },
+
+                                            onBackClick = {
+                                                chatViewModel.closeChat()
+                                                currentChatReceiver = null
+                                            },
+
+                                            onStartCall = {
+                                                val target = currentChatReceiver ?: return@ChatScreen
+                                                val contactItem =
+                                                    contactViewModel.contacts.find { it.username == target }
+
+                                                val photo =
+                                                    contactItem?.profilePhoto?.let {
+                                                        settingsManager.getBaseUrl()
+                                                            .removeSuffix("/") + it
+                                                    }
+
+                                                if (target.equals("Lumir", ignoreCase = true)) {
+                                                    // 🤖 LUMIR AI VOICE CALL
+                                                    chatViewModel.sendCallRequest(target)
+                                                    callViewModel.onStartOutgoingCall(target, photo)
+                                                    callViewModel.onCallConnected()
+                                                    lumirVoiceManager.startSession()
+                                                    proximitySensor.deactivate(true)
+                                                } else {
+                                                    // 👤 HUMAN WEBRTC PEER CALL
+                                                    chatViewModel.sendCallRequest(target)
+                                                    callViewModel.onStartOutgoingCall(target, photo)
+                                                    webRTCClient.startCall(target)
+                                                    proximitySensor.deactivate(true)
+                                                }
+                                            }
+                                        )
+                                    }
+
+                                    MainScreenDestination.CONTACTS -> ContactListScreen(
+                                        username = chatViewModel.currentUsername,
+                                        typingStatuses = chatViewModel.typingStatuses,
+                                        activeChatUser = chatViewModel.activeChatUser,
+                                        onChatClick = { currentChatReceiver = it },
+                                        onSettingsClick = { showSettings = true },
+                                        onSmbClick = { showSmbBrowser = true },
+                                        onWebDropClick = { showWebDrop = true },
+                                        onIntraHomeClick = { showIntraHome = true },
+                                        onIptvClick = { showIptv = true }
+                                    )
+                                }
+                            }
 
                         // 💊 Floating Minimalist Bottom Music Player (Spotify / Apple Music style)
                         MiniPlayerPill(

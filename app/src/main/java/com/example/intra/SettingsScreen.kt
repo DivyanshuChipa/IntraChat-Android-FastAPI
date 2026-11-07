@@ -3,6 +3,7 @@ package com.example.intra
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -182,6 +183,16 @@ fun SettingsScreen(
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // 🔙 System Back Button / Edge Swipe Gesture Handler
+    BackHandler {
+        when {
+            showLogoutDialog -> showLogoutDialog = false
+            showDeleteDialog -> showDeleteDialog = false
+            expandedSection != SettingsSection.NONE -> expandedSection = SettingsSection.NONE
+            else -> onBack()
+        }
+    }
 
     var savedPhotoUrl by remember { mutableStateOf(settingsManager.getMyPhoto()) }
     var uploadedPhotoUri by remember { mutableStateOf<Uri?>(null) }

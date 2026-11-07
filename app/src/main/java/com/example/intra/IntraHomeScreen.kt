@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material3.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,11 @@ import androidx.compose.ui.unit.sp
 fun IntraHomeScreen(
     onBack: () -> Unit
 ) {
+    // 🔙 System Back Button / Edge Swipe Gesture Handler
+    BackHandler {
+        onBack()
+    }
+
     val gradient = Brush.verticalGradient(
         colors = listOf(
             Color(0xFF6741A8),
