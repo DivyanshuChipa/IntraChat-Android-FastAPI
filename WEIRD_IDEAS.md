@@ -4,31 +4,43 @@
 
 ---
 
-## 1. 🟢 The Omniverse Dial (Omnitrix Hub)
-*Inspired by Ben 10 Omniverse dial selector.*
+## 1. 🎛️ The Thumb Arc Knob (Remote Hub Dial) [Experimental Feature]
+*Evolved from the Omnitrix Dial concept into a minimal, clean Material You thumb-control system.*
 
-### 💡 Concept:
-Instead of scrolling a boring row of 8+ icons on the TopAppBar (which is unreachable with one hand), tapping the **Hub / Apps** button launches an **Omnitrix-style Radial Wheel**:
+### 💡 The Core Problem:
+On modern 6.7-inch smartphones, reaching the TopAppBar with one hand to tap or scroll through 6+ icons (`Live TV`, `WebDrop`, `IntraDrive`, `SMB Explorer`, `Smart Home`, `Settings`) causes thumb strain.
 
-1. **Background**: Deep frosted blur (Glassmorphism + dim).
-2. **Thumb Zone Dial**: A circular dial appears at the bottom-right/bottom-center where the thumb naturally rests.
-3. **Rotary Haptics**: Swiping or rotating the dial produces crisp mechanical haptic clicks (*tick-tick-tick*).
-4. **Holographic Selection**:
-   - As the wheel turns, the active feature pops into 3D scale with glowing neon ring (Intra Purple / Alien Green).
-   - Icons cycle: `Live TV` ➔ `WebDrop` ➔ `IntraDrive` ➔ `SMB Explorer` ➔ `Smart Home` ➔ `Settings`.
-   - Name flashes in modern futuristic typography in the dial core.
-5. **Slam / Tap to Launch**: Tapping the dial center "slams" it down and launches the feature instantly with a sleek expand animation.
+### 🎯 The Solution: "The Split Remote Knob"
+1. **Settings Toggle (Gated Experiment):**
+   - Added in **Settings ➔ Additional Features** as:  
+     `[Toggle] Thumb Arc Knob (Experimental)`
+   - **Default (OFF):** Standard TopAppBar horizontal scrolling row (zero disruption to classic UX).
+   - **When ON:** Activates the Thumb Arc Knob remote interaction!
 
-### 🛠️ Technical Feasibility:
-- **Jetpack Compose**: `Canvas` + `pointerInput` with `detectDragGestures` to calculate angular rotation `atan2(y, x)`.
-- **HapticFeedback**: `LocalHapticFeedback.current.performHapticFeedback(HapticFeedbackType.TextHandleMove)`.
-- **Graphics**: `graphicsLayer` rotation and scale animation with Spring spec.
+2. **Visual & Aesthetic Style (Material You + Lumir Gradient):**
+   - **No garish sci-fi neon:** Strictly adheres to clean Google Material 3 design.
+   - **Lumir Signature Gradient:** Accented with the soft palette from Lumir's hair (`Deep Purple #6741A8` ➔ `Vibrant Pink #E91E63` ➔ `Warm Amber/Yellow #FFC107`).
+   - Frosted translucent card resting in the natural thumb zone.
+
+3. **Thumb Zone Ergonomics (Left vs Right Hand):**
+   - **Right-Hand Mode (Default):** Arc Knob floats in the **Bottom-Right** corner.
+   - **Left-Handed Mode (When enabled in Settings):** Arc Knob dynamically mirrors to the **Bottom-Left** corner!
+
+4. **Interaction & Mechanics:**
+   - **TopBar Display:** Shows the 6 Hub icons in a neat horizontal strip. The active item is wrapped in an animated soft Lumir-gradient pill with its label displayed.
+   - **Bottom Arc Knob:** A smooth curved track with a tactile draggable knob bead.
+   - **Rotary Haptics:** Dragging the knob produces crisp mechanical haptic clicks (`tick-tick-tick` via `HapticFeedbackType.TextHandleMove`) as each item is focused.
+   - **Release / Tap to Launch:** Releasing the thumb on an item (or tapping the knob) instantly launches the chosen screen and dismisses the dial.
+
+### 📐 Alternative Variants Discussed:
+* **Variant B (Direct Quarter-Circle Corner Wheel):** Instead of keeping icons in the top bar, a 90° pie arc fans out directly in the bottom corner with icons positioned on the arc.
+* **Variant C (Top-down Dropdown Arc):** A curved Material 3 fan dropping from the top bar apps icon.
 
 ---
 
 ## 2. 📡 Radar PING / Sonar LAN Discovery
 - Instead of static progress spinner during IP scan, display a **Subnet Sonar Radar** sweeping across 360 degrees.
-- Devices light up as glowing green blips with IP / Hostname floating next to them.
+- Devices light up as glowing green/purple blips with IP / Hostname floating next to them.
 
 ---
 
