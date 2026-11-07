@@ -55,6 +55,7 @@ enum class SettingsSection {
     GENERAL,
     CONNECTION,
     ACCOUNT,
+    ADDITIONAL,
     ABOUT
 }
 
@@ -172,6 +173,9 @@ fun SettingsScreen(
 
     // 🗄️ INTRADRIVE STATE
     var isIntraDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
+
+    // 🖐️ LEFT-HANDED MODE STATE
+    var isLeftHandModeEnabled by remember { mutableStateOf(settingsManager.isLeftHandModeEnabled()) }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -594,7 +598,42 @@ fun SettingsScreen(
             }
 
             // ==========================================
-            // 4. ABOUT
+            // 4. ADDITIONAL FEATURES
+            // ==========================================
+            CollapsibleSection(
+                title = "Additional Features",
+                icon = Icons.Default.Tune,
+                iconColor = Color(0xFFE91E63),
+                isExpanded = expandedSection == SettingsSection.ADDITIONAL,
+                onToggle = { expandedSection = if (expandedSection == SettingsSection.ADDITIONAL) SettingsSection.NONE else SettingsSection.ADDITIONAL }
+            ) {
+                // 🖐️ LEFT-HANDED MODE TOGGLE
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Left-Handed Mode", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Optimize navigation & controls for left-handed use.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isLeftHandModeEnabled,
+                        onCheckedChange = { enabled ->
+                            isLeftHandModeEnabled = enabled
+                            settingsManager.setLeftHandModeEnabled(enabled)
+                        }
+                    )
+                }
+            }
+
+            // ==========================================
+            // 5. ABOUT
             // ==========================================
             CollapsibleSection(
                 title = "About Intra",

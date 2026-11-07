@@ -75,10 +75,12 @@ fun ContactListScreen(
     var showLumir by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
     var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
     var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
+    var isLeftHandMode by remember { mutableStateOf(settingsManager.isLeftHandModeEnabled()) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()
         isIptvEnabled = settingsManager.isIptvEnabled()
         isDriveEnabled = settingsManager.isIntraDriveEnabled()
+        isLeftHandMode = settingsManager.isLeftHandModeEnabled()
     }
 
     val contactViewModel: ContactViewModel = viewModel()
@@ -111,11 +113,26 @@ fun ContactListScreen(
     Scaffold(
         containerColor = colorScheme.surface,
         topBar = {
+            val appsButton = @Composable {
+                IconButton(onClick = { isHubExpanded = !isHubExpanded }) {
+                    Icon(
+                        imageVector = if (isHubExpanded) Icons.Filled.Clear else Icons.Filled.Apps,
+                        contentDescription = "Toggle Hub",
+                        tint = topBarTextColor
+                    )
+                }
+            }
+
             TopAppBar(
+                navigationIcon = {
+                    if (isLeftHandMode) {
+                        appsButton()
+                    }
+                },
                 title = {
                     Box(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.CenterStart
+                        contentAlignment = if (isLeftHandMode) Alignment.CenterEnd else Alignment.CenterStart
                     ) {
                         AnimatedVisibility(
                             visible = !isHubExpanded,
@@ -125,21 +142,22 @@ fun ContactListScreen(
                             Text(
                                 "Intra Chats",
                                 color = topBarTextColor,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = if (isLeftHandMode) Modifier.padding(end = 12.dp) else Modifier
                             )
                         }
 
                         AnimatedVisibility(
                             visible = isHubExpanded,
-                            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-                            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                            enter = if (isLeftHandMode) (slideInHorizontally(initialOffsetX = { -it }) + fadeIn()) else (slideInHorizontally(initialOffsetX = { it }) + fadeIn()),
+                            exit = if (isLeftHandMode) (slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()) else (slideOutHorizontally(targetOffsetX = { it }) + fadeOut())
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(end = 8.dp)
-                                    .horizontalScroll(rememberScrollState(), reverseScrolling = true),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                                    .padding(horizontal = 8.dp)
+                                    .horizontalScroll(rememberScrollState(), reverseScrolling = !isLeftHandMode),
+                                horizontalArrangement = if (isLeftHandMode) Arrangement.spacedBy(12.dp, Alignment.Start) else Arrangement.spacedBy(12.dp, Alignment.End),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // 1. Live TV Icon (if enabled)
@@ -208,12 +226,8 @@ fun ContactListScreen(
                     containerColor = topBarColor
                 ),
                 actions = {
-                    IconButton(onClick = { isHubExpanded = !isHubExpanded }) {
-                        Icon(
-                            imageVector = if (isHubExpanded) Icons.Filled.Clear else Icons.Filled.Apps,
-                            contentDescription = "Toggle Hub",
-                            tint = topBarTextColor
-                        )
+                    if (!isLeftHandMode) {
+                        appsButton()
                     }
                 }
             )
