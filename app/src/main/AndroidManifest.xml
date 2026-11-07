@@ -62,6 +62,16 @@
                 <data android:mimeType="application/*" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+
+            <!-- 🎵 Open Audio Files with Intra Music Player (Samsung Music / File Manager style) -->
+            <intent-filter android:label="Intra Music">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
         </activity>
 
         <service

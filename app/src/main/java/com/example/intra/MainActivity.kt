@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -475,6 +476,32 @@ class MainActivity : ComponentActivity() {
         if (sender != null) {
             Log.d("MAIN", "🔥 handleIntent: sender=$sender, photo=$photo")
             incomingCallData.value = sender to photo
+        }
+
+        // 🎵 Handle "Open With" / ACTION_VIEW for Audio files (from Samsung My Files, Google Files, etc.)
+        if (intent?.action == Intent.ACTION_VIEW) {
+            val dataUri = intent.data
+            val mimeType = intent.type ?: dataUri?.let { contentResolver.getType(it) }
+            if (dataUri != null && (mimeType?.startsWith("audio/") == true || intent.scheme in listOf("content", "file"))) {
+                var fileName = "Audio Track"
+                try {
+                    contentResolver.query(dataUri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex != -1 && cursor.moveToFirst()) {
+                            fileName = cursor.getString(nameIndex)
+                        }
+                    }
+                } catch (_: Exception) {
+                    fileName = dataUri.lastPathSegment ?: "Audio Track"
+                }
+
+                Log.d("MAIN", "🎧 Opening external audio file: $fileName ($dataUri)")
+                IntraAudioPlayerManager.play(
+                    context = applicationContext,
+                    url = dataUri.toString(),
+                    fileName = fileName
+                )
+            }
         }
 
         // Handle Share Intent

@@ -70,6 +70,7 @@ fun ChatScreen(
     onBackClick: () -> Unit,
     onStartCall: () -> Unit,
 ) {
+    val context = LocalContext.current
     val listState = rememberLazyListState()
     var videoUrlToPlay by remember { mutableStateOf<String?>(null) }
     var imageUrlToView by remember { mutableStateOf<String?>(null) }
