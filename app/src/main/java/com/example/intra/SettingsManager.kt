@@ -23,6 +23,7 @@ class SettingsManager(context: Context) {
         const val DEFAULT_IPTV_PLAYLIST_URL = "https://iptv-org.github.io/iptv/countries/in.m3u"
         const val KEY_INTRADRIVE_ENABLED = "intradrive_hub_enabled" // 🗄️ IntraDrive KEY
         const val KEY_LEFT_HAND_MODE = "left_hand_mode_enabled" // 🖐️ Left-Handed Mode KEY
+        const val KEY_THUMB_ARC_KNOB_ENABLED = "thumb_arc_knob_enabled" // 🎛️ Thumb Arc Knob KEY
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -145,5 +146,14 @@ class SettingsManager(context: Context) {
 
     fun setLeftHandModeEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_LEFT_HAND_MODE, enabled).apply()
+    }
+
+    // 🎛️ THUMB ARC KNOB (EXPERIMENTAL)
+    fun isThumbArcKnobEnabled(): Boolean {
+        return prefs.getBoolean(KEY_THUMB_ARC_KNOB_ENABLED, false) // Default OFF
+    }
+
+    fun setThumbArcKnobEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_THUMB_ARC_KNOB_ENABLED, enabled).apply()
     }
 }

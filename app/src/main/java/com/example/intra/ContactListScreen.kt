@@ -54,6 +54,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.runtime.mutableIntStateOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,11 +78,31 @@ fun ContactListScreen(
     var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
     var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
     var isLeftHandMode by remember { mutableStateOf(settingsManager.isLeftHandModeEnabled()) }
+    var isThumbArcKnobEnabled by remember { mutableStateOf(settingsManager.isThumbArcKnobEnabled()) }
+    var selectedHubIndex by remember { mutableIntStateOf(0) }
+
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()
         isIptvEnabled = settingsManager.isIptvEnabled()
         isDriveEnabled = settingsManager.isIntraDriveEnabled()
         isLeftHandMode = settingsManager.isLeftHandModeEnabled()
+        isThumbArcKnobEnabled = settingsManager.isThumbArcKnobEnabled()
+    }
+
+    // 🎛️ Dynamically build Hub tools list for Arc Knob & TopBar
+    val hubItems = remember(isIptvEnabled, isDriveEnabled) {
+        buildList {
+            add(HubItem("WebDrop", Icons.Filled.NearMe) { onWebDropClick() })
+            add(HubItem("SMB Network", Icons.Filled.Storage) { onSmbClick() })
+            if (isDriveEnabled) {
+                add(HubItem("IntraDrive", Icons.Filled.FolderShared) { showIntraDriveDialog = true })
+            }
+            if (isIptvEnabled) {
+                add(HubItem("Live TV", Icons.Filled.Tv) { onIptvClick() })
+            }
+            add(HubItem("Intra Home", Icons.Filled.Home) { onIntraHomeClick() })
+            add(HubItem("Settings", Icons.Filled.Settings) { onSettingsClick() })
+        }
     }
 
     val contactViewModel: ContactViewModel = viewModel()
@@ -152,71 +174,111 @@ fun ContactListScreen(
                             enter = if (isLeftHandMode) (slideInHorizontally(initialOffsetX = { -it }) + fadeIn()) else (slideInHorizontally(initialOffsetX = { it }) + fadeIn()),
                             exit = if (isLeftHandMode) (slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()) else (slideOutHorizontally(targetOffsetX = { it }) + fadeOut())
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp)
-                                    .horizontalScroll(rememberScrollState(), reverseScrolling = !isLeftHandMode),
-                                horizontalArrangement = if (isLeftHandMode) Arrangement.spacedBy(12.dp, Alignment.Start) else Arrangement.spacedBy(12.dp, Alignment.End),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // 1. Live TV Icon (if enabled)
-                                if (isIptvEnabled) {
-                                    IconButton(onClick = {
-                                        isHubExpanded = false
-                                        onIptvClick()
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Tv,
-                                            contentDescription = "Live TV",
-                                            tint = topBarTextColor
+                            if (isThumbArcKnobEnabled) {
+                                // 🎛️ EXPERIMENTAL: Active Item Pill synchronized with Bottom Arc Knob
+                                val activeItem = hubItems.getOrElse(selectedHubIndex.coerceIn(0, hubItems.size - 1)) { hubItems[0] }
+                                Row(
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp)
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                listOf(
+                                                    Color(0xFF8E24AA).copy(alpha = 0.35f),
+                                                    Color(0xFFE91E63).copy(alpha = 0.35f),
+                                                    Color(0xFFFFB300).copy(alpha = 0.35f)
+                                                )
+                                            )
                                         )
-                                    }
-                                }
-                                // 2. WebDrop (Zero-Friction LAN Share)
-                                IconButton(onClick = {
-                                    isHubExpanded = false
-                                    onWebDropClick()
-                                }) {
+                                        .clickable {
+                                            isHubExpanded = false
+                                            activeItem.onClick()
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
                                     Icon(
-                                        imageVector = Icons.Filled.NearMe,
-                                        contentDescription = "WebDrop",
-                                        tint = topBarTextColor
+                                        imageVector = activeItem.icon,
+                                        contentDescription = activeItem.title,
+                                        tint = topBarTextColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = activeItem.title,
+                                        color = topBarTextColor,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleMedium
                                     )
                                 }
-                                // 3. IntraDrive (Network Storage / WebDAV)
-                                if (isDriveEnabled) {
+                            } else {
+                                // Standard horizontal scrolling row of icons
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp)
+                                        .horizontalScroll(rememberScrollState(), reverseScrolling = !isLeftHandMode),
+                                    horizontalArrangement = if (isLeftHandMode) Arrangement.spacedBy(12.dp, Alignment.Start) else Arrangement.spacedBy(12.dp, Alignment.End),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 1. Live TV Icon (if enabled)
+                                    if (isIptvEnabled) {
+                                        IconButton(onClick = {
+                                            isHubExpanded = false
+                                            onIptvClick()
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Tv,
+                                                contentDescription = "Live TV",
+                                                tint = topBarTextColor
+                                            )
+                                        }
+                                    }
+                                    // 2. WebDrop (Zero-Friction LAN Share)
                                     IconButton(onClick = {
                                         isHubExpanded = false
-                                        showIntraDriveDialog = true
+                                        onWebDropClick()
                                     }) {
                                         Icon(
-                                            imageVector = Icons.Filled.FolderShared,
-                                            contentDescription = "IntraDrive",
+                                            imageVector = Icons.Filled.NearMe,
+                                            contentDescription = "WebDrop",
                                             tint = topBarTextColor
                                         )
                                     }
-                                }
-                                // 4. SMB Browser Icon
-                                IconButton(onClick = {
-                                    isHubExpanded = false
-                                    onSmbClick()
-                                }) {
-                                    Icon(Icons.Filled.Storage, contentDescription = "SMB Network", tint = topBarTextColor)
-                                }
-                                // 5. Smart Home Icon
-                                IconButton(onClick = {
-                                    isHubExpanded = false
-                                    onIntraHomeClick()
-                                }) {
-                                    Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarTextColor)
-                                }
-                                // 6. Settings Icon
-                                IconButton(onClick = {
-                                    isHubExpanded = false
-                                    onSettingsClick()
-                                }) {
-                                    Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = topBarTextColor)
+                                    // 3. IntraDrive (Network Storage / WebDAV)
+                                    if (isDriveEnabled) {
+                                        IconButton(onClick = {
+                                            isHubExpanded = false
+                                            showIntraDriveDialog = true
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.FolderShared,
+                                                contentDescription = "IntraDrive",
+                                                tint = topBarTextColor
+                                            )
+                                        }
+                                    }
+                                    // 4. SMB Browser Icon
+                                    IconButton(onClick = {
+                                        isHubExpanded = false
+                                        onSmbClick()
+                                    }) {
+                                        Icon(Icons.Filled.Storage, contentDescription = "SMB Network", tint = topBarTextColor)
+                                    }
+                                    // 5. Smart Home Icon
+                                    IconButton(onClick = {
+                                        isHubExpanded = false
+                                        onIntraHomeClick()
+                                    }) {
+                                        Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarTextColor)
+                                    }
+                                    // 6. Settings Icon
+                                    IconButton(onClick = {
+                                        isHubExpanded = false
+                                        onSettingsClick()
+                                    }) {
+                                        Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = topBarTextColor)
+                                    }
                                 }
                             }
                         }
@@ -233,11 +295,14 @@ fun ContactListScreen(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
             // Modern Search Bar
             val searchBgColor = if (isDark) Color(0xFF2A2B33) else Color(0xFFF2F2F2)
             TextField(
@@ -354,6 +419,32 @@ fun ContactListScreen(
                         }
                     }
                 }
+            }
+
+            // 🎛️ EXPERIMENTAL: Hub Remote Thumb Arc Knob Overlay
+            AnimatedVisibility(
+                visible = isHubExpanded && isThumbArcKnobEnabled,
+                enter = fadeIn() + scaleIn(initialScale = 0.85f),
+                exit = fadeOut() + scaleOut(targetScale = 0.85f),
+                modifier = Modifier
+                    .align(if (isLeftHandMode) Alignment.BottomStart else Alignment.BottomEnd)
+                    .padding(
+                        start = if (isLeftHandMode) 16.dp else 0.dp,
+                        end = if (!isLeftHandMode) 16.dp else 0.dp,
+                        bottom = if (IntraAudioPlayerManager.currentTrack != null) 76.dp else 20.dp
+                    )
+            ) {
+                HubRemoteDial(
+                    items = hubItems,
+                    selectedIndex = selectedHubIndex,
+                    onIndexChange = { selectedHubIndex = it },
+                    onLaunch = { item ->
+                        isHubExpanded = false
+                        item.onClick()
+                    },
+                    onDismiss = { isHubExpanded = false },
+                    isLeftHandMode = isLeftHandMode
+                )
             }
         }
     }
