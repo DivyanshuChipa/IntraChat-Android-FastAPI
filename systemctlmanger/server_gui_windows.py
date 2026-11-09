@@ -6,12 +6,13 @@ import json
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QMessageBox,
-    QDialog, QFormLayout, QLineEdit, QFileDialog, QDialogButtonBox
+    QDialog, QFormLayout, QLineEdit, QFileDialog, QDialogButtonBox,
+    QProgressBar, QScrollArea, QFrame
 )
-from PySide6.QtCore import QProcess, Qt, QTimer
+from PySide6.QtCore import QProcess, Qt, QTimer, QThread, Signal
 from PySide6.QtGui import QIcon
 
-# ================= MODERN DARK THEME (same as Linux version) =================
+# ================= MODERN DARK THEME =================
 STYLESHEET = """
 QMainWindow { background-color: #11111b; }
 QWidget { color: #cdd6f4; font-family: 'Segoe UI', sans-serif; }
@@ -30,6 +31,9 @@ QPushButton#StopBtn:disabled { background-color: #45475a; color: #a6adc8; }
 QPushButton#FixDBBtn { background-color: #fab387; color: #11111b; font-weight: bold; font-size: 14px; padding: 8px; border-radius: 8px; }
 QPushButton#FixDBBtn:hover { background-color: #fcc6a1; }
 
+QPushButton#CapabilityBtn { background-color: #89b4fa; color: #11111b; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 8px; }
+QPushButton#CapabilityBtn:hover { background-color: #b4befe; }
+
 QTextEdit { background-color: #181825; color: #a6adc8; border: 1px solid #313244; border-radius: 8px; padding: 10px; font-family: 'Consolas', monospace; }
 """
 
@@ -39,18 +43,36 @@ REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 BACKEND_DIR = os.path.join(REPO_ROOT, "backend")
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".intra_server_config.json")
 
-# Admin panel import (search script dir first, then intra_admin)
+# Ensure capability manager & admin modules can be imported
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 INTRA_ADMIN_DIR = os.path.join(REPO_ROOT, "intra_admin")
 if INTRA_ADMIN_DIR not in sys.path:
     sys.path.insert(0, INTRA_ADMIN_DIR)
+
+try:
+    from capability_manager import (
+        CAPABILITIES,
+        detect_capability,
+        download_and_install_capability,
+        uninstall_local_capability,
+        inject_tools_to_path,
+        get_intra_tools_dir
+    )
+except ImportError:
+    CAPABILITIES = {}
+    detect_capability = None
+    download_and_install_capability = None
+    uninstall_local_capability = None
+    inject_tools_to_path = lambda: os.environ.get("PATH", "")
+    get_intra_tools_dir = lambda: os.path.expanduser("~")
+
 try:
     from admin import AdminWindow
 except ImportError:
     AdminWindow = None
 
-# DB candidates — same as Linux version
+# DB candidates
 DB_CANDIDATES = [
     os.path.join(REPO_ROOT, "backend", "chat_users.db"),
     os.path.join(REPO_ROOT, "backend", "chat_user.db"),
@@ -61,17 +83,290 @@ DB_CANDIDATES = [
 ]
 
 
+# ================= DOWNLOAD WORKER THREAD =================
+class CapabilityDownloadWorker(QThread):
+    progress = Signal(int, str)
+    finished_task = Signal(bool, str)
+
+    def __init__(self, tool_key: str):
+        super().__init__()
+        self.tool_key = tool_key
+
+    def run(self):
+        if not download_and_install_capability:
+            self.finished_task.emit(False, "Capability manager module not found.")
+            return
+
+        def _report(pct, msg):
+            self.progress.emit(pct, msg)
+
+        res = download_and_install_capability(self.tool_key, progress_callback=_report)
+        self.finished_task.emit(res.get("success", False), res.get("message", ""))
+
+
+# ================= CAPABILITY MANAGER DIALOG =================
+class CapabilitiesDialog(QDialog):
+    """Modular capabilities hub to view, download, install and uninstall external tools."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("🧩 Intra Capabilities & Addons Hub")
+        self.setMinimumSize(640, 520)
+        self.setStyleSheet("""
+            QDialog { background-color: #181825; color: #cdd6f4; }
+            QLabel  { color: #cdd6f4; font-size: 13px; }
+            QScrollArea { border: none; background: transparent; }
+            QFrame.CapabilityCard {
+                background-color: #1e1e2e;
+                border: 1px solid #313244;
+                border-radius: 10px;
+                padding: 12px;
+            }
+            QPushButton.InstallBtn {
+                background-color: #a6e3a1; color: #11111b;
+                font-weight: bold; padding: 8px 14px;
+                border-radius: 6px; font-size: 13px;
+            }
+            QPushButton.InstallBtn:hover { background-color: #94e28f; }
+            QPushButton.UninstallBtn {
+                background-color: #f38ba8; color: #11111b;
+                font-weight: bold; padding: 8px 14px;
+                border-radius: 6px; font-size: 13px;
+            }
+            QPushButton.UninstallBtn:hover { background-color: #eba0ac; }
+            QProgressBar {
+                border: 1px solid #313244;
+                border-radius: 4px;
+                text-align: center;
+                background-color: #11111b;
+                color: #cdd6f4;
+            }
+            QProgressBar::chunk {
+                background-color: #89b4fa;
+            }
+        """)
+
+        self.cards = {}
+        self.active_workers = {}
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
+
+        # Header
+        title = QLabel("🧩 Modular Addons & Capabilities")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #cba6f7;")
+        layout.addWidget(title)
+
+        desc = QLabel(
+            "Manage modular tools (FFmpeg, Tesseract OCR, yt-dlp) on-demand.\n"
+            "Pre-existing system tools are automatically detected. Downloaded tools install to Intra's local directory."
+        )
+        desc.setStyleSheet("font-size: 13px; color: #a6adc8;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        # Scroll area with cards
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(scroll_content)
+        self.scroll_layout.setSpacing(12)
+
+        for tool_key, info in CAPABILITIES.items():
+            card = self._create_card(tool_key, info)
+            self.cards[tool_key] = card
+            self.scroll_layout.addWidget(card["frame"])
+
+        self.scroll_layout.addStretch()
+        scroll.setWidget(scroll_content)
+        layout.addWidget(scroll)
+
+        # Close button
+        btn_box = QDialogButtonBox()
+        close_btn = btn_box.addButton("Close", QDialogButtonBox.RejectRole)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #45475a; color: #cdd6f4;
+                font-weight: bold; padding: 8px 20px;
+                border-radius: 6px; font-size: 13px;
+            }
+            QPushButton:hover { background-color: #585b70; }
+        """)
+        btn_box.rejected.connect(self.accept)
+        layout.addWidget(btn_box)
+
+        # Initial refresh
+        self.refresh_all_statuses()
+
+    def _create_card(self, tool_key: str, info: dict) -> dict:
+        frame = QFrame()
+        frame.setProperty("class", "CapabilityCard")
+        frame.setObjectName(f"Card_{tool_key}")
+
+        v_layout = QVBoxLayout(frame)
+        v_layout.setSpacing(8)
+
+        # Top row: Title and Status Badge
+        top_row = QHBoxLayout()
+        title_label = QLabel(info.get("title", tool_key))
+        title_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #fab387;")
+
+        status_badge = QLabel("Checking...")
+        status_badge.setStyleSheet("font-size: 13px; font-weight: bold;")
+        top_row.addWidget(title_label)
+        top_row.addStretch()
+        top_row.addWidget(status_badge)
+        v_layout.addLayout(top_row)
+
+        # Description
+        desc_label = QLabel(info.get("description", ""))
+        desc_label.setStyleSheet("font-size: 12px; color: #a6adc8;")
+        desc_label.setWordWrap(True)
+        v_layout.addWidget(desc_label)
+
+        # Path label
+        path_label = QLabel("")
+        path_label.setStyleSheet("font-size: 11px; color: #585b70; font-family: monospace;")
+        path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        v_layout.addWidget(path_label)
+
+        # Progress bar
+        pbar = QProgressBar()
+        pbar.setRange(0, 100)
+        pbar.setValue(0)
+        pbar.setVisible(False)
+        v_layout.addWidget(pbar)
+
+        # Action Buttons
+        btn_row = QHBoxLayout()
+        install_btn = QPushButton("📥 Download & Install")
+        install_btn.setProperty("class", "InstallBtn")
+        install_btn.setCursor(Qt.PointingHandCursor)
+        install_btn.clicked.connect(lambda: self.start_install(tool_key))
+
+        uninstall_btn = QPushButton("🗑️ Uninstall")
+        uninstall_btn.setProperty("class", "UninstallBtn")
+        uninstall_btn.setCursor(Qt.PointingHandCursor)
+        uninstall_btn.clicked.connect(lambda: self.start_uninstall(tool_key))
+
+        btn_row.addWidget(install_btn)
+        btn_row.addWidget(uninstall_btn)
+        btn_row.addStretch()
+        v_layout.addLayout(btn_row)
+
+        return {
+            "frame": frame,
+            "status_badge": status_badge,
+            "path_label": path_label,
+            "pbar": pbar,
+            "install_btn": install_btn,
+            "uninstall_btn": uninstall_btn
+        }
+
+    def refresh_all_statuses(self):
+        if not detect_capability:
+            return
+        for tool_key in CAPABILITIES:
+            self.refresh_tool_status(tool_key)
+
+    def refresh_tool_status(self, tool_key: str):
+        card = self.cards.get(tool_key)
+        if not card or not detect_capability:
+            return
+
+        detection = detect_capability(tool_key)
+        installed = detection.get("installed", False)
+        source = detection.get("source", "none")
+        path = detection.get("path")
+        can_uninstall = detection.get("can_uninstall", False)
+
+        if installed:
+            if source == "system":
+                card["status_badge"].setText("🟢 Installed (System)")
+                card["status_badge"].setStyleSheet("color: #a6e3a1; font-weight: bold;")
+                card["install_btn"].setEnabled(False)
+                card["uninstall_btn"].setEnabled(False)
+                card["uninstall_btn"].setToolTip("Cannot uninstall system-wide software via Intra.")
+            else:
+                card["status_badge"].setText("🟢 Installed (Intra Local)")
+                card["status_badge"].setStyleSheet("color: #a6e3a1; font-weight: bold;")
+                card["install_btn"].setEnabled(False)
+                card["uninstall_btn"].setEnabled(True)
+                card["uninstall_btn"].setToolTip("Remove local tool from %LOCALAPPDATA%/IntraServer/bin")
+            card["path_label"].setText(f"Path: {path}")
+            card["path_label"].setVisible(True)
+        else:
+            card["status_badge"].setText("🔴 Not Installed")
+            card["status_badge"].setStyleSheet("color: #f38ba8; font-weight: bold;")
+            card["install_btn"].setEnabled(True)
+            card["uninstall_btn"].setEnabled(False)
+            card["path_label"].setVisible(False)
+
+    def start_install(self, tool_key: str):
+        card = self.cards.get(tool_key)
+        if not card:
+            return
+
+        card["install_btn"].setEnabled(False)
+        card["pbar"].setVisible(True)
+        card["pbar"].setValue(0)
+        card["status_badge"].setText("⏳ Downloading...")
+        card["status_badge"].setStyleSheet("color: #89b4fa; font-weight: bold;")
+
+        worker = CapabilityDownloadWorker(tool_key)
+        worker.progress.connect(lambda pct, msg: self._on_download_progress(tool_key, pct, msg))
+        worker.finished_task.connect(lambda ok, msg: self._on_download_finished(tool_key, ok, msg))
+        self.active_workers[tool_key] = worker
+        worker.start()
+
+    def _on_download_progress(self, tool_key: str, pct: int, msg: str):
+        card = self.cards.get(tool_key)
+        if card:
+            card["pbar"].setValue(pct)
+            card["status_badge"].setText(f"⏳ {pct}%")
+
+    def _on_download_finished(self, tool_key: str, success: bool, msg: str):
+        card = self.cards.get(tool_key)
+        if card:
+            card["pbar"].setVisible(False)
+
+        if success:
+            QMessageBox.information(self, "Success", f"Capability '{tool_key}' installed successfully!")
+        else:
+            QMessageBox.critical(self, "Installation Failed", f"Failed to install '{tool_key}':\n{msg}")
+
+        self.refresh_tool_status(tool_key)
+        if tool_key in self.active_workers:
+            del self.active_workers[tool_key]
+
+    def start_uninstall(self, tool_key: str):
+        reply = QMessageBox.question(
+            self,
+            "Confirm Uninstall",
+            f"Are you sure you want to uninstall '{tool_key}' from Intra local storage?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes and uninstall_local_capability:
+            uninstall_local_capability(tool_key)
+            QMessageBox.information(self, "Removed", f"'{tool_key}' uninstalled successfully from Intra tools.")
+            self.refresh_tool_status(tool_key)
+
+
 class ServerController(QMainWindow):
     def __init__(self):
         super().__init__()
         self.current_admin_key = ""
-        self.server_process = None  # QProcess — Windows pe server ko control karega
+        self.server_process = None  # QProcess
+
+        # Ensure tools directory is in PATH for any backend launches
+        inject_tools_to_path()
 
         self.setWindowTitle("Intra Service Monitor 🖥️ (Windows)")
-        self.resize(800, 580)
+        self.resize(850, 600)
         self.setStyleSheet(STYLESHEET)
 
-        # Icon — pehle systemctlmanger folder mein dhoondho, phir parent (intra_admin) mein
+        # Icon
         icon_path = os.path.join(SCRIPT_DIR, "icon.ico")
         if not os.path.exists(icon_path):
             icon_path = os.path.join(REPO_ROOT, "icon.ico")
@@ -89,7 +384,7 @@ class ServerController(QMainWindow):
         header_layout = QVBoxLayout()
         title = QLabel("Intra Server Manager")
         title.setObjectName("Title")
-        subtitle = QLabel("Windows — Live monitoring & control for IntraChat backend server.")
+        subtitle = QLabel("Windows — Live monitoring, addons & control for IntraChat backend server.")
         subtitle.setObjectName("Subtitle")
         header_layout.addWidget(title)
         header_layout.addWidget(subtitle)
@@ -101,8 +396,8 @@ class ServerController(QMainWindow):
         self.info_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
         layout.addWidget(self.info_box)
 
-        # Key Management Layout
-        copy_admin_layout = QHBoxLayout()
+        # Key Management & Capabilities Layout
+        action_layout = QHBoxLayout()
         self.copy_key_btn = QPushButton("📋 COPY ADMIN KEY")
         self.copy_key_btn.setObjectName("StartBtn")
         self.copy_key_btn.setCursor(Qt.PointingHandCursor)
@@ -113,6 +408,11 @@ class ServerController(QMainWindow):
         self.fix_db_btn.setCursor(Qt.PointingHandCursor)
         self.fix_db_btn.clicked.connect(self.fix_db_location)
 
+        self.capability_btn = QPushButton("🧩 CAPABILITIES / ADDONS")
+        self.capability_btn.setObjectName("CapabilityBtn")
+        self.capability_btn.setCursor(Qt.PointingHandCursor)
+        self.capability_btn.clicked.connect(self.open_capabilities_dialog)
+
         self.open_admin_btn = QPushButton("⚙️ OPEN ADMIN PANEL")
         self.open_admin_btn.setStyleSheet("""
             QPushButton { background-color: #cba6f7; color: #11111b; font-weight: bold; font-size: 16px; padding: 12px; border-radius: 8px; }
@@ -122,10 +422,11 @@ class ServerController(QMainWindow):
         self.open_admin_btn.setCursor(Qt.PointingHandCursor)
         self.open_admin_btn.clicked.connect(self.open_admin_panel)
 
-        copy_admin_layout.addWidget(self.copy_key_btn)
-        copy_admin_layout.addWidget(self.fix_db_btn)
-        copy_admin_layout.addWidget(self.open_admin_btn)
-        layout.addLayout(copy_admin_layout)
+        action_layout.addWidget(self.copy_key_btn)
+        action_layout.addWidget(self.fix_db_btn)
+        action_layout.addWidget(self.capability_btn)
+        action_layout.addWidget(self.open_admin_btn)
+        layout.addLayout(action_layout)
 
         # 3. Start / Stop buttons
         btn_layout = QHBoxLayout()
@@ -154,7 +455,6 @@ class ServerController(QMainWindow):
         layout.addWidget(self.console)
 
         # ================= ENGINE ROOM =================
-        # Timer: har 2 second mein status check (replaces systemctl is-active polling)
         self.status_timer = QTimer(self)
         self.status_timer.timeout.connect(self.check_service_status)
         self.status_timer.start(2000)
@@ -162,6 +462,7 @@ class ServerController(QMainWindow):
         # Initial state
         self.update_info_box("Stopped 🔴")
         self.admin_window = None
+        self.capabilities_dialog = None
         self._log_info("Intra Server Manager started. Click ▶ START SERVER to begin.")
 
     # ─────────────────────────────────────────────────────────────
@@ -181,7 +482,6 @@ class ServerController(QMainWindow):
     def get_admin_password(self):
         last_error = None
 
-        # Priority 0: Persistent Config File
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, 'r') as f:
@@ -198,7 +498,6 @@ class ServerController(QMainWindow):
             except Exception as e:
                 last_error = f"Config Error: {str(e)}"
 
-        # Priority 1: Candidates
         for db_path in DB_CANDIDATES:
             if not os.path.exists(db_path):
                 continue
@@ -227,8 +526,6 @@ class ServerController(QMainWindow):
         )
         status_color = "#a6e3a1" if "Running" in status else "#f38ba8"
         self.copy_key_btn.setEnabled(bool(self.current_admin_key))
-
-        # CONDITIONAL VISIBILITY: Only show Fix DB button if key is NOT found
         self.fix_db_btn.setVisible(not bool(self.current_admin_key))
 
         info_html = f"""
@@ -247,21 +544,17 @@ class ServerController(QMainWindow):
         self.console.append(f"<span style='color: #f38ba8;'>[ERROR] {msg}</span>")
 
     def _log_server(self, msg):
-        """Raw server stdout — white text"""
         self.console.append(f"<span style='color: #cdd6f4;'>{msg}</span>")
         self.console.ensureCursorVisible()
 
     # ─────────────────────────────────────────────────────────────
     # Server Start / Stop
-    # Linux: systemctl start/stop lanserver
-    # Windows: QProcess("python run_server.py")
     # ─────────────────────────────────────────────────────────────
     def start_service(self):
         if self.server_process and self.server_process.state() == QProcess.Running:
             self._log_info("Server pehle se chal raha hai.")
             return
 
-        # Venv Python prefer karo, fallback to system python
         venv_python = os.path.join(BACKEND_DIR, "venv", "Scripts", "python.exe")
         python_exe = venv_python if os.path.exists(venv_python) else sys.executable
 
@@ -271,12 +564,26 @@ class ServerController(QMainWindow):
         self.server_process = QProcess(self)
         self.server_process.setWorkingDirectory(BACKEND_DIR)
 
-        # stdout + stderr dono ek saath console mein aayenge
+        # Inject Intra Tools directory into QProcess environment
+        process_env = QProcess.systemEnvironment()
+        tools_dir = get_intra_tools_dir()
+        updated_env = []
+        path_found = False
+        for entry in process_env:
+            if entry.upper().startswith("PATH="):
+                key, val = entry.split("=", 1)
+                updated_env.append(f"{key}={tools_dir}{os.pathsep}{val}")
+                path_found = True
+            else:
+                updated_env.append(entry)
+        if not path_found:
+            updated_env.append(f"PATH={tools_dir}")
+        self.server_process.setEnvironment(updated_env)
+
         self.server_process.setProcessChannelMode(QProcess.MergedChannels)
         self.server_process.readyReadStandardOutput.connect(self._read_server_logs)
         self.server_process.finished.connect(self._server_stopped)
 
-        # --no-reload: Windows pe hot-reload avoid karo (stable)
         self.server_process.start(python_exe, ["run_server.py", "--no-reload"])
 
         if not self.server_process.waitForStarted(3000):
@@ -292,7 +599,6 @@ class ServerController(QMainWindow):
         if self.server_process and self.server_process.state() == QProcess.Running:
             self._log_info("Server band kar rahe hain...")
             self.server_process.terminate()
-            # 3 second mein nahi ruka toh force kill
             QTimer.singleShot(3000, self._force_kill)
         else:
             self._log_info("Server pehle se band hai.")
@@ -309,10 +615,6 @@ class ServerController(QMainWindow):
         self.update_info_box("Stopped 🔴")
 
     def _read_server_logs(self):
-        """
-        Linux mein: journalctl -f live logs deta tha
-        Windows mein: server process ka stdout/stderr seedha yahan aata hai
-        """
         data = self.server_process.readAllStandardOutput().data()
         try:
             text = data.decode('utf-8', errors='replace')
@@ -323,11 +625,6 @@ class ServerController(QMainWindow):
                 if line.strip():
                     self._log_server(line)
 
-    # ─────────────────────────────────────────────────────────────
-    # Status check
-    # Linux: systemctl is-active lanserver
-    # Windows: QProcess.state() == Running
-    # ─────────────────────────────────────────────────────────────
     def check_service_status(self):
         is_running = (
             self.server_process is not None
@@ -344,8 +641,12 @@ class ServerController(QMainWindow):
                 self.stop_btn.setEnabled(False)
 
     # ─────────────────────────────────────────────────────────────
-    # Admin Key & Panel (Linux version se same — kuch nahi badla)
+    # Actions & Dialogs
     # ─────────────────────────────────────────────────────────────
+    def open_capabilities_dialog(self):
+        self.capabilities_dialog = CapabilitiesDialog(self)
+        self.capabilities_dialog.exec()
+
     def copy_admin_key(self):
         if not self.current_admin_key:
             self._log_info("Admin key abhi available nahi hai.")
@@ -362,7 +663,6 @@ class ServerController(QMainWindow):
             real_key = None
             if custom_db and os.path.exists(custom_db):
                 real_key = self._read_key_from_db(custom_db)
-                # PERSISTENCE: Save the selected path to config file
                 try:
                     with open(CONFIG_FILE, 'w') as f:
                         json.dump({"db_path": custom_db}, f)
@@ -399,7 +699,6 @@ class ServerController(QMainWindow):
             self._log_error(f"Failed to open Admin Panel: {str(e)}")
 
     def _read_key_from_db(self, db_path):
-        """Kisi bhi DB path se admin_key padhta hai"""
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -411,9 +710,6 @@ class ServerController(QMainWindow):
             self._log_error(f"DB read error: {e}")
             return None
 
-    # ─────────────────────────────────────────────────────────────
-    # Close hone pe server bhi band karo
-    # ─────────────────────────────────────────────────────────────
     def closeEvent(self, event):
         if self.server_process and self.server_process.state() == QProcess.Running:
             reply = QMessageBox.question(
@@ -434,7 +730,6 @@ class ServerController(QMainWindow):
 
 # ================= ADMIN UNLOCK DIALOG =================
 class AdminUnlockDialog(QDialog):
-    """DB detect na hone par DB browse karne ya key enter karne ka dialog"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("📂 DB Path & Admin Key")
@@ -459,7 +754,6 @@ class AdminUnlockDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        # Title
         title = QLabel("📂  Database & Admin Key")
         title.setStyleSheet("font-size: 16px; font-weight: bold; color: #cba6f7;")
         layout.addWidget(title)
@@ -472,7 +766,6 @@ class AdminUnlockDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(10)
 
-        # DB path row
         db_row = QHBoxLayout()
         self.db_input = QLineEdit()
         self.db_input.setPlaceholderText("Select chat_users.db file...")
@@ -484,7 +777,6 @@ class AdminUnlockDialog(QDialog):
         db_row.addWidget(browse_btn)
         form.addRow("DB File:", db_row)
 
-        # Code input
         self.code_input = QLineEdit()
         self.code_input.setEchoMode(QLineEdit.Password)
         self.code_input.setPlaceholderText("Admin key daalo (optional)")
@@ -492,7 +784,6 @@ class AdminUnlockDialog(QDialog):
 
         layout.addLayout(form)
 
-        # Buttons
         btn_box = QDialogButtonBox()
         unlock_btn = btn_box.addButton("Update Key", QDialogButtonBox.AcceptRole)
         cancel_btn = btn_box.addButton("Cancel", QDialogButtonBox.RejectRole)
@@ -500,7 +791,6 @@ class AdminUnlockDialog(QDialog):
         btn_box.rejected.connect(self.reject)
         layout.addWidget(btn_box)
 
-        # Enter key se bhi unlock ho
         self.code_input.returnPressed.connect(self.accept)
         self.db_input.returnPressed.connect(self.accept)
 
