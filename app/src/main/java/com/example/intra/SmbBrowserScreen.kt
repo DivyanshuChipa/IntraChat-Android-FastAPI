@@ -423,8 +423,10 @@ fun SmbBrowserScreen(
 
     val colorScheme = MaterialTheme.colorScheme
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val topBarColor = if (isDark) colorScheme.primaryContainer else Color(0xFF6741A8)
-    val topBarTextColor = if (isDark) colorScheme.onPrimaryContainer else Color.White
+    // 🎨 Clean Material 3 TopBar (Matching ContactListScreen / WhatsApp style)
+    val topBarColor = colorScheme.surface
+    val topBarBrandColor = if (isDark) colorScheme.primary else Color(0xFF6741A8)
+    val topBarIconColor = if (isDark) colorScheme.onSurface else Color(0xFF6741A8)
 
     val gradient = Brush.verticalGradient(
         colors = listOf(
@@ -455,8 +457,8 @@ fun SmbBrowserScreen(
                                         if (state.currentPath.isEmpty()) state.shareName else state.currentPath.substringAfterLast("/")
                                     }
                                 },
-                                color = topBarTextColor,
-                                fontWeight = FontWeight.SemiBold,
+                                color = topBarBrandColor,
+                                fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -483,7 +485,7 @@ fun SmbBrowserScreen(
                                     Icon(
                                         imageVector = Icons.Filled.NearMe,
                                         contentDescription = "WebDrop",
-                                        tint = topBarTextColor
+                                        tint = topBarIconColor
                                     )
                                 }
                                 // 2. IntraDrive (Network Storage / WebDAV)
@@ -494,7 +496,7 @@ fun SmbBrowserScreen(
                                     Icon(
                                         imageVector = Icons.Filled.FolderShared,
                                         contentDescription = "IntraDrive",
-                                        tint = topBarTextColor
+                                        tint = topBarIconColor
                                     )
                                 }
                                 // 3. FTP / Network Protocol (Future placeholder / toast)
@@ -505,7 +507,7 @@ fun SmbBrowserScreen(
                                     Icon(
                                         imageVector = Icons.Filled.CloudQueue,
                                         contentDescription = "FTP & Cloud",
-                                        tint = topBarTextColor
+                                        tint = topBarIconColor
                                     )
                                 }
                             }
@@ -514,7 +516,7 @@ fun SmbBrowserScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { handleBackPress() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = topBarTextColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = topBarIconColor)
                     }
                 },
                 actions = {
@@ -522,7 +524,7 @@ fun SmbBrowserScreen(
                         Icon(
                             imageVector = if (isHubExpanded) Icons.Filled.Clear else Icons.Filled.Apps,
                             contentDescription = "Toggle Hub",
-                            tint = topBarTextColor
+                            tint = topBarIconColor
                         )
                     }
                 },

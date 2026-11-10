@@ -249,33 +249,36 @@ fun IptvScreen(onBack: () -> Unit) {
     // NORMAL PORTRAIT SCREEN
     // ----------------------------------------------------
     val isDark = isSystemInDarkTheme()
-    val topBarColor = if (isDark) MaterialTheme.colorScheme.primaryContainer else Color(0xFF6741A8)
-    val topBarTextColor = if (isDark) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
+    // 🎨 Clean Material 3 TopBar (Matching ContactListScreen / WhatsApp style)
+    val topBarColor = MaterialTheme.colorScheme.surface
+    val topBarBrandColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF6741A8)
+    val topBarIconColor = if (isDark) MaterialTheme.colorScheme.onSurface else Color(0xFF6741A8)
+    val topBarSubtextColor = if (isDark) MaterialTheme.colorScheme.onSurfaceVariant else Color.Gray
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Intra TV", color = topBarTextColor, fontWeight = FontWeight.Bold)
+                        Text("Intra TV", color = topBarBrandColor, fontWeight = FontWeight.Bold, fontSize = 19.sp)
                         Text(
                             text = if (channels.isNotEmpty()) "${channels.size} Free Channels Available" else "Live IPTV Hub",
                             fontSize = 12.sp,
-                            color = topBarTextColor.copy(alpha = 0.75f)
+                            color = topBarSubtextColor
                         )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = topBarTextColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = topBarIconColor)
                     }
                 },
                 actions = {
                     IconButton(onClick = { refreshPlaylist(force = true) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Playlist", tint = topBarTextColor)
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Playlist", tint = topBarIconColor)
                     }
                     IconButton(onClick = { showUrlDialog = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Playlist Settings", tint = topBarTextColor)
+                        Icon(Icons.Default.Settings, contentDescription = "Playlist Settings", tint = topBarIconColor)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = topBarColor)

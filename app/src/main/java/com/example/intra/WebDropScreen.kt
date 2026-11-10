@@ -65,8 +65,11 @@ fun WebDropScreen(
 
     val isDark = isSystemInDarkTheme()
     val colorScheme = MaterialTheme.colorScheme
-    val topBarColor = if (isDark) colorScheme.primaryContainer else Color(0xFF6741A8)
-    val topBarTextColor = if (isDark) colorScheme.onPrimaryContainer else Color.White
+    // 🎨 Clean Material 3 TopBar (Matching ContactListScreen / WhatsApp style)
+    val topBarColor = colorScheme.surface
+    val topBarBrandColor = if (isDark) colorScheme.primary else Color(0xFF6741A8)
+    val topBarIconColor = if (isDark) colorScheme.onSurface else Color(0xFF6741A8)
+    val topBarSubtextColor = if (isDark) colorScheme.onSurfaceVariant else Color.Gray
 
     // Tabs: 0 -> Files, 1 -> LAN Clipboard
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -376,8 +379,8 @@ fun WebDropScreen(
                         Text(
                             text = "Intra WebDrop",
                             fontWeight = FontWeight.Bold,
-                            color = topBarTextColor,
-                            fontSize = 18.sp
+                            color = topBarBrandColor,
+                            fontSize = 19.sp
                         )
                         Text(
                             text = if (selectedTab == 0) {
@@ -386,7 +389,7 @@ fun WebDropScreen(
                                 if (texts.isNotEmpty()) "${texts.size} shared clipboard snippet(s)" else "Instant LAN Clipboard"
                             },
                             fontSize = 12.sp,
-                            color = topBarTextColor.copy(alpha = 0.8f)
+                            color = topBarSubtextColor
                         )
                     }
                 },
@@ -395,7 +398,7 @@ fun WebDropScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = topBarTextColor
+                            tint = topBarIconColor
                         )
                     }
                 },
@@ -406,7 +409,7 @@ fun WebDropScreen(
                             Icon(
                                 imageVector = Icons.Filled.DeleteSweep,
                                 contentDescription = "Clear All Snippets",
-                                tint = topBarTextColor
+                                tint = topBarIconColor
                             )
                         }
                     }
@@ -415,7 +418,7 @@ fun WebDropScreen(
                         Icon(
                             imageVector = Icons.Filled.Refresh,
                             contentDescription = "Refresh",
-                            tint = topBarTextColor
+                            tint = topBarIconColor
                         )
                     }
                     // QR Code / Share Dialog Button
@@ -423,7 +426,7 @@ fun WebDropScreen(
                         Icon(
                             imageVector = Icons.Filled.QrCode,
                             contentDescription = "Scan to Open WebDrop",
-                            tint = topBarTextColor
+                            tint = topBarIconColor
                         )
                     }
                 },

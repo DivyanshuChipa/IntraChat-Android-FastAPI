@@ -35,16 +35,23 @@ fun IntraHomeScreen(
         )
     )
 
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val colorScheme = MaterialTheme.colorScheme
+    // 🎨 Clean Material 3 TopBar (Matching ContactListScreen / WhatsApp style)
+    val topBarColor = colorScheme.surface
+    val topBarBrandColor = if (isDark) colorScheme.primary else Color(0xFF6741A8)
+    val topBarIconColor = if (isDark) colorScheme.onSurface else Color(0xFF6741A8)
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Intra Home (IoT Control)", color = Color.White, fontWeight = FontWeight.SemiBold) },
+                title = { Text("Intra Home (IoT Control)", color = topBarBrandColor, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = topBarIconColor)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF6741A8))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = topBarColor)
             )
         }
     ) { padding ->
