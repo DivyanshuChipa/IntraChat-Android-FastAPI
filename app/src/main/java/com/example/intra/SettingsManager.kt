@@ -24,6 +24,7 @@ class SettingsManager(context: Context) {
         const val KEY_INTRADRIVE_ENABLED = "intradrive_hub_enabled" // 🗄️ IntraDrive KEY
         const val KEY_LEFT_HAND_MODE = "left_hand_mode_enabled" // 🖐️ Left-Handed Mode KEY
         const val KEY_THUMB_ARC_KNOB_ENABLED = "thumb_arc_knob_enabled" // 🎛️ Thumb Arc Knob KEY
+        const val KEY_CORNER_JOG_DIAL_ENABLED = "corner_jog_dial_enabled" // 🎛️ Corner Jog Dial KEY
     }
 
     // --- EXISTING AUTH METHODS ---
@@ -155,5 +156,14 @@ class SettingsManager(context: Context) {
 
     fun setThumbArcKnobEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_THUMB_ARC_KNOB_ENABLED, enabled).apply()
+    }
+
+    // 🎛️ CORNER JOG DIAL (EXPERIMENTAL)
+    fun isCornerJogDialEnabled(): Boolean {
+        return prefs.getBoolean(KEY_CORNER_JOG_DIAL_ENABLED, false) // Default OFF
+    }
+
+    fun setCornerJogDialEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CORNER_JOG_DIAL_ENABLED, enabled).apply()
     }
 }

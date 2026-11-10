@@ -181,6 +181,9 @@ fun SettingsScreen(
     // 🎛️ THUMB ARC KNOB STATE
     var isThumbArcKnobEnabled by remember { mutableStateOf(settingsManager.isThumbArcKnobEnabled()) }
 
+    // 🎛️ CORNER JOG DIAL STATE
+    var isCornerJogDialEnabled by remember { mutableStateOf(settingsManager.isCornerJogDialEnabled()) }
+
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var expandedSection by remember { mutableStateOf(SettingsSection.NONE) }
@@ -684,6 +687,50 @@ fun SettingsScreen(
                         onCheckedChange = { enabled ->
                             isThumbArcKnobEnabled = enabled
                             settingsManager.setThumbArcKnobEnabled(enabled)
+                        }
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+
+                // 🎛️ CORNER JOG DIAL TOGGLE (EXPERIMENTAL)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Corner Jog Dial", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    "EXPERIMENTAL",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Text(
+                            "Rotary corner dial with continuous rail — slide & release thumb to launch tools.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isCornerJogDialEnabled,
+                        onCheckedChange = { enabled ->
+                            isCornerJogDialEnabled = enabled
+                            settingsManager.setCornerJogDialEnabled(enabled)
                         }
                     )
                 }

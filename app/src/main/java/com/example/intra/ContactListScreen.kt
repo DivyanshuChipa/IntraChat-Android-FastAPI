@@ -56,6 +56,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.activity.compose.BackHandler
 
@@ -81,6 +83,7 @@ fun ContactListScreen(
     var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
     var isLeftHandMode by remember { mutableStateOf(settingsManager.isLeftHandModeEnabled()) }
     var isThumbArcKnobEnabled by remember { mutableStateOf(settingsManager.isThumbArcKnobEnabled()) }
+    var isCornerJogDialEnabled by remember { mutableStateOf(settingsManager.isCornerJogDialEnabled()) }
     var selectedHubIndex by remember { mutableIntStateOf(0) }
 
     // State for Profile Dialog & Hub Dialogs
@@ -107,6 +110,7 @@ fun ContactListScreen(
         isDriveEnabled = settingsManager.isIntraDriveEnabled()
         isLeftHandMode = settingsManager.isLeftHandModeEnabled()
         isThumbArcKnobEnabled = settingsManager.isThumbArcKnobEnabled()
+        isCornerJogDialEnabled = settingsManager.isCornerJogDialEnabled()
     }
 
     // 🎛️ Dynamically build Hub tools list for Arc Knob & TopBar
@@ -196,8 +200,56 @@ fun ContactListScreen(
                             enter = if (isLeftHandMode) (slideInHorizontally(initialOffsetX = { -it }) + fadeIn()) else (slideInHorizontally(initialOffsetX = { it }) + fadeIn()),
                             exit = if (isLeftHandMode) (slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()) else (slideOutHorizontally(targetOffsetX = { it }) + fadeOut())
                         ) {
-                            if (isThumbArcKnobEnabled) {
-                                // 🎛️ EXPERIMENTAL: Active Item Pill synchronized with Bottom Arc Knob
+                            if (isCornerJogDialEnabled) {
+                                // 🎛️ EXPERIMENTAL 2: Concentric Halo HUD matching Ibis Paint Concept Art
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    hubItems.forEachIndexed { index, item ->
+                                        val isSelected = index == selectedHubIndex
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isSelected) topBarBrandColor.copy(alpha = 0.15f) else Color.Transparent)
+                                                .border(
+                                                    width = if (isSelected) 2.5.dp else 0.dp,
+                                                    color = if (isSelected) topBarBrandColor else Color.Transparent,
+                                                    shape = CircleShape
+                                                )
+                                                .clickable {
+                                                    isHubExpanded = false
+                                                    item.onClick()
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isSelected) {
+                                                // Outer soft halo ring
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .border(
+                                                            width = 1.dp,
+                                                            color = topBarBrandColor.copy(alpha = 0.40f),
+                                                            shape = CircleShape
+                                                        )
+                                                )
+                                            }
+                                            Icon(
+                                                imageVector = item.icon,
+                                                contentDescription = item.title,
+                                                tint = if (isSelected) topBarBrandColor else topBarIconColor.copy(alpha = 0.65f),
+                                                modifier = Modifier.size(if (isSelected) 22.dp else 20.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (isThumbArcKnobEnabled) {
+                                // 🎛️ EXPERIMENTAL 1: Active Item Pill synchronized with Bottom Arc Knob
                                 val activeItem = hubItems.getOrElse(selectedHubIndex.coerceIn(0, hubItems.size - 1)) { hubItems[0] }
                                 Row(
                                     modifier = Modifier
@@ -436,7 +488,7 @@ fun ContactListScreen(
             }
             }
 
-            // 🎛️ EXPERIMENTAL: Hub Remote Thumb Arc Knob Overlay
+            // 🎛️ EXPERIMENTAL 1: Hub Remote Thumb Arc Knob Overlay
             AnimatedVisibility(
                 visible = isHubExpanded && isThumbArcKnobEnabled,
                 enter = fadeIn() + scaleIn(initialScale = 0.85f),
@@ -450,6 +502,38 @@ fun ContactListScreen(
                     )
             ) {
                 HubRemoteDial(
+                    items = hubItems,
+                    selectedIndex = selectedHubIndex,
+                    onIndexChange = { selectedHubIndex = it },
+                    onLaunch = { item ->
+                        isHubExpanded = false
+                        item.onClick()
+                    },
+                    onDismiss = { isHubExpanded = false },
+                    isLeftHandMode = isLeftHandMode
+                )
+            }
+
+            // 🎛️ EXPERIMENTAL 2: Corner Jog Dial (Ibis Paint Concept)
+            // Idle FAB in corner when closed
+            if (isCornerJogDialEnabled && !isHubExpanded) {
+                CornerJogDialFab(
+                    onClick = { isHubExpanded = true },
+                    isLeftHandMode = isLeftHandMode,
+                    modifier = Modifier.padding(bottom = if (IntraAudioPlayerManager.currentTrack != null) 60.dp else 0.dp)
+                )
+            }
+
+            // Expanded Jog Dial Wheel
+            AnimatedVisibility(
+                visible = isHubExpanded && isCornerJogDialEnabled,
+                enter = fadeIn() + scaleIn(initialScale = 0.35f, transformOrigin = TransformOrigin(if (isLeftHandMode) 0f else 1f, 1f)),
+                exit = fadeOut() + scaleOut(targetScale = 0.35f, transformOrigin = TransformOrigin(if (isLeftHandMode) 0f else 1f, 1f)),
+                modifier = Modifier
+                    .align(if (isLeftHandMode) Alignment.BottomStart else Alignment.BottomEnd)
+                    .padding(bottom = if (IntraAudioPlayerManager.currentTrack != null) 60.dp else 0.dp)
+            ) {
+                CornerJogDial(
                     items = hubItems,
                     selectedIndex = selectedHubIndex,
                     onIndexChange = { selectedHubIndex = it },
