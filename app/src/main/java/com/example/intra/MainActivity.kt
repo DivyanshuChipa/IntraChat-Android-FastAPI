@@ -24,6 +24,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -97,6 +102,23 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             IntraTheme {
+                // 🎨 Unified Root Status Bar (Prevents black flicker across transitions)
+                val isDark = isSystemInDarkTheme()
+                val surfaceColor = MaterialTheme.colorScheme.surface
+                val view = LocalView.current
+                if (!view.isInEditMode) {
+                    SideEffect {
+                        val window = (view.context as android.app.Activity).window
+                        val insetsController = WindowCompat.getInsetsController(window, view)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            window.statusBarColor = surfaceColor.toArgb()
+                            insetsController.isAppearanceLightStatusBars = !isDark
+                        } else {
+                            window.statusBarColor = if (isDark) surfaceColor.toArgb() else Color(0xFF6741A8).toArgb()
+                        }
+                    }
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

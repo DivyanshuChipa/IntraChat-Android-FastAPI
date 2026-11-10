@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import android.os.Build
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -130,16 +131,23 @@ fun ContactListScreen(
     val isDark = isSystemInDarkTheme()
     val colorScheme = MaterialTheme.colorScheme
 
-    val topBarColor = if (isDark) colorScheme.primaryContainer else Color(0xFF6741A8)
-    val topBarTextColor = if (isDark) colorScheme.onPrimaryContainer else Color.White
+    // 🎨 Clean Material 3 TopBar (WhatsApp Style - Zero status bar flicker)
+    val topBarColor = colorScheme.surface
+    val topBarBrandColor = if (isDark) colorScheme.primary else Color(0xFF6741A8)
+    val topBarIconColor = if (isDark) colorScheme.onSurface else Color(0xFF6741A8)
 
-    // Set Status Bar Color
+    // Set Status Bar Color matching surface
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as android.app.Activity).window
-            window.statusBarColor = topBarColor.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false // Always white icons
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                window.statusBarColor = topBarColor.toArgb()
+                insetsController.isAppearanceLightStatusBars = !isDark
+            } else {
+                window.statusBarColor = if (isDark) topBarColor.toArgb() else Color(0xFF6741A8).toArgb()
+            }
         }
     }
 
@@ -153,7 +161,7 @@ fun ContactListScreen(
                     Icon(
                         imageVector = if (isHubExpanded) Icons.Filled.Clear else Icons.Filled.Apps,
                         contentDescription = "Toggle Hub",
-                        tint = topBarTextColor
+                        tint = topBarIconColor
                     )
                 }
             }
@@ -176,8 +184,9 @@ fun ContactListScreen(
                         ) {
                             Text(
                                 "Intra Chats",
-                                color = topBarTextColor,
-                                fontWeight = FontWeight.SemiBold,
+                                color = topBarBrandColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 21.sp,
                                 modifier = if (isLeftHandMode) Modifier.padding(end = 12.dp) else Modifier
                             )
                         }
@@ -194,7 +203,7 @@ fun ContactListScreen(
                                     modifier = Modifier
                                         .padding(horizontal = 8.dp)
                                         .clip(RoundedCornerShape(20.dp))
-                                        .background(topBarTextColor.copy(alpha = 0.18f))
+                                        .background(topBarBrandColor.copy(alpha = 0.12f))
                                         .clickable {
                                             isHubExpanded = false
                                             activeItem.onClick()
@@ -206,12 +215,12 @@ fun ContactListScreen(
                                     Icon(
                                         imageVector = activeItem.icon,
                                         contentDescription = activeItem.title,
-                                        tint = topBarTextColor,
+                                        tint = topBarBrandColor,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Text(
                                         text = activeItem.title,
-                                        color = topBarTextColor,
+                                        color = topBarBrandColor,
                                         fontWeight = FontWeight.Bold,
                                         style = MaterialTheme.typography.titleMedium
                                     )
@@ -235,7 +244,7 @@ fun ContactListScreen(
                                             Icon(
                                                 imageVector = Icons.Filled.Tv,
                                                 contentDescription = "Live TV",
-                                                tint = topBarTextColor
+                                                tint = topBarIconColor
                                             )
                                         }
                                     }
@@ -247,7 +256,7 @@ fun ContactListScreen(
                                         Icon(
                                             imageVector = Icons.Filled.NearMe,
                                             contentDescription = "WebDrop",
-                                            tint = topBarTextColor
+                                            tint = topBarIconColor
                                         )
                                     }
                                     // 3. IntraDrive (Network Storage / WebDAV)
@@ -259,7 +268,7 @@ fun ContactListScreen(
                                             Icon(
                                                 imageVector = Icons.Filled.FolderShared,
                                                 contentDescription = "IntraDrive",
-                                                tint = topBarTextColor
+                                                tint = topBarIconColor
                                             )
                                         }
                                     }
@@ -268,21 +277,21 @@ fun ContactListScreen(
                                         isHubExpanded = false
                                         onSmbClick()
                                     }) {
-                                        Icon(Icons.Filled.Storage, contentDescription = "SMB Network", tint = topBarTextColor)
+                                        Icon(Icons.Filled.Storage, contentDescription = "SMB Network", tint = topBarIconColor)
                                     }
                                     // 5. Smart Home Icon
                                     IconButton(onClick = {
                                         isHubExpanded = false
                                         onIntraHomeClick()
                                     }) {
-                                        Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarTextColor)
+                                        Icon(Icons.Filled.Home, contentDescription = "Intra Home", tint = topBarIconColor)
                                     }
                                     // 6. Settings Icon
                                     IconButton(onClick = {
                                         isHubExpanded = false
                                         onSettingsClick()
                                     }) {
-                                        Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = topBarTextColor)
+                                        Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = topBarIconColor)
                                     }
                                 }
                             }

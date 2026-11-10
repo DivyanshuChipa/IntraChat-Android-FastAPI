@@ -183,6 +183,7 @@ fun SettingsScreen(
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var expandedSection by remember { mutableStateOf(SettingsSection.NONE) }
 
     // 🔙 System Back Button / Edge Swipe Gesture Handler
     BackHandler {
@@ -197,8 +198,6 @@ fun SettingsScreen(
     var savedPhotoUrl by remember { mutableStateOf(settingsManager.getMyPhoto()) }
     var uploadedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     val username = settingsManager.getUsername() ?: "User"
-
-    var expandedSection by remember { mutableStateOf(SettingsSection.NONE) }
 
     // 🔥 SHAKE ANIMATION STATE
     val deleteButtonOffset = remember { Animatable(0f) }
