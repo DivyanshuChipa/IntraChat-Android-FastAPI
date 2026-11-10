@@ -37,7 +37,7 @@ import kotlin.math.sqrt
  *
  * Inspired by tactile jog wheels and the Ibis Paint concept art:
  * - Concentric purple/lavender quarter-circle layers anchored in the phone's corner.
- * - Continuous smooth white rail: dynamically divides itself across any number of tools.
+ * - Continuous smooth white rail with weighted tactile snap.
  * - Fluid Gesture: Slide thumb along rail ➔ release thumb = instant tool launch!
  * - Moving thumb back into the corner "X" cancels without launching.
  */
@@ -56,28 +56,36 @@ fun CornerJogDial(
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
 
-    // Colors matching Intra theme & the concept mockup
+    // Always-updated references to avoid closure capture bugs
+    val currentItems by rememberUpdatedState(items)
+    val currentOnLaunch by rememberUpdatedState(onLaunch)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val currentOnIndexChange by rememberUpdatedState(onIndexChange)
+
+    // Local tracked active index
+    var activeIndex by remember { mutableIntStateOf(selectedIndex.coerceIn(0, items.size - 1)) }
+    var isInCancelZone by remember { mutableStateOf(false) }
+
+    // Keep activeIndex synchronized if parent changes it
+    LaunchedEffect(selectedIndex) {
+        activeIndex = selectedIndex.coerceIn(0, items.size - 1)
+    }
+
+    // Colors matching Intra theme & concept mockup
     val primaryColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF6741A8)
     val outerLavenderColor = if (isDark) Color(0xFF7E57C2).copy(alpha = 0.35f) else Color(0xFFD1C4E9).copy(alpha = 0.65f)
     val midPurpleColor = if (isDark) Color(0xFF512DA8) else Color(0xFF7E57C2)
 
-    // Current angle fraction [0f, 1f]
-    var currentFraction by remember {
-        mutableFloatStateOf(
-            if (items.size > 1) selectedIndex.toFloat() / (items.size - 1) else 0.5f
-        )
-    }
+    // Calculate snapped bead target fraction (centers the bead on each tool's wedge)
+    val targetFraction = if (items.isNotEmpty()) {
+        (activeIndex + 0.5f) / items.size
+    } else 0.5f
 
-    // Keep fraction updated if selectedIndex changes externally
-    LaunchedEffect(selectedIndex, items.size) {
-        val target = if (items.size > 1) selectedIndex.toFloat() / (items.size - 1) else 0.5f
-        currentFraction = target
-    }
-
+    // Spring animation for bead: weighted, tactile gear-click feel!
     val animatedFraction by animateFloatAsState(
-        targetValue = currentFraction.coerceIn(0f, 1f),
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
-        label = "JogDialFraction"
+        targetValue = targetFraction.coerceIn(0f, 1f),
+        animationSpec = spring(dampingRatio = 0.70f, stiffness = 550f),
+        label = "JogDialBeadSnap"
     )
 
     val dialSize = 240.dp
@@ -97,18 +105,35 @@ fun CornerJogDial(
                     // If tapped inside close core (radius < 55dp)
                     if (dist < 55.dp.toPx()) {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onDismiss()
+                        currentOnDismiss()
                     } else {
-                        // Tapped along the wheel: launch currently focused tool
-                        val activeItem = items.getOrElse(selectedIndex.coerceIn(0, items.size - 1)) { items[0] }
+                        // Tapped along the wheel: calculate touched item and launch
+                        val rad = atan2(dy, dx)
+                        val deg = Math.toDegrees(rad.toDouble()).toFloat()
+
+                        val fraction = if (!isLeftHandMode) {
+                            ((deg - (-172f)) / 74f).coerceIn(0f, 1f)
+                        } else {
+                            ((-deg - 8f) / 74f).coerceIn(0f, 1f)
+                        }
+
+                        val tappedIdx = (fraction * currentItems.size).toInt().coerceIn(0, currentItems.size - 1)
+                        val tool = currentItems[tappedIdx]
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onLaunch(activeItem)
+                        currentOnLaunch(tool)
                     }
                 }
             }
             .pointerInput(items.size, isLeftHandMode) {
                 detectDragGestures(
-                    onDragStart = { _ -> },
+                    onDragStart = { offset ->
+                        val cornerX = if (isLeftHandMode) 0f else size.width.toFloat()
+                        val cornerY = size.height.toFloat()
+                        val dx = offset.x - cornerX
+                        val dy = offset.y - cornerY
+                        val dist = sqrt(dx * dx + dy * dy)
+                        isInCancelZone = dist < 55.dp.toPx()
+                    },
                     onDrag = { change, _ ->
                         change.consume()
                         val cornerX = if (isLeftHandMode) 0f else size.width.toFloat()
@@ -116,33 +141,52 @@ fun CornerJogDial(
 
                         val dx = change.position.x - cornerX
                         val dy = change.position.y - cornerY
+                        val dist = sqrt(dx * dx + dy * dy)
 
-                        // Calculate angle in radians, convert to degrees
-                        val rad = atan2(dy, dx)
-                        var deg = Math.toDegrees(rad.toDouble()).toFloat() // typically -180 to 0
-
-                        val fraction: Float = if (!isLeftHandMode) {
-                            // Right Hand Mode: from -180° (left) to -90° (top)
-                            ((deg + 180f) / 90f).coerceIn(0f, 1f)
+                        // Check if thumb slipped into the cancel core
+                        if (dist < 55.dp.toPx()) {
+                            if (!isInCancelZone) {
+                                isInCancelZone = true
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                            return@detectDragGestures
                         } else {
-                            // Left Hand Mode: from 0° (right) to -90° (top)
-                            ((-deg) / 90f).coerceIn(0f, 1f)
+                            isInCancelZone = false
                         }
 
-                        currentFraction = fraction
-                        val newIdx = (fraction * items.size).toInt().coerceIn(0, items.size - 1)
-                        if (newIdx != selectedIndex) {
+                        // Calculate angle in radians, convert to degrees (-180° to 0°)
+                        val rad = atan2(dy, dx)
+                        val deg = Math.toDegrees(rad.toDouble()).toFloat()
+
+                        // Calibrated comfortable thumb sweep arc (~74° span)
+                        // Prevents awkward edge cramping and stabilizes sensitivity!
+                        val fraction: Float = if (!isLeftHandMode) {
+                            // Right Hand Mode: from -172° (left) to -98° (top)
+                            ((deg - (-172f)) / 74f).coerceIn(0f, 1f)
+                        } else {
+                            // Left Hand Mode: from -8° (right) to -82° (top)
+                            ((-deg - 8f) / 74f).coerceIn(0f, 1f)
+                        }
+
+                        // Quantized indexing with snap
+                        val newIdx = (fraction * currentItems.size).toInt().coerceIn(0, currentItems.size - 1)
+                        if (newIdx != activeIndex) {
+                            activeIndex = newIdx
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onIndexChange(newIdx)
+                            currentOnIndexChange(newIdx)
                         }
                     },
                     onDragEnd = {
-                        // 🚀 FLUID LAUNCH: Release thumb to launch!
-                        val activeItem = items.getOrElse(selectedIndex.coerceIn(0, items.size - 1)) { items[0] }
-                        onLaunch(activeItem)
+                        // 🚀 FLUID LAUNCH: Release thumb to launch the exact active tool!
+                        if (isInCancelZone) {
+                            currentOnDismiss()
+                        } else {
+                            val activeTool = currentItems.getOrElse(activeIndex.coerceIn(0, currentItems.size - 1)) { currentItems[0] }
+                            currentOnLaunch(activeTool)
+                        }
                     },
                     onDragCancel = {
-                        onDismiss()
+                        currentOnDismiss()
                     }
                 )
             }
@@ -150,13 +194,11 @@ fun CornerJogDial(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val cornerX = if (isLeftHandMode) 0f else size.width
             val cornerY = size.height
-            val corner = Offset(cornerX, cornerY)
 
             // Radius layers matching Ibis Paint concept
             val rOuter = 230.dp.toPx()
             val rMid = 185.dp.toPx()
             val rRail = 135.dp.toPx()
-            val rInner = 60.dp.toPx()
 
             // 1. Outer Translucent Lavender/Purple Ring Arc
             val outerStartAngle = if (isLeftHandMode) 270f else 180f
@@ -192,7 +234,8 @@ fun CornerJogDial(
                 style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round)
             )
 
-            // 4. Indicator Bead on the Rail (Follows thumb sweep angle)
+            // 4. Tactile Indicator Bead on the Rail
+            // Maps the calibrated sweep angle so bead sits squarely on the rail
             val beadAngleDeg: Float = if (!isLeftHandMode) {
                 180f + animatedFraction * 90f
             } else {
@@ -204,15 +247,15 @@ fun CornerJogDial(
 
             // Bead Outer Glow Halo
             drawCircle(
-                color = Color.White.copy(alpha = 0.35f),
-                radius = 12.dp.toPx(),
+                color = if (isInCancelZone) Color.Red.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.35f),
+                radius = 13.dp.toPx(),
                 center = Offset(beadX, beadY)
             )
 
             // Bead Solid Core
             drawCircle(
-                color = Color.White,
-                radius = 7.dp.toPx(),
+                color = if (isInCancelZone) Color.Red else Color.White,
+                radius = 7.5.dp.toPx(),
                 center = Offset(beadX, beadY)
             )
         }
@@ -224,7 +267,7 @@ fun CornerJogDial(
                 .align(closeAlignment)
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(primaryColor),
+                .background(if (isInCancelZone) Color(0xFFD32F2F) else primaryColor),
             contentAlignment = Alignment.Center
         ) {
             Icon(
