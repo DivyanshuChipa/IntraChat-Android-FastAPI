@@ -52,11 +52,55 @@ def prune_chat_history(history: list, max_assistant_words: int = 40) -> list:
     return pruned
 
 
+def detect_ai_provider(raw_url: str, provider_setting: str = "auto") -> str:
+    """
+    Determines whether to use Ollama or llama.cpp (OpenAI compatible) based on
+    explicit setting or URL structure.
+    """
+    clean_setting = (provider_setting or "auto").strip().lower()
+    if clean_setting in ("ollama", "llamacpp"):
+        return clean_setting
+
+    clean_url = (raw_url or "").lower().strip()
+    if ":8080" in clean_url or "/v1" in clean_url:
+        return "llamacpp"
+    return "ollama"
+
+
+def build_llamacpp_messages(messages: list) -> list:
+    """
+    Converts internal messages (with optional Ollama 'images' list)
+    to OpenAI/llama.cpp multimodal messages format.
+    """
+    llamacpp_msgs = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        images = msg.get("images", [])
+
+        if images:
+            content_list = [{"type": "text", "text": content}]
+            for b64 in images:
+                content_list.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{b64}"
+                    }
+                })
+            llamacpp_msgs.append({"role": role, "content": content_list})
+        else:
+            llamacpp_msgs.append({"role": role, "content": content})
+    return llamacpp_msgs
+
+
 def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User", image_path: str = None, user_facts: list = None, is_voice_mode: bool = False, custom_system_prompt: str = None):
     if not config.get("ai_enabled", False):
         return "🤖 AI processing is currently disabled by the Admin."
 
-    url = config.get("ollama_url", "http://localhost:11434")
+    raw_url = config.get("ollama_url", "http://localhost:11434")
+    url = raw_url.rstrip("/")
+    provider_setting = config.get("ai_provider", "auto")
+    provider = detect_ai_provider(url, provider_setting)
 
     # 👁️ VISION OVERRIDE: Agar image hai, toh vision model ko hi main model bana do!
     if image_path:
@@ -74,7 +118,7 @@ def ask_ai(prompt: str, config: dict, history: list = None, sender: str = "User"
 User: {sender}"""
 
         if is_voice_mode:
-            system_prompt += f"\n[VOICE CALL ACTIVE]: Reply in 1-2 short sentences without emojis or markdown."
+            system_prompt += "\n[VOICE CALL ACTIVE]: Reply in 1-2 short sentences without emojis or markdown."
 
         # 🧠 COGNITIVE AMYGDALA FACTS INJECTION (Concise bullet points)
         if user_facts:
@@ -113,7 +157,7 @@ User: {sender}"""
             with open(image_path, "rb") as img_file:
                 base64_string = base64.b64encode(img_file.read()).decode('utf-8')
                 user_message["images"] = [base64_string]
-                print(f"👁️ [VISION] Image successfully attached for Ollama!")
+                print(f"👁️ [VISION] Image successfully attached ({provider.upper()})!")
         except Exception as e:
             print(f"❌ [VISION ERROR] Could not read image: {e}")
 
@@ -122,30 +166,48 @@ User: {sender}"""
     def make_request(target_model, is_fallback=False):
         print("\n" + "="*50)
         mode_text = "(FALLBACK MODE)" if is_fallback else "(MAIN MODE)"
-        print(f"🤖 [LUMIR DEBUG] SENDING TO OLLAMA MODEL: {target_model} {mode_text}")
+        print(f"🤖 [LUMIR DEBUG] SENDING TO {provider.upper()} MODEL: {target_model} {mode_text}")
         print(f"👤 USER: {sender}")
 
         if not is_fallback:
-            debug_messages = json.loads(json.dumps(messages)) # Deep copy
+            debug_messages = json.loads(json.dumps(messages))  # Deep copy
             if "images" in debug_messages[-1]:
                 debug_messages[-1]["images"] = ["[BASE64_IMAGE_DATA_HIDDEN]"]
             print(json.dumps(debug_messages, indent=2))
         print("="*50 + "\n")
 
-        res = requests.post(
-            f"{url}/api/chat",
-            json={
+        # Increased timeouts for local node processing
+        request_timeout = 60 if not is_fallback else 120
+
+        if provider == "llamacpp":
+            endpoint = f"{url}/v1/chat/completions" if not url.endswith("/v1") else f"{url}/chat/completions"
+            payload = {
+                "model": target_model,
+                "messages": build_llamacpp_messages(messages),
+                "stream": False
+            }
+            res = requests.post(endpoint, json=payload, timeout=request_timeout)
+            if res.status_code == 200:
+                res_json = res.json()
+                choices = res_json.get("choices", [])
+                if choices:
+                    return choices[0].get("message", {}).get("content", "No response from AI.")
+                return res_json.get("message", {}).get("content", "No response from AI.")
+            else:
+                raise Exception(f"HTTP Status {res.status_code}: {res.text[:150]}")
+        else:
+            # Ollama API
+            endpoint = f"{url}/api/chat"
+            payload = {
                 "model": target_model,
                 "messages": messages,
                 "stream": False
-            },
-            timeout=15 if not is_fallback else 100
-        )
-
-        if res.status_code == 200:
-            return res.json().get("message", {}).get("content", "No response from AI.")
-        else:
-            raise Exception(f"HTTP Status {res.status_code}")
+            }
+            res = requests.post(endpoint, json=payload, timeout=request_timeout)
+            if res.status_code == 200:
+                return res.json().get("message", {}).get("content", "No response from AI.")
+            else:
+                raise Exception(f"HTTP Status {res.status_code}: {res.text[:150]}")
 
     # ==========================================
     # 🔄 THE FALLBACK LOGIC
@@ -164,6 +226,7 @@ User: {sender}"""
             return f"*(Fallback Mode)*\n\n{reply}"
 
         except requests.exceptions.ConnectionError:
-            return f"🔌 AI Connection Error: Could not reach Ollama at {url}. Is it running?"
+            provider_display = "llama.cpp" if provider == "llamacpp" else "Ollama"
+            return f"🔌 AI Connection Error: Could not reach {provider_display} at {url}. Is it running?"
         except Exception as fallback_e:
             return f"❌ Unexpected AI Error: Both Main and Fallback models failed! ({str(fallback_e)})"

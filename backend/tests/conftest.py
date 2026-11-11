@@ -11,6 +11,11 @@ mock_passlib.hash.pbkdf2_sha256.verify.side_effect = lambda pw, h: h == f"hashed
 sys.modules["passlib"] = mock_passlib
 sys.modules["passlib.hash"] = mock_passlib.hash
 
+# Mock requests if not installed in restricted test environment
+if "requests" not in sys.modules:
+    mock_requests = MagicMock()
+    sys.modules["requests"] = mock_requests
+
 @pytest.fixture(autouse=True)
 def setup_test_db(monkeypatch, tmp_path):
     # Set a temporary database for testing

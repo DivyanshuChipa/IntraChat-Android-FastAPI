@@ -365,7 +365,7 @@ def get_ai_config():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models', 'voice_node_url', 'voice_node_enabled')"
+        "SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models', 'voice_node_url', 'voice_node_enabled', 'ai_provider')"
     )
     rows = cursor.fetchall()
     conn.close()
@@ -375,6 +375,7 @@ def get_ai_config():
         "ai_enabled": False,
         "ai_model": "gpt-oss:20b-cloud",
         "ollama_url": "http://localhost:11434",
+        "ai_provider": "auto",  # auto, ollama, llamacpp
         "ai_vision_model": "gemma:27b-cloud",  # Naya Vision Model
         "ai_fallback": "gemma3:270m",  # Naya Fallback Model
         "ai_smart_models": "gpt-oss:20b-cloud, llama3:8b",  # Inko Vector DB milega
@@ -400,6 +401,7 @@ def set_ai_config(
     smart_models: str,
     voice_node_url: str = "http://localhost:8005",
     voice_node_enabled: bool = False,
+    ai_provider: str = "auto",
 ):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
@@ -412,6 +414,9 @@ def set_ai_config(
     )
     cursor.execute(
         "INSERT OR REPLACE INTO config (key, value) VALUES ('ollama_url', ?)", (url,)
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_provider', ?)", (ai_provider,)
     )
     cursor.execute(
         "INSERT OR REPLACE INTO config (key, value) VALUES ('ai_vision_model', ?)",
