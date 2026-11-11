@@ -248,7 +248,7 @@ fun HubRemoteDial(
 
                     // Knob Inner Center Core
                     drawCircle(
-                        color = Color.White,
+                        color = if (isDark) MaterialTheme.colorScheme.onPrimary else Color.White,
                         radius = 4.5.dp.toPx(),
                         center = knobPt
                     )
@@ -268,7 +268,7 @@ fun HubRemoteDial(
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = topBarAccentColor,
-                    contentColor = Color.White
+                    contentColor = if (isDark) MaterialTheme.colorScheme.onPrimary else Color.White
                 ),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
             ) {

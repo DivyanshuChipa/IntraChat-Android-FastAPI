@@ -71,10 +71,45 @@ fun CornerJogDial(
         activeIndex = selectedIndex.coerceIn(0, items.size - 1)
     }
 
-    // Colors matching Intra theme & concept mockup
-    val primaryColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF6741A8)
-    val outerLavenderColor = if (isDark) Color(0xFF7E57C2).copy(alpha = 0.35f) else Color(0xFFD1C4E9).copy(alpha = 0.65f)
-    val midPurpleColor = if (isDark) Color(0xFF512DA8) else Color(0xFF7E57C2)
+    val colorScheme = MaterialTheme.colorScheme
+
+    // 🎨 Dynamic Material You & Brand Harmony (Matching TopBar icons in Dark Mode)
+    val primaryColor = if (isDark) colorScheme.primary else Color(0xFF6741A8)
+    val outerLavenderColor = if (isDark) colorScheme.primary.copy(alpha = 0.16f) else Color(0xFFD1C4E9).copy(alpha = 0.65f)
+    val midPurpleColor = if (isDark) colorScheme.primaryContainer.copy(alpha = 0.85f) else Color(0xFF7E57C2)
+    val railColor = if (isDark) colorScheme.primary.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.90f)
+
+    val beadHaloColor = if (isInCancelZone) {
+        Color.Red.copy(alpha = 0.40f)
+    } else if (isDark) {
+        colorScheme.primary.copy(alpha = 0.40f)
+    } else {
+        Color.White.copy(alpha = 0.35f)
+    }
+
+    val beadCoreColor = if (isInCancelZone) {
+        Color.Red
+    } else if (isDark) {
+        colorScheme.primary
+    } else {
+        Color.White
+    }
+
+    val closeContainerColor = if (isInCancelZone) {
+        Color(0xFFD32F2F)
+    } else if (isDark) {
+        colorScheme.primary
+    } else {
+        Color(0xFF6741A8)
+    }
+
+    val closeIconColor = if (isInCancelZone) {
+        Color.White
+    } else if (isDark) {
+        colorScheme.onPrimary
+    } else {
+        Color.White
+    }
 
     // Calculate snapped bead target fraction (centers the bead on each tool's wedge)
     val targetFraction = if (items.isNotEmpty()) {
@@ -222,10 +257,10 @@ fun CornerJogDial(
                 size = Size(rMid * 2, rMid * 2)
             )
 
-            // 3. Continuous Smooth White Rail (Track)
+            // 3. Continuous Smooth Rail (Track)
             val railStartAngle = if (isLeftHandMode) 270f else 180f
             drawArc(
-                color = Color.White.copy(alpha = 0.90f),
+                color = railColor,
                 startAngle = railStartAngle,
                 sweepAngle = 90f,
                 useCenter = false,
@@ -247,14 +282,14 @@ fun CornerJogDial(
 
             // Bead Outer Glow Halo
             drawCircle(
-                color = if (isInCancelZone) Color.Red.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.35f),
+                color = beadHaloColor,
                 radius = 13.dp.toPx(),
                 center = Offset(beadX, beadY)
             )
 
             // Bead Solid Core
             drawCircle(
-                color = if (isInCancelZone) Color.Red else Color.White,
+                color = beadCoreColor,
                 radius = 7.5.dp.toPx(),
                 center = Offset(beadX, beadY)
             )
@@ -267,13 +302,13 @@ fun CornerJogDial(
                 .align(closeAlignment)
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(if (isInCancelZone) Color(0xFFD32F2F) else primaryColor),
+                .background(closeContainerColor),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Filled.Close,
                 contentDescription = "Close Jog Dial",
-                tint = Color.White,
+                tint = closeIconColor,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -292,6 +327,11 @@ fun CornerJogDialFab(
     isLeftHandMode: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val isDark = isSystemInDarkTheme()
+    val colorScheme = MaterialTheme.colorScheme
+    val fabContainerColor = if (isDark) colorScheme.primary else Color(0xFF6741A8)
+    val fabContentColor = if (isDark) colorScheme.onPrimary else Color.White
+
     val fabAlignment = if (isLeftHandMode) Alignment.BottomStart else Alignment.BottomEnd
     Box(
         modifier = modifier
@@ -309,8 +349,8 @@ fun CornerJogDialFab(
                 .size(56.dp)
                 .shadow(8.dp, CircleShape),
             shape = CircleShape,
-            containerColor = Color(0xFF6741A8),
-            contentColor = Color.White
+            containerColor = fabContainerColor,
+            contentColor = fabContentColor
         ) {
             Icon(
                 imageVector = Icons.Filled.Apps,
