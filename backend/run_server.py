@@ -3,6 +3,13 @@ import socket
 import subprocess
 import sys
 
+# 🪟 Windows UTF-8 Console Support (Fixes cp1252 crash when printing emojis like 🚀 and 📱)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 def get_ip() -> str:
     """Return local LAN IP when available, otherwise fallback to localhost."""

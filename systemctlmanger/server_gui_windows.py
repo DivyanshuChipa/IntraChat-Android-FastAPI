@@ -608,6 +608,8 @@ class ServerController(QMainWindow):
                 updated_env.append(entry)
         if not path_found:
             updated_env.append(f"PATH={tools_dir}")
+        updated_env.append("PYTHONIOENCODING=utf-8")
+        updated_env.append("PYTHONUTF8=1")
         self.server_process.setEnvironment(updated_env)
 
         self.server_process.setProcessChannelMode(QProcess.MergedChannels)
