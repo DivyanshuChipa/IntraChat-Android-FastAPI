@@ -147,6 +147,7 @@ fun HubRemoteDial(
             // ==========================================
             val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
             val activeColor = topBarAccentColor
+            val knobInnerCoreColor = if (isDark) MaterialTheme.colorScheme.onPrimary else Color.White
 
             Box(
                 modifier = Modifier
@@ -248,7 +249,7 @@ fun HubRemoteDial(
 
                     // Knob Inner Center Core
                     drawCircle(
-                        color = if (isDark) MaterialTheme.colorScheme.onPrimary else Color.White,
+                        color = knobInnerCoreColor,
                         radius = 4.5.dp.toPx(),
                         center = knobPt
                     )
