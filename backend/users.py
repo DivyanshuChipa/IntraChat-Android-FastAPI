@@ -18,8 +18,11 @@ def get_db_path() -> str:
         local_app = os.environ.get("LOCALAPPDATA")
         if local_app:
             target_dir = os.path.join(local_app, "IntraServer", "data")
-            os.makedirs(target_dir, exist_ok=True)
-            return os.path.join(target_dir, "chat_users.db")
+            try:
+                os.makedirs(target_dir, exist_ok=True)
+                return os.path.join(target_dir, "chat_users.db")
+            except Exception:
+                pass
     return "chat_users.db"
 
 DATABASE_NAME = get_db_path()
