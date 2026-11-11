@@ -41,3 +41,5 @@ alert_tracker.json
 INTRASCHOOL_BLUEPRINT.md
 FUTURE_BLUEPRINTS.md
 dist/
+
+windows_installer/Output/
