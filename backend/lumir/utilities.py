@@ -6,10 +6,12 @@ from PIL import Image, ImageOps, ImageDraw, ImageFont
 from PyPDF2 import PdfMerger, PdfReader
 import subprocess
 
-# --- Tesseract Path for Windows ---
+# --- Tesseract & Tools Path for Windows ---
 if sys.platform == "win32":
-    # Common installation paths for Tesseract on Windows
+    # Common installation paths for Tesseract on Windows, including Intra local tools dir
     possible_paths = [
+        r"%LOCALAPPDATA%\IntraServer\bin\tesseract\tesseract.exe",
+        r"%LOCALAPPDATA%\IntraServer\bin\tesseract.exe",
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Users\%USERNAME%\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
@@ -19,6 +21,11 @@ if sys.platform == "win32":
         if os.path.exists(expanded_path):
             pytesseract.pytesseract.tesseract_cmd = expanded_path
             break
+
+    # Ensure Intra local bin is also present in process PATH for FFmpeg & other child processes
+    local_intra_bin = os.path.expandvars(r"%LOCALAPPDATA%\IntraServer\bin")
+    if os.path.exists(local_intra_bin) and local_intra_bin not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = local_intra_bin + os.pathsep + os.environ.get("PATH", "")
 
 def generate_passport_layout(
     image_url: str,
