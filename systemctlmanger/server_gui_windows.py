@@ -740,21 +740,44 @@ class ServerController(QMainWindow):
             self._log_error(f"DB read error: {e}")
             return None
 
-    def closeEvent(self, event):
+    def _restore_from_tray(self):
+        self.showNormal()
+        self.activateWindow()
+
+    def _on_tray_activated(self, reason):
+        if reason in (QSystemTrayIcon.DoubleClick, QSystemTrayIcon.Trigger):
+            self._restore_from_tray()
+
+    def _copy_tray_url(self):
+        ip = self.get_local_ip()
+        url = f"http://{ip}:8000"
+        clipboard = QApplication.clipboard()
+        clipboard.setText(url)
+        if hasattr(self, "tray_icon") and self.tray_icon:
+            self.tray_icon.showMessage("Intra Server", f"Copied URL: {url}", QSystemTrayIcon.Information, 1500)
+
+    def _full_quit(self):
         if self.server_process and self.server_process.state() == QProcess.Running:
-            reply = QMessageBox.question(
-                self,
-                "Server Chal Raha Hai",
-                "Server abhi chal raha hai.\nBand karein?",
-                QMessageBox.Yes | QMessageBox.No
+            self.stop_service()
+            if self.server_process:
+                self.server_process.waitForFinished(2000)
+        if hasattr(self, "tray_icon") and self.tray_icon:
+            self.tray_icon.hide()
+        QApplication.quit()
+
+    def closeEvent(self, event):
+        # 🔔 Seamless System Tray: Minimize to background rather than interrupting connected Android users!
+        if hasattr(self, "tray_icon") and self.tray_icon and self.tray_icon.isVisible():
+            event.ignore()
+            self.hide()
+            self.tray_icon.showMessage(
+                "Intra Server 🖥️",
+                "Server background me chal raha hai. Dashboard kholne ke liye tray icon par click karein.",
+                QSystemTrayIcon.Information,
+                2500
             )
-            if reply == QMessageBox.Yes:
-                self.server_process.terminate()
-                self.server_process.waitForFinished(3000)
-                event.accept()
-            else:
-                event.ignore()
         else:
+            self._full_quit()
             event.accept()
 
 
