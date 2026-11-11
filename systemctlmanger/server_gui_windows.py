@@ -7,10 +7,10 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QMessageBox,
     QDialog, QFormLayout, QLineEdit, QFileDialog, QDialogButtonBox,
-    QProgressBar, QScrollArea, QFrame
+    QProgressBar, QScrollArea, QFrame, QSystemTrayIcon, QMenu
 )
 from PySide6.QtCore import QProcess, Qt, QTimer, QThread, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QAction
 
 # ================= MODERN DARK THEME =================
 STYLESHEET = """
@@ -72,8 +72,10 @@ try:
 except ImportError:
     AdminWindow = None
 
-# DB candidates
+# DB candidates (Prioritizes %LOCALAPPDATA% for clean user data separation)
+LOCALAPPDATA = os.environ.get("LOCALAPPDATA")
 DB_CANDIDATES = [
+    os.path.join(LOCALAPPDATA, "IntraServer", "data", "chat_users.db") if LOCALAPPDATA else "",
     os.path.join(REPO_ROOT, "backend", "chat_users.db"),
     os.path.join(REPO_ROOT, "backend", "chat_user.db"),
     os.path.join(REPO_ROOT, "chat_users.db"),
@@ -366,12 +368,40 @@ class ServerController(QMainWindow):
         self.resize(850, 600)
         self.setStyleSheet(STYLESHEET)
 
-        # Icon
+        # Icon & System Tray Setup
         icon_path = os.path.join(SCRIPT_DIR, "icon.ico")
         if not os.path.exists(icon_path):
             icon_path = os.path.join(REPO_ROOT, "icon.ico")
-        if os.path.exists(icon_path):
-            self.setWindowIcon(QIcon(icon_path))
+        app_icon = QIcon(icon_path) if os.path.exists(icon_path) else QIcon()
+        if not app_icon.isNull():
+            self.setWindowIcon(app_icon)
+
+        # 🔔 Windows System Tray Icon
+        self.tray_icon = QSystemTrayIcon(self)
+        if not app_icon.isNull():
+            self.tray_icon.setIcon(app_icon)
+        else:
+            self.tray_icon.setIcon(self.windowIcon())
+
+        tray_menu = QMenu()
+        show_action = QAction("🖥️ Show Dashboard", self)
+        show_action.triggered.connect(self._restore_from_tray)
+        tray_menu.addAction(show_action)
+
+        copy_url_action = QAction("📋 Copy Android URL", self)
+        copy_url_action.triggered.connect(self._copy_tray_url)
+        tray_menu.addAction(copy_url_action)
+
+        tray_menu.addSeparator()
+
+        quit_action = QAction("🚪 Stop Server & Exit", self)
+        quit_action.triggered.connect(self._full_quit)
+        tray_menu.addAction(quit_action)
+
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self._on_tray_activated)
+        self.tray_icon.setToolTip("Intra Server Manager (Windows)")
+        self.tray_icon.show()
 
         # Main Layout
         central_widget = QWidget()
