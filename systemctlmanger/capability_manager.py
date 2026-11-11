@@ -108,15 +108,20 @@ def detect_capability(tool_key: str) -> Dict[str, Any]:
     bin_names = config.get("binary_names", [])
 
     # 1. Local AppData Check (Can be uninstalled via Intra)
+    # Check both direct bin/ directory and subdirectory (e.g. bin/tesseract/tesseract.exe)
     for b in bin_names:
-        local_path = os.path.join(tools_dir, b)
-        if os.path.exists(local_path) and os.path.isfile(local_path):
-            return {
-                "installed": True,
-                "source": "local",
-                "path": local_path,
-                "can_uninstall": True
-            }
+        candidate_paths = [
+            os.path.join(tools_dir, b),
+            os.path.join(tools_dir, tool_key, b)
+        ]
+        for local_path in candidate_paths:
+            if os.path.exists(local_path) and os.path.isfile(local_path):
+                return {
+                    "installed": True,
+                    "source": "local",
+                    "path": local_path,
+                    "can_uninstall": True
+                }
 
     # 2. System PATH check
     for b in bin_names:
@@ -170,15 +175,14 @@ def uninstall_local_capability(tool_key: str) -> bool:
             except OSError:
                 pass
 
-    # If tesseract has a subfolder or tessdata in tools_dir
-    if tool_key == "tesseract":
-        tess_dir = os.path.join(tools_dir, "tesseract")
-        if os.path.exists(tess_dir) and os.path.isdir(tess_dir):
-            try:
-                shutil.rmtree(tess_dir, ignore_errors=True)
-                removed = True
-            except Exception:
-                pass
+    # If capability has a subfolder in tools_dir (e.g. tools_dir/tesseract)
+    sub_dir = os.path.join(tools_dir, tool_key)
+    if os.path.exists(sub_dir) and os.path.isdir(sub_dir):
+        try:
+            shutil.rmtree(sub_dir, ignore_errors=True)
+            removed = True
+        except Exception:
+            pass
 
     return removed
 
@@ -318,17 +322,31 @@ def download_and_install_capability(
                         _report(mapped, f"Downloading {config['name']}... {pct}%")
 
             _report(90, "Running automated silent installer...")
-            # Run silent install to default or tools dir if on Windows
+            # Target Intra managed directory for installer (NSIS /D switch)
+            target_install_dir = os.path.join(tools_dir, tool_key)
             if sys.platform == "win32":
                 import subprocess
-                cmd = [installer_path, "/S"]
-                subprocess.run(cmd, check=False)
+                # NSIS installer flag: /S for silent, /D=path MUST be last parameter without quotes
+                cmd = [installer_path, "/S", f"/D={target_install_dir}"]
+                proc = subprocess.run(cmd, check=False)
                 if os.path.exists(installer_path):
                     try:
                         os.remove(installer_path)
                     except Exception:
                         pass
+
+                if proc.returncode != 0:
+                    _report(0, f"Installer failed with return code {proc.returncode}")
+                    return {"success": False, "message": f"Installer exited with error code {proc.returncode}"}
+
+            # Verify that the executable was actually installed
+            detection = detect_capability(tool_key)
+            if not detection.get("installed", False):
+                _report(0, f"{config['name']} executable not found after setup.")
+                return {"success": False, "message": f"{config['name']} installation could not be verified."}
+
             _report(100, f"{config['name']} setup completed! ✅")
+            inject_tools_to_path()
             return {"success": True, "message": f"{config['name']} setup completed."}
 
         else:

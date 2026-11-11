@@ -93,3 +93,28 @@ def test_system_installed_capability_safe(monkeypatch, tmp_path):
     # Attempting to uninstall should not touch system files
     uninstall_local_capability("tesseract")
     assert detection["can_uninstall"] is False
+
+
+def test_detect_local_subdirectory_capability(monkeypatch, tmp_path):
+    """Ensure capability in subfolder (like bin/tesseract/tesseract.exe) is detected and uninstalled."""
+    fake_local = str(tmp_path / "AppDataLocal")
+    monkeypatch.setenv("LOCALAPPDATA", fake_local)
+    # Ensure system PATH doesn't have tesseract
+    monkeypatch.setattr(shutil, "which", lambda cmd: None)
+
+    tools_dir = ensure_tools_dir()
+    tess_subfolder = os.path.join(tools_dir, "tesseract")
+    os.makedirs(tess_subfolder, exist_ok=True)
+    fake_tess = os.path.join(tess_subfolder, "tesseract.exe")
+    with open(fake_tess, "w") as f:
+        f.write("mock tesseract")
+
+    detection = detect_capability("tesseract")
+    assert detection["installed"] is True
+    assert detection["source"] == "local"
+    assert detection["can_uninstall"] is True
+
+    # Uninstall should clean up the directory
+    removed = uninstall_local_capability("tesseract")
+    assert removed is True
+    assert not os.path.exists(tess_subfolder)

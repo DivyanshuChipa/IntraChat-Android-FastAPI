@@ -10,6 +10,7 @@ import subprocess
 if sys.platform == "win32":
     # Common installation paths for Tesseract on Windows, including Intra local tools dir
     possible_paths = [
+        r"%LOCALAPPDATA%\IntraServer\bin\tesseract\tesseract.exe",
         r"%LOCALAPPDATA%\IntraServer\bin\tesseract.exe",
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Users\%USERNAME%\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
