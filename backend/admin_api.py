@@ -158,10 +158,11 @@ def admin_set_ai_settings(
         smart_models: str = "gpt-oss:20b-cloud",
         voice_node_url: str = "http://localhost:8005",
         voice_node_enabled: bool = False,
+        ai_provider: str = "auto",
         admin=Depends(verify_admin)
 ):
-    set_ai_config(enabled, model, url, vision, fallback, smart_models, voice_node_url, voice_node_enabled)
-    return {"success": True, "message": "AI settings updated successfully (including Node 2 Voice Engine)!"}
+    set_ai_config(enabled, model, url, vision, fallback, smart_models, voice_node_url, voice_node_enabled, ai_provider)
+    return {"success": True, "message": "AI settings updated successfully (including Node 2 Voice Engine & AI Provider)!"}
 
 # ================= TEST VOICE NODE (NODE 2) =================
 @router.get("/test_voice_node")

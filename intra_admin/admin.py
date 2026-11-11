@@ -784,11 +784,17 @@ class AdminWindow(QMainWindow):
         self.smart_models_input.setPlaceholderText("gpt-oss:20b-cloud, llama3.2:3b")
         self.smart_models_input.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
 
+        self.provider_dropdown = QComboBox()
+        self.provider_dropdown.addItems(["Auto-Detect", "Ollama", "llama.cpp (OpenAI API)"])
+        self.provider_dropdown.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
+
         self.url_input = QLineEdit()
+        self.url_input.setPlaceholderText("e.g. http://localhost:11434 or http://192.168.31.94:8080")
         self.url_input.setStyleSheet("background-color: #313244; color: white; border-radius: 6px; padding: 8px;")
 
         card_layout.addRow("", self.chk_ai_enable)
-        card_layout.addRow("Ollama URL:", self.url_input)
+        card_layout.addRow("AI Provider:", self.provider_dropdown)
+        card_layout.addRow("AI Server URL:", self.url_input)
         card_layout.addRow("Main Model:", self.model_dropdown)
         card_layout.addRow("Vision Model:", self.vision_dropdown)
         card_layout.addRow("Fallback Model:", self.fallback_dropdown)
@@ -889,6 +895,14 @@ class AdminWindow(QMainWindow):
                 self.smart_models_input.setText(config.get("ai_smart_models", "gpt-oss:20b-cloud"))
                 self.url_input.setText(config.get("ollama_url", "http://localhost:11434"))
 
+                prov = config.get("ai_provider", "auto").lower()
+                if prov == "ollama":
+                    self.provider_dropdown.setCurrentText("Ollama")
+                elif prov in ("llamacpp", "llama.cpp"):
+                    self.provider_dropdown.setCurrentText("llama.cpp (OpenAI API)")
+                else:
+                    self.provider_dropdown.setCurrentText("Auto-Detect")
+
                 self.chk_voice_enable.setChecked(bool(config.get("voice_node_enabled", False)))
                 self.voice_url_input.setText(config.get("voice_node_url", "http://192.168.31.94:8005"))
 
@@ -899,6 +913,14 @@ class AdminWindow(QMainWindow):
     def save_ai_settings(self):
         try:
             self.ai_status_lbl.setText("Status: ⏳ Saving...")
+            prov_text = self.provider_dropdown.currentText()
+            if "Ollama" in prov_text:
+                prov_val = "ollama"
+            elif "llama.cpp" in prov_text:
+                prov_val = "llamacpp"
+            else:
+                prov_val = "auto"
+
             params = {
                 "enabled": self.chk_ai_enable.isChecked(),
                 "model": self.model_dropdown.currentText(),
@@ -906,6 +928,7 @@ class AdminWindow(QMainWindow):
                 "url": self.url_input.text().strip(),
                 "fallback": self.fallback_dropdown.currentText().strip(),
                 "smart_models": self.smart_models_input.text().strip(),
+                "ai_provider": prov_val,
                 "voice_node_url": self.voice_url_input.text().strip(),
                 "voice_node_enabled": self.chk_voice_enable.isChecked()
             }
