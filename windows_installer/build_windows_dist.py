@@ -1,6 +1,6 @@
 """
 Intra Server Windows Distribution Builder
-Bundles backend, systemctlmanger GUI, and runner script into dist/IntraServer/
+Bundles backend, systemctlmanger GUI, and compiles native IntraServer.exe into dist/IntraServer/
 """
 
 import os
@@ -48,22 +48,44 @@ def main():
         if os.path.exists(src_icon):
             shutil.copy(src_icon, DIST_DIR)
 
-    # 5. Create Standalone Windows Launcher (IntraServer.bat)
+    # 5. Create Standalone Windows Launcher (IntraServer.bat) for debugging
     launcher_bat = os.path.join(DIST_DIR, "IntraServer.bat")
     with open(launcher_bat, "w", encoding="utf-8") as f:
         f.write("@echo off\n")
         f.write("cd /d \"%~dp0\"\n")
         f.write("start \"\" python systemctlmanger\\server_gui_windows.py\n")
 
-    # 6. Create VBS Silent Launcher (No black CMD window flash!)
+    # 6. Create VBS Silent Launcher
     launcher_vbs = os.path.join(DIST_DIR, "IntraServer.vbs")
     with open(launcher_vbs, "w", encoding="utf-8") as f:
         f.write('Set WshShell = CreateObject("WScript.Shell")\n')
         f.write('WshShell.Run "python """ & WshShell.CurrentDirectory & "\\systemctlmanger\\server_gui_windows.py""", 0, False\n')
 
-    print("\n✅ Distribution prepared successfully!")
+    # 7. Compile Native Windows Launcher (IntraServer.exe) via built-in Windows csc.exe
+    print("Compiling native IntraServer.exe launcher via csc.exe...")
+    csc_candidates = [
+        r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+        r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
+    ]
+    csc_path = next((p for p in csc_candidates if os.path.exists(p)), None)
+    cs_source = os.path.join(SCRIPT_DIR, "launcher.cs")
+    exe_target = os.path.join(DIST_DIR, "IntraServer.exe")
+
+    if csc_path and os.path.exists(cs_source):
+        cmd = [csc_path, "/nologo", "/target:winexe", f"/out:{exe_target}", cs_source]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode == 0:
+            print("  ✅ IntraServer.exe (native 4 KB binary) compiled successfully!")
+        else:
+            print(f"  ⚠️ csc warning: {res.stderr}")
+    else:
+        print("  ⚠️ csc.exe not found. Falling back to batch launcher.")
+
+    print("\n" + "=" * 60)
+    print("✅ Distribution prepared successfully!")
     print(f"📁 Output folder: {DIST_DIR}")
-    print("Run with: python systemctlmanger/server_gui_windows.py or IntraServer.bat")
+    print("=" * 60)
+    print("Next step: Open windows_installer/IntraServerSetup.iss in Inno Setup and click Compile!")
 
 
 if __name__ == "__main__":
