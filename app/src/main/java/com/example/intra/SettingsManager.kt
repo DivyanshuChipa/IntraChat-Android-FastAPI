@@ -160,7 +160,7 @@ class SettingsManager(context: Context) {
 
     // 🎛️ CORNER JOG DIAL (EXPERIMENTAL)
     fun isCornerJogDialEnabled(): Boolean {
-        return prefs.getBoolean(KEY_CORNER_JOG_DIAL_ENABLED, false) // Default OFF
+        return prefs.getBoolean(KEY_CORNER_JOG_DIAL_ENABLED, true) // Default ON (Promoted to official hero feature!)
     }
 
     fun setCornerJogDialEnabled(enabled: Boolean) {

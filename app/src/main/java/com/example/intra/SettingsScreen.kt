@@ -652,51 +652,7 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
 
-                // 🎛️ THUMB ARC KNOB TOGGLE (EXPERIMENTAL)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Thumb Arc Knob", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(6.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    "EXPERIMENTAL",
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
-                        Text(
-                            "Ergonomic bottom arc slider to control top bar hub tools with your thumb.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Switch(
-                        checked = isThumbArcKnobEnabled,
-                        onCheckedChange = { enabled ->
-                            isThumbArcKnobEnabled = enabled
-                            settingsManager.setThumbArcKnobEnabled(enabled)
-                        }
-                    )
-                }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                )
-
-                // 🎛️ CORNER JOG DIAL TOGGLE (EXPERIMENTAL)
+                // 🎛️ CORNER JOG DIAL (OFFICIAL HERO FEATURE - DEFAULT ON)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -707,20 +663,20 @@ fun SettingsScreen(
                             Text("Corner Jog Dial", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.width(6.dp))
                             Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    "EXPERIMENTAL",
+                                    "HERO",
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
                         Text(
-                            "Rotary corner dial with continuous rail — slide & release thumb to launch tools.",
+                            "Tactile rotary corner wheel with continuous rail — slide & release thumb to launch tools instantly.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -734,6 +690,16 @@ fun SettingsScreen(
                         }
                     )
                 }
+
+                /*
+                // Deprecated / Commented Out based on user testing feedback:
+                // Thumb Arc Knob was found clunky by users; Corner Jog Dial is preferred.
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+                // Thumb Arc Knob Toggle...
+                */
             }
 
             // ==========================================
