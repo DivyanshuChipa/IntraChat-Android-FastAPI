@@ -112,8 +112,10 @@ app.add_middleware(
 )
 
 # 👈 2. Mount StaticFiles - uploads folder ko accessible banao
-
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 
 # ================= Pydantic MODELS =================
@@ -245,4 +247,6 @@ app.include_router(lumir_voice_router)
 # ================= STATIC FILES (WEB CLIENT) =================
 # ⚠️ Yeh line SABSE NEECHE honi chahiye!
 # Agar yeh upar hui toh WS aur Login kaam nahi karenge.
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+if os.path.exists(STATIC_DIR):
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

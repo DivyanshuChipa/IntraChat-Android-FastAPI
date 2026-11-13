@@ -1,4 +1,5 @@
 import argparse
+import os
 import socket
 import subprocess
 import sys
@@ -57,6 +58,12 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
+    # Ensure backend directory is in sys.path, chdir to it, and set as uvicorn app_dir (works on Windows Embedded, Linux & Dev environments)
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(backend_dir)
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+
     print("=======================================")
     print("   INTRA - BACKEND SERVER STARTER      ")
     print("=======================================")
@@ -70,7 +77,7 @@ def main() -> None:
 
     import uvicorn
 
-    uvicorn.run("server:app", host=args.host, port=args.port, reload=args.reload)
+    uvicorn.run("server:app", host=args.host, port=args.port, reload=args.reload, app_dir=backend_dir)
 
 
 if __name__ == "__main__":
