@@ -80,17 +80,30 @@ Connecting an Android phone to a PC on a local Wi-Fi router usually fails becaus
   - Tools (FFmpeg, Tesseract, yt-dlp) resolve to `%LOCALAPPDATA%\IntraServer\bin\`.
   - When the app is updated, user data is **never touched or lost**.
 
+### 5. Isolated Embedded Python Runtime (`dist/runtime/`)
+- Non-developer users do not have Python installed. Standard virtual environments (`venv`) hardcode absolute host paths and break when moved across PCs.
+- **Our Solution:** Python 3.11 64-bit Embeddable package configured with `import site` and bundled into `dist/IntraServer/runtime/`.
+- Automated setup script (`setup_runtime.py`) bootstraps official `pip` inside the embedded runtime and installs all requirements (`fastapi`, `uvicorn`, `PySide6`, `chromadb`, `pillow`, `PyPDF2`, `cryptography`, etc.) directly into `runtime/Lib/site-packages/`.
+- `IntraServer.exe` prioritizes `./runtime/python.exe` over system Python, making the installation 100% standalone and portable.
+
 ---
 
 ## 🚀 How to Build the Installer from Scratch
 
-1. **Build Distribution:**
+1. **(Optional / One-time) Setup Embedded Runtime:**
+   - Extract `python-3.11.x-embed-amd64.zip` into `windows_installer/runtime/`.
+   - Run runtime setup:
+     ```powershell
+     python windows_installer/setup_runtime.py
+     ```
+
+2. **Build Distribution:**
    ```powershell
    python windows_installer/build_windows_dist.py
    ```
-   *This copies backend/GUI files and compiles `IntraServer.exe` via `csc.exe`.*
+   *This bundles backend, GUI, embedded runtime, and compiles `IntraServer.exe` via `csc.exe` into `dist/IntraServer`.*
 
-2. **Compile Installer:**
+3. **Compile Installer:**
    - Open `windows_installer/IntraServerSetup.iss` in [Inno Setup Compiler](https://jrsoftware.org/isdl.php).
    - Press **Ctrl + F9** (or Build ➔ Compile).
    - Output installer will be generated in `windows_installer/Output/IntraServerSetup.exe`.

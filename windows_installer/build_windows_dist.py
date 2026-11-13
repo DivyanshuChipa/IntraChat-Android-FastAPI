@@ -42,7 +42,17 @@ def main():
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc")
     )
 
-    # 4. Copy icons if present
+    # 4. Copy Embedded Runtime if present
+    runtime_src = os.path.join(SCRIPT_DIR, "runtime")
+    runtime_dest = os.path.join(DIST_DIR, "runtime")
+    if os.path.exists(runtime_src) and os.path.exists(os.path.join(runtime_src, "python.exe")):
+        print("Copying isolated embedded Python runtime...")
+        shutil.copytree(runtime_src, runtime_dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        print("  ✅ Embedded runtime bundled into dist/IntraServer/runtime/")
+    else:
+        print("  ℹ️ No embedded runtime found in windows_installer/runtime. Distribution will use system Python.")
+
+    # 5. Copy icons if present
     for icon_name in ["icon.ico", "icon.png"]:
         src_icon = os.path.join(REPO_ROOT, icon_name)
         if os.path.exists(src_icon):
