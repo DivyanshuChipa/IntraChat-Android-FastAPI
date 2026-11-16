@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intra - Web Admin Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-base: #0f111a;
+            --bg-surface: #181b26;
+            --bg-elevated: #212638;
+            --border: #2e344d;
+            --accent-primary: #7c4dff;
+            --accent-glow: rgba(124, 77, 255, 0.25);
+            --text-main: #f1f3f9;
+            --text-muted: #9aa1bc;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header */
+        header {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, #7c4dff, #b388ff);
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-muted);
+            color: var(--text-main);
+        }
+
+        /* App Container */
+        .admin-layout {
+            display: flex;
+            flex: 1;
+        }
+
+        /* Sidebar Tabs */
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 24px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            background-color: var(--bg-elevated);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: var(--accent-glow);
+            color: #b388ff;
+            border-color: rgba(124, 77, 255, 0.35);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            padding: 32px 40px;
+            overflow-y: auto;
+            max-width: 1200px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+            animation: fadeIn 0.25s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .panel-header {
+            margin-bottom: 24px;
+        }
+
+        .panel-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .panel-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: var(--bg-elevated);
+            color: var(--text-muted);
+            text-align: left;
+            padding: 12px 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(46, 52, 77, 0.6);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background-color: rgba(33, 38, 56, 0.4);
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c4dff, #448aff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .badge-muted { background: rgba(154, 161, 188, 0.15); color: var(--text-muted); }
+
+        .action-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-approve { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .btn-approve:hover { background: var(--success); color: #fff; }
+
+        .btn-reset { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .btn-reset:hover { background: var(--warning); color: #111; }
+
+        .btn-delete { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .btn-delete:hover { background: var(--danger); color: #fff; }
+
+        /* Form Controls */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        input[type="text"], input[type="number"], input[type="password"], select {
+            width: 100%;
+            background-color: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent-primary);
+        }
+
+        /* Toggle Switches */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-info h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .toggle-info p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-elevated);
+            border: 1px solid var(--border);
+            transition: .3s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-muted);
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+            background-color: #fff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7c4dff, #651fff);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 14px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-card h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .modal-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 2000;
+        }
+
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <span class="brand-badge">INTRA</span>
+            <span class="brand-title">Server Admin Console</span>
+        </div>
+        <div class="header-actions">
+            <div class="status-badge">
+                <span class="pulse-dot"></span>
+                <span>FastAPI Active</span>
+            </div>
+            <button class="btn-outline" onclick="changeAdminKey()">
+                <i class="fas fa-key"></i> Key
+            </button>
+            <a href="/" class="btn-outline" target="_blank">
+                <i class="fas fa-comments"></i> Web Chat
+            </a>
+        </div>
+    </header>
+
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="nav-item active" onclick="switchTab('users', this)">
+                <i class="fas fa-users"></i> Users Management
+            </div>
+            <div class="nav-item" onclick="switchTab('security', this)">
+                <i class="fas fa-shield-alt"></i> Access & Security
+            </div>
+            <div class="nav-item" onclick="switchTab('lumir', this)">
+                <i class="fas fa-brain"></i> Lumir AI & Voice
+            </div>
+            <div class="nav-item" onclick="switchTab('weather', this)">
+                <i class="fas fa-cloud-sun"></i> Weather Sentinel
+            </div>
+            <div class="nav-item" onclick="switchTab('storage', this)">
+                <i class="fas fa-database"></i> Storage & Maintenance
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+
+            <!-- 1. USERS TAB -->
+            <div id="tab-users" class="tab-panel active">
+                <div class="panel-header">
+                    <h2 class="panel-title">Users & Account Approvals</h2>
+                    <p class="panel-subtitle">Manage registered LAN chat users, approve pending accounts, and manage credentials.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-list text-purple"></i> Registered LAN Accounts
+                        <button class="btn-outline" style="margin-left: auto;" onclick="loadUsers()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Status</th>
+                                    <th>Presence</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Loading users...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. SECURITY TAB -->
+            <div id="tab-security" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Server Access & Discovery</h2>
+                    <p class="panel-subtitle">Control registration gates and local network visibility.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-lock"></i> Gatekeeper Controls</div>
+
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <h4>Require Admin Approval</h4>
+                            <p>When enabled, new registrations must be manually approved by you before they can login or chat.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-approval" onchange="toggleRequireApproval(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <h4>LAN Auto-Discovery (Broadcast)</h4>
+                            <p>Allows phones on your Wi-Fi to automatically detect this server without typing IP manually. Disable for Stealth Mode.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-discovery" onchange="toggleDiscovery(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. LUMIR AI TAB -->
+            <div id="tab-lumir" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Lumir AI Intelligence Engine</h2>
+                    <p class="panel-subtitle">Configure backend LLM inference provider (llama.cpp / Ollama) and voice settings.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-robot"></i> LLM Neural Gateway</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Inference Provider</label>
+                            <select id="ai-provider">
+                                <option value="llama.cpp">llama-server (llama.cpp GGUF)</option>
+                                <option value="ollama">Ollama (/api/chat)</option>
+                                <option value="openai">OpenAI Compatible Endpoint</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Model Identifier</label>
+                            <input type="text" id="ai-model" placeholder="e.g. qwen2.5:0.5b or default">
+                        </div>
+                        <div class="form-group">
+                            <label>Host Address</label>
+                            <input type="text" id="ai-host" placeholder="127.0.0.1 or LAN IP">
+                        </div>
+                        <div class="form-group">
+                            <label>Port</label>
+                            <input type="number" id="ai-port" placeholder="8080 or 11434">
+                        </div>
+                        <div class="form-group">
+                            <label>Creativity / Temperature (0.1 - 1.0)</label>
+                            <input type="number" step="0.05" id="ai-temp" placeholder="0.7">
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="saveAIConfig()">
+                        <i class="fas fa-save"></i> Save AI Settings
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. WEATHER SENTINEL TAB -->
+            <div id="tab-weather" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Weather Sentinel & Automation</h2>
+                    <p class="panel-subtitle">Default coordinates for climate alerts and autonomous family warnings.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-map-marker-alt"></i> Default Location Coordinates</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Latitude</label>
+                            <input type="number" step="0.0001" id="geo-lat" placeholder="26.2183">
+                        </div>
+                        <div class="form-group">
+                            <label>Longitude</label>
+                            <input type="number" step="0.0001" id="geo-lon" placeholder="78.1828">
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="saveLocation()">
+                        <i class="fas fa-save"></i> Save Coordinates
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5. STORAGE & MAINTENANCE TAB -->
+            <div id="tab-storage" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Storage & LocalAppData Maintenance</h2>
+                    <p class="panel-subtitle">Manage uploaded media, vector memories, and cleanup old files.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-trash-alt"></i> Upload Files Pruning</div>
+                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">
+                        All uploads and databases are safely isolated in <code>%LOCALAPPDATA%\IntraServer\</code>. Remove files older than X days to free disk space.
+                    </p>
+                    <div style="display:flex; gap:12px; align-items:center; max-width:400px;">
+                        <input type="number" id="cleanup-days" value="30" min="1" placeholder="Days">
+                        <button class="btn-primary" style="background:#ef4444; white-space:nowrap;" onclick="runStorageCleanup()">
+                            <i class="fas fa-broom"></i> Clean Up Old Files
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Admin Key Modal -->
+    <div id="auth-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <h2><i class="fas fa-key text-purple"></i> Admin Key Required</h2>
+            <p>Enter the persistent <code>INTRA_ADMIN_KEY</code> from the server console logs to access the admin dashboard.</p>
+            <div class="form-group">
+                <label>Admin Secret Key</label>
+                <input type="password" id="input-admin-key" placeholder="Paste Admin Secret Key here...">
+            </div>
+            <button class="btn-primary" style="width:100%; justify-content:center;" onclick="submitAdminKey()">
+                Authenticate & Connect
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="notification">
+        <i class="fas fa-info-circle"></i> <span id="toast-msg">Success</span>
+    </div>
+
+    <script>
+        let adminKey = localStorage.getItem("intra_admin_key") || "";
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toast-msg");
+            toastMsg.innerText = msg;
+            toast.style.borderColor = isError ? "var(--danger)" : "var(--success)";
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 3500);
+        }
+
+        function switchTab(tabId, el) {
+            document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+            document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+            el.classList.add("active");
+            document.getElementById(`tab-${tabId}`).classList.add("active");
+
+            if (tabId === "users") loadUsers();
+            if (tabId === "security") loadSettings();
+            if (tabId === "lumir") loadAIConfig();
+            if (tabId === "weather") loadLocation();
+        }
+
+        async function fetchAdmin(endpoint, options = {}) {
+            if (!adminKey) {
+                document.getElementById("auth-modal").style.display = "flex";
+                return null;
+            }
+            options.headers = options.headers || {};
+            options.headers["X-Admin-Key"] = adminKey;
+
+            try {
+                const res = await fetch(endpoint, options);
+                if (res.status === 403) {
+                    showToast("Admin Key invalid! Please re-enter.", true);
+                    localStorage.removeItem("intra_admin_key");
+                    adminKey = "";
+                    document.getElementById("auth-modal").style.display = "flex";
+                    return null;
+                }
+                return await res.json();
+            } catch (err) {
+                showToast("Connection error to Intra Server.", true);
+                return null;
+            }
+        }
+
+        function submitAdminKey() {
+            const val = document.getElementById("input-admin-key").value.trim();
+            if (!val) return;
+            adminKey = val;
+            localStorage.setItem("intra_admin_key", adminKey);
+            document.getElementById("auth-modal").style.display = "none";
+            loadUsers();
+            loadSettings();
+        }
+
+        function changeAdminKey() {
+            document.getElementById("input-admin-key").value = adminKey;
+            document.getElementById("auth-modal").style.display = "flex";
+        }
+
+        // ================= USERS =================
+        async function loadUsers() {
+            const tbody = document.getElementById("users-tbody");
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Loading users...</td></tr>`;
+
+            const data = await fetchAdmin("/admin/users");
+            if (!data || !data.success) return;
+
+            if (data.users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No registered users found.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.users.map(u => {
+                const avatar = u.profile_photo 
+                    ? `<img src="${u.profile_photo}" onerror="this.src=''"/>` 
+                    : u.username.charAt(0).toUpperCase();
+
+                const isApproved = u.is_approved === 1 || u.is_approved === true;
+                const statusBadge = isApproved 
+                    ? `<span class="badge badge-success"><i class="fas fa-check"></i> Approved</span>`
+                    : `<span class="badge badge-warning"><i class="fas fa-clock"></i> Pending</span>`;
+
+                const presenceBadge = u.is_online
+                    ? `<span class="badge badge-success"><i class="fas fa-circle" style="font-size:8px;"></i> Online</span>`
+                    : `<span class="badge badge-muted"><i class="fas fa-circle" style="font-size:8px;"></i> Offline</span>`;
+
+                const approveBtn = !isApproved
+                    ? `<button class="btn-action btn-approve" onclick="approveUser('${u.username}')"><i class="fas fa-check"></i> Approve</button>`
+                    : ``;
+
+                return `
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <div class="user-avatar">${avatar}</div>
+                                <span style="font-weight:600;">${u.username}</span>
+                            </div>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td>${presenceBadge}</td>
+                        <td>
+                            <div class="action-btns">
+                                ${approveBtn}
+                                <button class="btn-action btn-reset" onclick="resetPassword('${u.username}')"><i class="fas fa-key"></i> Reset</button>
+                                <button class="btn-action btn-delete" onclick="deleteUser('${u.username}')"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        async function approveUser(username) {
+            const res = await fetchAdmin(`/admin/approve_user?username=${encodeURIComponent(username)}`, { method: "POST" });
+            if (res && res.success) {
+                showToast(`User ${username} approved!`);
+                loadUsers();
+            }
+        }
+
+        async function resetPassword(username) {
+            const newPass = prompt(`Enter new password for ${username}:`);
+            if (!newPass) return;
+            const res = await fetchAdmin(`/admin/reset_password?username=${encodeURIComponent(username)}&new_pass=${encodeURIComponent(newPass)}`, { method: "POST" });
+            if (res && res.success) {
+                showToast(`Password updated for ${username}!`);
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to permanently delete user '${username}'?`)) return;
+            const res = await fetchAdmin(`/admin/delete_user?username=${encodeURIComponent(username)}`, { method: "POST" });
+            if (res && res.success) {
+                showToast(`User ${username} deleted.`);
+                loadUsers();
+            }
+        }
+
+        // ================= SETTINGS =================
+        async function loadSettings() {
+            const data = await fetchAdmin("/admin/settings");
+            if (data && data.success) {
+                document.getElementById("toggle-approval").checked = data.require_approval;
+                document.getElementById("toggle-discovery").checked = data.discovery_enabled;
+            }
+        }
+
+        async function toggleRequireApproval(enabled) {
+            const res = await fetchAdmin(`/admin/toggle_approval?enabled=${enabled}`, { method: "POST" });
+            if (res && res.success) showToast(enabled ? "Approval required for new accounts." : "New accounts approved automatically.");
+        }
+
+        async function toggleDiscovery(enabled) {
+            const res = await fetchAdmin(`/admin/toggle_discovery?enabled=${enabled}`, { method: "POST" });
+            if (res && res.success) showToast(enabled ? "LAN Discovery Broadcast Enabled." : "Stealth Mode Activated.");
+        }
+
+        // ================= LUMIR AI =================
+        async function loadAIConfig() {
+            const data = await fetchAdmin("/admin/ai_config");
+            if (data && data.success && data.config) {
+                const c = data.config;
+                document.getElementById("ai-provider").value = c.provider || "llama.cpp";
+                document.getElementById("ai-model").value = c.model || "";
+                document.getElementById("ai-host").value = c.host || "127.0.0.1";
+                document.getElementById("ai-port").value = c.port || 8080;
+                document.getElementById("ai-temp").value = c.temperature || 0.7;
+            }
+        }
+
+        async function saveAIConfig() {
+            const payload = {
+                provider: document.getElementById("ai-provider").value,
+                model: document.getElementById("ai-model").value.trim(),
+                host: document.getElementById("ai-host").value.trim(),
+                port: parseInt(document.getElementById("ai-port").value) || 8080,
+                temperature: parseFloat(document.getElementById("ai-temp").value) || 0.7,
+            };
+            const res = await fetchAdmin("/admin/ai_config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (res && res.success) showToast("Lumir AI configuration updated!");
+        }
+
+        // ================= WEATHER LOCATION =================
+        async function loadLocation() {
+            const data = await fetchAdmin("/admin/location");
+            if (data && data.success) {
+                document.getElementById("geo-lat").value = data.latitude;
+                document.getElementById("geo-lon").value = data.longitude;
+            }
+        }
+
+        async function saveLocation() {
+            const lat = parseFloat(document.getElementById("geo-lat").value);
+            const lon = parseFloat(document.getElementById("geo-lon").value);
+            const res = await fetchAdmin(`/admin/location?latitude=${lat}&longitude=${lon}`, { method: "POST" });
+            if (res && res.success) showToast("Default coordinates updated!");
+        }
+
+        // ================= CLEANUP =================
+        async function runStorageCleanup() {
+            const days = parseInt(document.getElementById("cleanup-days").value) || 30;
+            if (!confirm(`Delete all uploaded files older than ${days} days?`)) return;
+            const res = await fetchAdmin(`/admin/cleanup?days=${days}`, { method: "POST" });
+            if (res && res.success) showToast(res.message);
+        }
+
+        // Initial Boot
+        window.addEventListener("DOMContentLoaded", () => {
+            if (!adminKey) {
+                document.getElementById("auth-modal").style.display = "flex";
+            } else {
+                loadUsers();
+                loadSettings();
+            }
+        });
+    </script>
+</body>
+</html>
