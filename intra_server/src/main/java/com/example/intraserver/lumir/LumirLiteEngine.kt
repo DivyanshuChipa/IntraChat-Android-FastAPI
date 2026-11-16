@@ -27,7 +27,8 @@ object LumirLiteEngine {
         fileUrl: String?,
         sender: String,
         uploadsDir: File,
-        db: ServerDatabase
+        db: ServerDatabase,
+        context: android.content.Context? = null
     ): LumirResponse {
         val originalText = rawText.trim()
         val text = originalText.lowercase()
@@ -77,8 +78,20 @@ object LumirLiteEngine {
             File(uploadsDir, fname)
         } else null
 
+        val hasImageInContext = activeFile != null && activeFile.exists() && activeFile.extension.lowercase() in listOf("jpg", "jpeg", "png", "webp", "bmp")
+        val hasPdfInContext = userContext[sender]?.any { it.endsWith(".pdf", ignoreCase = true) } == true
+        val aiConfig = db.getAiConfig()
+
+        // 🧠 Autonomous Intent Routing (Corpus Callosum)
+        val intent = LumirToolRouter.resolveIntent(
+            rawText = originalText,
+            hasImageInContext = hasImageInContext,
+            hasPdfInContext = hasPdfInContext,
+            aiBaseUrl = if (aiConfig.aiEnabled) aiConfig.ollamaUrl else null
+        )
+
         // 3. Command: PASSPORT PHOTO
-        if (text.contains("passport") || text.startsWith("/passport")) {
+        if (intent == ToolIntent.PASSPORT || text.contains("passport") || text.startsWith("/passport")) {
             if (activeFile == null || !activeFile.exists()) {
                 return LumirResponse(text = "⚠️ Pehle ek photo bhejo, phir passport command use karo! (e.g. 6 photo sheet)")
             }
@@ -111,7 +124,7 @@ object LumirLiteEngine {
         }
 
         // 4. Command: IMAGE COMPRESS
-        if (text.contains("compress") || text.startsWith("/compress")) {
+        if (intent == ToolIntent.COMPRESS || text.contains("compress") || text.startsWith("/compress")) {
             if (activeFile == null || !activeFile.exists()) {
                 return LumirResponse(text = "⚠️ Pehle ek image bhejo jisko compress karna hai!")
             }
@@ -129,7 +142,7 @@ object LumirLiteEngine {
         }
 
         // 5. Command: CONVERT IMAGES TO PDF (Multi-Image Support)
-        if (text == "###topdf###" || text.contains("topdf") || text.contains("convert to pdf") ||
+        if (intent == ToolIntent.TOPDF || text == "###topdf###" || text.contains("topdf") || text.contains("convert to pdf") ||
             text.contains("images to pdf") || text.contains("image to pdf") || text == "📄 convert to pdf"
         ) {
             val userImages = userContext[sender]?.map { File(uploadsDir, it.substringAfterLast("/")) }
@@ -151,7 +164,7 @@ object LumirLiteEngine {
         }
 
         // 6. Command: MERGE PDF
-        if (text.contains("merge") || text.startsWith("/merge") || text == "🔗 merge pdfs") {
+        if (intent == ToolIntent.MERGE_PDF || text.contains("merge") || text.startsWith("/merge") || text == "🔗 merge pdfs") {
             val userFiles = userContext[sender]?.map { File(uploadsDir, it.substringAfterLast("/")) }
                 ?.filter { it.exists() && it.extension.equals("pdf", ignoreCase = true) }
                 ?: emptyList()
@@ -176,12 +189,22 @@ object LumirLiteEngine {
             )
         }
 
+        // 6.5 Command: SYSTEM STATUS / DIAGNOSTICS
+        if (intent == ToolIntent.SERVER_STATUS || text == "/status" || text == "/server" || text == "status" || text == "server status" || text == "system status" || text == "phone status") {
+            return LumirResponse(
+                text = ServerDiagnostics.getStatusReport(context)
+            )
+        }
+
         // 7. Command: HELP
-        if (text == "/help" || text == "help") {
+        if (intent == ToolIntent.HELP || text == "/help" || text == "help") {
             return LumirResponse(
                 text = """
                     🌟 **Lumir-Lite Utilities on Phone Server**:
                     
+                    📊 **System Diagnostics**:
+                    • Bhejo `/status` ya `server status` RAM, Battery aur Uptime report ke liye.
+
                     📸 **Passport Photos**:
                     • Bhejo koi bhi photo aur bolo: `Passport 6` ya `Passport 9`
                     • Name aur date add karein: `Passport 6 name: Aman date: 2026`
@@ -201,9 +224,9 @@ object LumirLiteEngine {
             )
         }
 
-        // 8. General AI Chat via LAN Ollama
-        val aiConfig = db.getAiConfig()
+        // 8. General AI Chat via LAN LLM Engine (llama.cpp / Ollama)
         if (aiConfig.aiEnabled && aiConfig.ollamaUrl.isNotBlank()) {
+            val history = db.getLumirChatHistory(sender, limit = 5)
             val reply = OllamaClient.askOllama(
                 ollamaBaseUrl = aiConfig.ollamaUrl,
                 model = aiConfig.aiModel,
@@ -215,7 +238,7 @@ object LumirLiteEngine {
 
         // 9. Default friendly greeting
         return LumirResponse(
-            text = "👋 Hello $sender! Main Lumir-Lite hu. Mujhe koi photo bhejo Passport sheet ya Compression ke liye, ya /help type karo. AI baatein karne ke liye server Admin se Ollama enable karwayein!"
+            text = "👋 Hello $sender! I am lumir lite. send me a pic so i change it into passport photo , or type /help . Or want to chat with me enable ai from tha intra server "
         )
     }
 }

@@ -471,4 +471,33 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         val values = ContentValues().apply { put("is_read", 1) }
         db.update(TABLE_MESSAGES, values, "id = ?", arrayOf(id.toString()))
     }
+
+    /**
+     * 🧠 Returns recent conversation history between user and Lumir for multi-turn AI context.
+     * Chronologically ordered (oldest to newest).
+     */
+    @Synchronized
+    fun getLumirChatHistory(user: String, limit: Int = 6): List<Pair<String, String>> {
+        val list = mutableListOf<Pair<String, String>>()
+        val db = readableDatabase
+        val selection = "((sender = ? AND receiver = 'Lumir') OR (sender = 'Lumir' AND receiver = ?)) AND content IS NOT NULL AND content != ''"
+        val cursor = db.query(
+            TABLE_MESSAGES,
+            arrayOf("sender", "content"),
+            selection,
+            arrayOf(user, user),
+            null, null, "id DESC", limit.toString()
+        )
+        cursor.use {
+            while (it.moveToNext()) {
+                val s = it.getString(0) ?: ""
+                val c = it.getString(1) ?: ""
+                if (!c.startsWith("###") && !c.startsWith("/")) {
+                    val role = if (s.equals("Lumir", ignoreCase = true)) "assistant" else "user"
+                    list.add(Pair(role, c))
+                }
+            }
+        }
+        return list.reversed()
+    }
 }

@@ -403,9 +403,9 @@ fun AdminScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("🤖 Lumir AI & LAN Ollama", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text("🤖 Lumir AI Engine (llama.cpp / Ollama)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 Text(
-                                    "Network me kisi bhi PC par chal rahe Ollama se phone server ko connect karein.",
+                                    "Network me chal rahe llama.cpp (Port 8080) ya Ollama (Port 11434) se phone server ko connect karein.",
                                     fontSize = 12.sp,
                                     color = Color.Gray
                                 )
@@ -432,8 +432,8 @@ fun AdminScreen(
                                 OutlinedTextField(
                                     value = ollamaUrlText,
                                     onValueChange = { ollamaUrlText = it },
-                                    label = { Text("Ollama URL (PC IP:Port)") },
-                                    placeholder = { Text("http://192.168.1.35:11434") },
+                                    label = { Text("AI Server URL (llama.cpp / Ollama)") },
+                                    placeholder = { Text("http://192.168.31.94:8080 ya :11434") },
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -441,8 +441,8 @@ fun AdminScreen(
                                 OutlinedTextField(
                                     value = aiModelText,
                                     onValueChange = { aiModelText = it },
-                                    label = { Text("Model Name") },
-                                    placeholder = { Text("gemma2:2b, llama3:8b, etc.") },
+                                    label = { Text("Model Name (Optional for llama.cpp)") },
+                                    placeholder = { Text("qwen2.5, gemma2, etc.") },
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -462,7 +462,7 @@ fun AdminScreen(
                                                 val (ok, msg) = com.example.intraserver.lumir.OllamaClient.testConnection(ollamaUrlText)
                                                 testStatus = msg
                                                 isTesting = false
-                                                Toast.makeText(context, if (ok) "Ollama Connected!" else "Connection Failed!", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, if (ok) "AI Connected! ✅" else "Connection Failed! ❌", Toast.LENGTH_SHORT).show()
                                             }
                                         },
                                         enabled = !isTesting && ollamaUrlText.isNotBlank(),

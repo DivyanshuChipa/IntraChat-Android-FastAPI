@@ -714,7 +714,8 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                                 fileUrl = fileUrl,
                                 sender = sender,
                                 uploadsDir = uploadsDir,
-                                db = db
+                                db = db,
+                                context = context
                             )
 
                             val botTs = System.currentTimeMillis().toString()
