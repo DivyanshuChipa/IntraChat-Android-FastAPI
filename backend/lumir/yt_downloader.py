@@ -1,10 +1,17 @@
 import os
+import sys
 import re
 import uuid
 import yt_dlp
 from datetime import datetime
 
-DOWNLOAD_DIR = "uploads/yt_downloads"
+# Ensure backend root is in sys.path
+backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_root not in sys.path:
+    sys.path.insert(0, backend_root)
+from paths import get_uploads_dir
+
+DOWNLOAD_DIR = os.path.join(get_uploads_dir(), "yt_downloads")
 
 def ensure_dir_exists():
     if not os.path.exists(DOWNLOAD_DIR):

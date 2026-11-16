@@ -16,8 +16,14 @@ try:
 
     import chromadb
 
-    # DB ko lumir folder ke andar hi 'chroma_storage' naam se save karenge
-    db_path = os.path.join(os.path.dirname(__file__), "chroma_storage")
+    # Ensure backend root is in sys.path
+    import sys
+    backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if backend_root not in sys.path:
+        sys.path.insert(0, backend_root)
+    from paths import get_chroma_dir
+
+    db_path = get_chroma_dir()
     chroma_client = chromadb.PersistentClient(path=db_path)
 
     # Purana wala (Media ke liye)

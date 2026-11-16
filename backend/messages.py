@@ -1,8 +1,9 @@
 import sqlite3
 import json
 from datetime import datetime, timezone, timedelta
+from paths import get_messages_db_path
 
-DB_NAME = "chat_messages.db"
+DB_NAME = get_messages_db_path()
 
 # ✅ IST Timezone (UTC + 5:30)
 IST = timezone(timedelta(hours=5, minutes=30))

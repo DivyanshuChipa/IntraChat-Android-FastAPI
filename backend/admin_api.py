@@ -66,9 +66,11 @@ def admin_delete_user(username: str, admin=Depends(verify_admin)):
 def admin_reset_password(username: str, new_pass: str, admin=Depends(verify_admin)):
     return reset_user_password(username, new_pass)
 
+from paths import get_uploads_dir
+
 # Yahan par apne upload folder ka exact path daalein
 # Agar files 'uploads' folder mein save hoti hain toh yahi rehne dein
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = get_uploads_dir()
 
 # ================= CLEANUP =================
 @router.post("/cleanup")

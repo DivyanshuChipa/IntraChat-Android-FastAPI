@@ -4,11 +4,12 @@ import os
 import shutil
 from users import update_user_photo
 from PIL import Image, ImageOps # 👈 ImageOps add kiya
+from paths import get_uploads_dir
 
 router = APIRouter()
 
 # Store profiles in a specific folder
-PROFILE_DIR = "uploads/profiles"
+PROFILE_DIR = os.path.join(get_uploads_dir(), "profiles")
 os.makedirs(PROFILE_DIR, exist_ok=True)
 
 

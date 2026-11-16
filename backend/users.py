@@ -5,25 +5,7 @@ import sqlite3
 from passlib.hash import pbkdf2_sha256
 import os
 import sys
-
-def get_db_path() -> str:
-    # 1. Custom env override (e.g. from server_gui or testing)
-    if "INTRA_DB_PATH" in os.environ:
-        return os.environ["INTRA_DB_PATH"]
-    # 2. Local fallback if DB exists in current working directory (dev mode)
-    if os.path.exists("chat_users.db"):
-        return "chat_users.db"
-    # 3. Standard Windows AppData directory
-    if sys.platform == "win32":
-        local_app = os.environ.get("LOCALAPPDATA")
-        if local_app:
-            target_dir = os.path.join(local_app, "IntraServer", "data")
-            try:
-                os.makedirs(target_dir, exist_ok=True)
-                return os.path.join(target_dir, "chat_users.db")
-            except Exception:
-                pass
-    return "chat_users.db"
+from paths import get_db_path
 
 DATABASE_NAME = get_db_path()
 

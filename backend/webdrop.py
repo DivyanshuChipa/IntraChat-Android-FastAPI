@@ -10,14 +10,11 @@ from pydantic import BaseModel
 router = APIRouter(prefix="", tags=["WebDrop"])
 
 import urllib.parse
+from paths import get_uploads_dir
 
 BASE_DIR = Path(__file__).resolve().parent
-WEBDROP_DIR = BASE_DIR / "uploads" / "webdrop"
+WEBDROP_DIR = Path(get_uploads_dir()) / "webdrop"
 WEBDROP_DIR.mkdir(parents=True, exist_ok=True)
-
-# Also ensure relative uploads/webdrop exists if running from another CWD
-if not WEBDROP_DIR.exists():
-    Path("uploads/webdrop").mkdir(parents=True, exist_ok=True)
 
 # In-memory shared clipboard snippets (Last 20)
 shared_texts = []

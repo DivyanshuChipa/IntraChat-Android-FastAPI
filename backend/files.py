@@ -2,10 +2,11 @@ from fastapi import APIRouter, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import os
 from pathlib import Path
+from paths import get_uploads_dir
 
 router = APIRouter()
 
-UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR = Path(get_uploads_dir())
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 def _safe_filename(filename: str) -> str:

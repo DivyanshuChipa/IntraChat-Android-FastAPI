@@ -17,17 +17,15 @@ from users import (
     get_environment_settings,
 )
 
+from paths import get_cache_dir
+
 LOGGER = logging.getLogger(__name__)
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DEFAULT_LAT = 26.2183
 DEFAULT_LON = 78.1828
-CACHE_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "weather_cache.json"
-)
-TRACKER_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "alert_tracker.json"
-)
+CACHE_FILE = os.path.join(get_cache_dir(), "weather_cache.json")
+TRACKER_FILE = os.path.join(get_cache_dir(), "alert_tracker.json")
 
 
 def _get_default_coordinates() -> Tuple[float, float]:

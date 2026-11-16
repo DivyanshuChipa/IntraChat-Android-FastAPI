@@ -1,4 +1,5 @@
 import os
+import sys
 import math
 import time
 import uuid
@@ -17,7 +18,13 @@ USE_CHROMA = True
 chroma_client = None
 cognitive_collection = None
 
-SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), "lumir_brain.db")
+# Ensure backend root is in sys.path
+backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_root not in sys.path:
+    sys.path.insert(0, backend_root)
+from paths import get_sqlite_brain_path, get_chroma_dir
+
+SQLITE_DB_PATH = get_sqlite_brain_path()
 
 def init_sqlite_brain():
     conn = sqlite3.connect(SQLITE_DB_PATH)
@@ -46,7 +53,7 @@ init_sqlite_brain()
 try:
     if USE_CHROMA:
         import chromadb
-        db_path = os.path.join(os.path.dirname(__file__), "chroma_storage")
+        db_path = get_chroma_dir()
         chroma_client = chromadb.PersistentClient(path=db_path)
         cognitive_collection = chroma_client.get_or_create_collection(name="lumir_cognitive_memory")
         print("[BRAIN] Lumir Cognitive Vector Memory: ACTIVATED")

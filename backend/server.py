@@ -112,8 +112,9 @@ app.add_middleware(
 )
 
 # 👈 2. Mount StaticFiles - uploads folder ko accessible banao
+import paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+UPLOADS_DIR = paths.get_uploads_dir()
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
@@ -243,6 +244,15 @@ app.include_router(files.router)
 app.include_router(calls.router, prefix="/calls")
 app.include_router(profiles.router, prefix="/profile", tags=["Profile"])  # 👈 3. Add Profile Router
 app.include_router(lumir_voice_router)
+
+from fastapi.responses import RedirectResponse
+
+@app.get("/admin")
+async def admin_dashboard_page():
+    admin_html = os.path.join(BASE_DIR, "static", "admin.html")
+    if os.path.exists(admin_html):
+        return FileResponse(admin_html)
+    return RedirectResponse(url="/admin.html")
 
 # ================= STATIC FILES (WEB CLIENT) =================
 # ⚠️ Yeh line SABSE NEECHE honi chahiye!
