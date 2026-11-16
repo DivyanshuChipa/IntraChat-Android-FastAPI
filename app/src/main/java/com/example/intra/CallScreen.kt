@@ -47,6 +47,9 @@ fun CallScreen(
     state: CallState,
     lumirVoiceStatus: String? = null,
     lumirSubtitle: String? = null,
+    isListening: Boolean = false,
+    isThinking: Boolean = false,
+    isSpeaking: Boolean = false,
     onEndCall: () -> Unit,
     onRejectCall: () -> Unit,
     onAcceptCall: () -> Unit,
@@ -107,36 +110,56 @@ fun CallScreen(
                 .fillMaxSize()
                 .padding(vertical = 60.dp)
         ) {
-            // --- TOP SECTION: Avatar & Status (Same) ---
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier.size(170.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AvatarGlowRing(
-                        isActive = state.status != CallStatus.CONNECTED || (lumirVoiceStatus?.contains("Speaking") == true)
-                    )
+            val isLumir = state.targetUser.equals("Lumir", ignoreCase = true)
 
+            // --- TOP SECTION: Avatar & Visualizer ---
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (isLumir) {
+                    // 🔮 Futuristic Hexagonal Synaptic Cyber-Core for Lumir AI
                     Box(
                         modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
+                            .size(200.dp)
+                            .padding(bottom = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (state.profilePhotoUrl != null) {
-                            AsyncImage(
-                                model = state.profilePhotoUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(60.dp)
-                            )
+                        LumirCyberCore(
+                            size = 200.dp,
+                            isListening = isListening,
+                            isThinking = isThinking,
+                            isSpeaking = isSpeaking,
+                            isConnected = state.status == CallStatus.CONNECTED
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.size(170.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AvatarGlowRing(
+                            isActive = state.status != CallStatus.CONNECTED || (lumirVoiceStatus?.contains("Speaking") == true)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (state.profilePhotoUrl != null) {
+                                AsyncImage(
+                                    model = state.profilePhotoUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(60.dp)
+                                )
+                            }
                         }
                     }
                 }

@@ -413,6 +413,9 @@ class MainActivity : ComponentActivity() {
                                                 if (lumirVoiceManager.isSpeaking || lumirVoiceManager.isThinking) lumirVoiceManager.lumirTranscript
                                                 else lumirVoiceManager.userTranscript
                                             } else null,
+                                            isListening = if (isLumir) lumirVoiceManager.isListening else false,
+                                            isThinking = if (isLumir) lumirVoiceManager.isThinking else false,
+                                            isSpeaking = if (isLumir) lumirVoiceManager.isSpeaking else false,
 
                                             onRejectCall = {
                                                 val target = callViewModel.callState.value.targetUser
