@@ -47,3 +47,102 @@ On modern 6.7-inch smartphones, reaching the TopAppBar with one hand to tap or s
 ## 3. 🛸 WebDrop Beam (AirDrop with Physics)
 - Dragging a file towards the top or edge of the screen gives an inertia-based "flick" launch into the LAN wormhole.
 - Particle effects when a peer receives it.
+
+
+---
+
+## 4. 📞 The Samsung J2 Gesture: "Swipe to Call / Swipe to Message" [Experimental Feature]
+*Inspired by the legendary, lightning-fast dialer UX of Samsung Galaxy J2 & TouchWiz / One UI.*
+
+### 💡 The Core Problem:
+Right now, making a LAN voice call requires 3 distinct hops:
+1. Open `ContactListScreen`.
+2. Tap on a user card to open `ChatScreen`.
+3. Reach up to the top app bar and tap the phone icon.
+
+For frequent callers or quick walkie-talkie checks, this feels slow compared to classic Android dialers.
+
+### 🎯 The Solution: "TouchWiz Swipe Action"
+Add a nostalgic, ultra-ergonomic swipe gesture directly on each contact tile in `ContactListScreen`:
+- **👉 Swipe Right (Green Reveal):** Triggers an instant **LAN Voice Call**!
+- **👈 Swipe Left (Blue Reveal):** Directly opens their **Chat Thread**!
+
+---
+
+### ⚙️ Settings Toggle (Gated Experiment):
+To ensure users who prefer standard scrolling never accidentally make phone calls:
+- Located under: **Settings ➔ Additional Features / Experimental**:
+  ```text
+  [Toggle] Swipe to Call (Galaxy J2 Style) [OFF by default]
+  "Swipe right on any contact to call, swipe left to chat."
+  ```
+
+---
+
+### 🎨 Visual & Physics Design (Material You):
+1. **Swipe Right (Call Gesture):**
+   - Background reveals an **Emerald Green (`#2E7D32`)** canvas under the card.
+   - An animated phone icon `📞` scales up smoothly with a label: *"Calling <User>..."*.
+2. **Swipe Left (Chat Gesture):**
+   - Background reveals a **Cobalt Blue (`#1976D2`)** canvas.
+   - A chat bubble icon `💬` scales up with a label: *"Open Chat"*.
+3. **40% Threshold Failsafe:**
+   - Dragging less than 40% of the screen width springs back smoothly (cancels the action with zero accidental calls).
+   - Dragging past 40% triggers a crisp tactile **Haptic Click** (`HapticFeedbackType.LongPress`) confirming the trigger upon release.
+
+---
+
+### 🤖 Special Behavior for Lumir AI:
+- **Swipe Right on Lumir:** Instantly launches the **Live Lumir Voice Call** (Hands-free AI voice chat)!
+- **Swipe Left on Lumir:** Opens the regular text chat with Lumir.
+
+---
+
+### 🛠️ Implementation Blueprint (Jetpack Compose):
+- Implement via Compose `SwipeToDismissBox` (Material 3) or `anchoredDraggable` on each contact card in `ContactListScreen.kt`.
+- Directional check:
+  - `DismissDirection.StartToEnd` (Swipe Right) ➔ `onStartCall(user)`
+  - `DismissDirection.EndToStart` (Swipe Left) ➔ `onOpenChat(user)`
+
+
+---
+
+## 5. 🔮 Lumir Cyber-Core (Hexagonal Neural Visualizer for AI Calls) [COMPLETED]
+*Replacing the boring telephone avatar circle with a living, breathing holographic AI Core during Lumir Voice Calls.*
+
+### 💡 The Core Problem:
+Currently, when a user is on a live voice call with Lumir, the screen looks like a standard human phone call (`CallScreen.kt` with a circular profile picture box). It lacks the feeling that you are talking to a futuristic, conscious synthetic entity.
+
+### 🎯 The Vision: "The Hexagonal Synaptic Core"
+Instead of a static profile photo, render a dynamic, generative **Cybernetic Polygon Canvas** in Jetpack Compose:
+- **Geometry:** A sleek **Hexagonal Wireframe Polygon** with 6 outer vertices interconnected by glowing geometric vector lines.
+- **Centerpiece (The Core):** A radiant, pulsating spherical **Plasma Orb / Core** resting in the center of the hexagon.
+- **Color Palette (Lumir Signature Palette):**
+  - Outer Nodes/Lines: Deep Indigo (`#311B92`) ➔ Electric Cyan (`#00E5FF`).
+  - Glowing Inner Core: Lumir's signature sunset gradient (`Deep Purple #6741A8` ➔ `Hot Pink #E91E63` ➔ `Amber Gold #FFC107`).
+
+---
+
+### 🌊 Tri-State Reactive Behavior (Voice Call States):
+
+1. **👂 Listening State (User is speaking):**
+   - The outer hexagonal vertices gently expand and contract in rhythm with the mic audio amplitude (RMS energy).
+   - Core glows in soft cyan/lavender, breathing slowly like an active listener.
+
+2. **🧠 Thinking State (Node 2 / LLM processing):**
+   - The outer hexagon smoothly rotates clockwise.
+   - Energy particles stream along the connector lines inward into the core (visualizing memory recall & synaptic processing).
+   - Subtitle below indicates: *"Lumir is thinking..."*.
+
+3. **🗣️ Speaking State (Piper TTS Audio Streaming):**
+   - The glowing core expands into a vibrant radial pulse, casting a soft ambient glow over the dark purple backdrop.
+   - Hexagonal nodes shimmer in sync with speech cadence.
+   - Real-time spoken dialogue renders smoothly as a floating glassmorphic subtitle pill below the core.
+
+---
+
+### 🛠️ Implementation Strategy (Jetpack Compose Canvas):
+- Use `androidx.compose.foundation.Canvas` with trigonometric point calculation (`cos` & `sin` for 6 vertices: $	heta = rac{2\pi \cdot i}{6}$).
+- Rotating angle driven by `rememberInfiniteTransition()`.
+- Scale driven by `animateFloatAsState` keyed to `LumirVoiceCallManager.isListening / isThinking / isSpeaking`.
+- Glow achieved via `RadialGradient` brush and `drawCircle(brush = ..., blendMode = BlendMode.Screen)`.

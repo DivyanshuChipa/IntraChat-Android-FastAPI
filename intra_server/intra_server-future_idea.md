@@ -168,13 +168,13 @@
    - ✅ LAN Ollama Bridge (`OllamaClient.kt`).
 
 2. **Phase 2 (Upcoming - Low Overhead, High Value)**:
-   - [ ] Multi-turn chat history buffer for Ollama.
-   - [ ] Port `soul.md` system prompt for rich Lumir Hinglish personality.
-   - [ ] Phone System Diagnostics (`/server` with RAM, Storage, Battery).
+   - ✅ **Multi-turn chat history buffer** (Fetched from SQLite `messages`, injected into `askOllama`).
+   - ✅ **Port Lumir Soul Persona** (Global English primary, adaptive, Divya creator guardrail).
+   - ✅ **Phone System Diagnostics** (`/status`, `/server` reporting RAM, Storage, Battery, Uptime, Online users).
    - [ ] Live Weather query (`/weather` via Open-Meteo).
 
 3. **Phase 3 (Medium Complexity)**:
-   - [ ] Autonomous natural language router (detecting commands without slashes).
+   - ✅ **Autonomous natural language router** (`LumirToolRouter.kt` with Tier-1 0ms regex & Tier-2 Qwen intent classifier).
    - [ ] Ollama Vision support (base64 image dispatch to PC Ollama).
    - [ ] SQLite user facts memory.
 

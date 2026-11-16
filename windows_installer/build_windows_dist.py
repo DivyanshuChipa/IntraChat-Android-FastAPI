@@ -30,7 +30,12 @@ def main():
     shutil.copytree(
         os.path.join(REPO_ROOT, "backend"),
         backend_dest,
-        ignore=shutil.ignore_patterns("venv", ".venv", "__pycache__", "*.pyc", "chat_users.db")
+        ignore=shutil.ignore_patterns(
+            "venv", ".venv", "__pycache__", "*.pyc",
+            "chat_users.db", "chat_messages.db", "*.db",
+            "chroma_storage", "uploads", "cache",
+            "weather_cache.json", "alert_tracker.json"
+        )
     )
 
     # 3. Copy systemctlmanger (GUI + Capabilities)
@@ -82,10 +87,21 @@ def main():
     exe_target = os.path.join(DIST_DIR, "IntraServer.exe")
 
     if csc_path and os.path.exists(cs_source):
-        cmd = [csc_path, "/nologo", "/target:winexe", f"/out:{exe_target}", cs_source]
+        cmd = [
+            csc_path,
+            "/nologo",
+            "/target:winexe",
+            "/r:System.Windows.Forms.dll,System.Drawing.dll",
+            f"/out:{exe_target}",
+        ]
+        icon_path = os.path.join(REPO_ROOT, "icon.ico")
+        if os.path.exists(icon_path):
+            cmd.append(f"/win32icon:{icon_path}")
+        cmd.append(cs_source)
+
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode == 0:
-            print("  ✅ IntraServer.exe (native 4 KB binary) compiled successfully!")
+            print("  ✅ IntraServer.exe (native Tray binary) compiled successfully!")
         else:
             print(f"  ⚠️ csc warning: {res.stderr}")
     else:

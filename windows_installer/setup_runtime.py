@@ -73,12 +73,11 @@ def install_pip():
 
 
 def install_dependencies():
-    print("📦 Installing backend requirements and PySide6 into runtime...")
-    # Packages list: backend requirements + PySide6
+    print("📦 Installing backend requirements into runtime...")
+    # Packages list: backend requirements only (no heavy desktop GUI libs)
     cmd = [
         PYTHON_EXE, "-m", "pip", "install",
         "-r", REQUIREMENTS_FILE,
-        "PySide6",
         "--no-warn-script-location"
     ]
     res = subprocess.run(cmd)
@@ -88,7 +87,7 @@ def install_dependencies():
 
     print("\n🔍 Verifying runtime imports...")
     verify_code = (
-        "import fastapi, uvicorn, PySide6, PIL, requests, apscheduler, psutil; "
+        "import fastapi, uvicorn, PIL, requests, apscheduler, psutil; "
         "print('🎉 ALL CORE RUNTIME DEPENDENCIES VERIFIED SUCCESSFULLY!')"
     )
     test_res = subprocess.run([PYTHON_EXE, "-c", verify_code], capture_output=True, text=True)
