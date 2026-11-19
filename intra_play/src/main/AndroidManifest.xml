@@ -19,9 +19,9 @@
     <application
         android:allowBackup="true"
         android:banner="@drawable/tv_banner"
-        android:icon="@drawable/ic_intraplay"
+        android:icon="@mipmap/ic_intraplay2"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_intraplay"
+        android:roundIcon="@mipmap/ic_intraplay2_round"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.IntraPlay"
