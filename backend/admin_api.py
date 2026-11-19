@@ -1,6 +1,7 @@
 # ===== File: admin_api.py =====
 import os
 import time
+import psutil
 from fastapi import APIRouter, Depends
 from server import verify_admin
 from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location, get_environment_settings, set_environment_settings, set_server_discovery, get_server_discovery
@@ -196,5 +197,27 @@ def admin_test_voice_node(url: str = None, admin=Depends(verify_admin)):
             "success": False,
             "message": f"Could not reach Voice Node at {url}: {str(e)}"
         }
+
+# ================= ⚡ SYSTEM & HARDWARE TELEMETRY =================
+@router.get("/system_status")
+def admin_get_system_status(admin=Depends(verify_admin)):
+    try:
+        cpu = psutil.cpu_percent(interval=0.1)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage(os.path.abspath(os.sep))
+        return {
+            "success": True,
+            "cpu_percent": round(cpu, 1),
+            "ram_percent": round(mem.percent, 1),
+            "ram_used_gb": round(mem.used / (1024**3), 2),
+            "ram_total_gb": round(mem.total / (1024**3), 2),
+            "disk_percent": round(disk.percent, 1),
+            "disk_free_gb": round(disk.free / (1024**3), 2),
+            "disk_total_gb": round(disk.total / (1024**3), 2),
+            "active_clients": len(connected_clients)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 
 

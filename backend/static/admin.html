@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Intra - Web Admin Console</title>
+    <link rel="icon" type="image/x-icon" href="/assets/intra_logo/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/intra_logo/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/assets/intra_logo/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -162,6 +165,89 @@
         .nav-item i {
             width: 20px;
             text-align: center;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(124, 77, 255, 0.4));
+            transition: transform 0.2s;
+            vertical-align: middle;
+        }
+
+        .nav-item:hover .nav-icon {
+            transform: scale(1.15);
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(124, 77, 255, 0.4);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(124, 77, 255, 0.12);
+            border: 1px solid rgba(124, 77, 255, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-icon-wrapper img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .stat-info h3 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-info p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-elevated);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #7c4dff, #06b6d4);
+            transition: width 0.4s ease;
         }
 
         /* Main Content */
@@ -513,6 +599,7 @@
     <!-- Header -->
     <header>
         <div class="brand">
+            <img src="/assets/intra_logo/android-chrome-192x192.png" alt="Intra Logo" class="brand-logo">
             <span class="brand-badge">INTRA</span>
             <span class="brand-title">Server Admin Console</span>
         </div>
@@ -534,19 +621,22 @@
         <!-- Sidebar -->
         <nav class="sidebar">
             <div class="nav-item active" onclick="switchTab('users', this)">
-                <i class="fas fa-users"></i> Users Management
+                <img src="/assets/admin_icons/users_management-white.webp" class="nav-icon" alt="Users"> Users Management
+            </div>
+            <div class="nav-item" onclick="switchTab('system', this)">
+                <img src="/assets/admin_icons/hardware_health_white.webp" class="nav-icon" alt="System"> System & Telemetry
             </div>
             <div class="nav-item" onclick="switchTab('security', this)">
                 <i class="fas fa-shield-alt"></i> Access & Security
             </div>
             <div class="nav-item" onclick="switchTab('lumir', this)">
-                <i class="fas fa-brain"></i> Lumir AI & Voice
+                <img src="/assets/admin_icons/ai_neural_core_white.webp" class="nav-icon" alt="Lumir"> Lumir AI & Voice
             </div>
             <div class="nav-item" onclick="switchTab('weather', this)">
                 <i class="fas fa-cloud-sun"></i> Weather Sentinel
             </div>
             <div class="nav-item" onclick="switchTab('storage', this)">
-                <i class="fas fa-database"></i> Storage & Maintenance
+                <img src="/assets/admin_icons/storage_vault_white.webp" class="nav-icon" alt="Storage"> Storage & Maintenance
             </div>
         </nav>
 
@@ -556,7 +646,10 @@
             <!-- 1. USERS TAB -->
             <div id="tab-users" class="tab-panel active">
                 <div class="panel-header">
-                    <h2 class="panel-title">Users & Account Approvals</h2>
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <img src="/assets/admin_icons/users_management-white.webp" style="width:28px; height:28px;" alt="Users">
+                        Users & Account Approvals
+                    </h2>
                     <p class="panel-subtitle">Manage registered LAN chat users, approve pending accounts, and manage credentials.</p>
                 </div>
 
@@ -583,6 +676,84 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- ⚡ SYSTEM & HARDWARE TELEMETRY TAB -->
+            <div id="tab-system" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <img src="/assets/admin_icons/hardware_health_white.webp" style="width:28px; height:28px;" alt="Hardware">
+                        Hardware & Server Health
+                    </h2>
+                    <p class="panel-subtitle">Realtime server telemetry, CPU/RAM utilization, and active client connections.</p>
+                </div>
+
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <img src="/assets/admin_icons/hardware_health_white.webp" alt="CPU">
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-cpu">-- %</h3>
+                            <p>CPU Utilization</p>
+                            <div class="progress-bar-bg">
+                                <div id="bar-cpu" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <img src="/assets/admin_icons/ai_neural_core_white.webp" alt="RAM">
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-ram">-- %</h3>
+                            <p id="stat-ram-sub">Memory (RAM)</p>
+                            <div class="progress-bar-bg">
+                                <div id="bar-ram" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <img src="/assets/admin_icons/storage_vault_white.webp" alt="Disk">
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-disk">-- %</h3>
+                            <p id="stat-disk-sub">Disk Space</p>
+                            <div class="progress-bar-bg">
+                                <div id="bar-disk" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <img src="/assets/admin_icons/users_management-white.webp" alt="Clients">
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-clients">0</h3>
+                            <p>Active LAN Clients</p>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" style="width: 100%; background: #10b981;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <img src="/assets/admin_icons/system_terminal_white.webp" style="width:20px; height:20px; margin-right:8px; vertical-align:middle;" alt="Terminal">
+                        Realtime Telemetry Monitor
+                        <button class="btn-outline" style="margin-left: auto;" onclick="loadSystemStatus()">
+                            <i class="fas fa-sync-alt"></i> Refresh Now
+                        </button>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:14px;">
+                        Hardware metrics are polled from the FastAPI host machine. High CPU loads may indicate background video transcoding, speech synthesis, or vector searches.
+                    </p>
                 </div>
             </div>
 
@@ -623,7 +794,10 @@
             <!-- 3. LUMIR AI TAB -->
             <div id="tab-lumir" class="tab-panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">Lumir AI Intelligence Engine</h2>
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <img src="/assets/admin_icons/ai_neural_core_white.webp" style="width:28px; height:28px;" alt="Lumir">
+                        Lumir AI Intelligence Engine
+                    </h2>
                     <p class="panel-subtitle">Configure backend LLM inference provider (llama.cpp / Ollama) and voice settings.</p>
                 </div>
 
@@ -689,7 +863,10 @@
             <!-- 5. STORAGE & MAINTENANCE TAB -->
             <div id="tab-storage" class="tab-panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">Storage & LocalAppData Maintenance</h2>
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <img src="/assets/admin_icons/storage_vault_white.webp" style="width:28px; height:28px;" alt="Storage">
+                        Storage & LocalAppData Maintenance
+                    </h2>
                     <p class="panel-subtitle">Manage uploaded media, vector memories, and cleanup old files.</p>
                 </div>
 
@@ -749,9 +926,29 @@
             document.getElementById(`tab-${tabId}`).classList.add("active");
 
             if (tabId === "users") loadUsers();
+            if (tabId === "system") loadSystemStatus();
             if (tabId === "security") loadSettings();
             if (tabId === "lumir") loadAIConfig();
             if (tabId === "weather") loadLocation();
+        }
+
+        // ================= ⚡ SYSTEM TELEMETRY =================
+        async function loadSystemStatus() {
+            const data = await fetchAdmin("/admin/system_status");
+            if (data && data.success) {
+                document.getElementById("stat-cpu").innerText = data.cpu_percent + " %";
+                document.getElementById("bar-cpu").style.width = Math.min(100, data.cpu_percent) + "%";
+
+                document.getElementById("stat-ram").innerText = data.ram_percent + " %";
+                document.getElementById("stat-ram-sub").innerText = `RAM: ${data.ram_used_gb} GB / ${data.ram_total_gb} GB`;
+                document.getElementById("bar-ram").style.width = Math.min(100, data.ram_percent) + "%";
+
+                document.getElementById("stat-disk").innerText = data.disk_percent + " %";
+                document.getElementById("stat-disk-sub").innerText = `Free: ${data.disk_free_gb} GB / ${data.disk_total_gb} GB`;
+                document.getElementById("bar-disk").style.width = Math.min(100, data.disk_percent) + "%";
+
+                document.getElementById("stat-clients").innerText = data.active_clients;
+            }
         }
 
         async function fetchAdmin(endpoint, options = {}) {
