@@ -1,4 +1,4 @@
-from .utilities import generate_passport_layout, extract_text_from_image
+from .utilities import generate_passport_layout, extract_text_from_image, resolve_input_path
 from .ai_engine import ask_ai
 import sys
 import os
@@ -492,7 +492,9 @@ class LumirEngine:
                 if not config.get("ai_enabled"):
                     return {"type": "text", "text": "🤖 AI is currently offline. Enable it from the Admin Panel."}
 
-                local_path = target_image.lstrip('/') # '/uploads/pic.jpg' -> 'uploads/pic.jpg'
+                local_path = resolve_input_path(target_image)
+                if not local_path:
+                    return {"type": "text", "text": "⚠️ Image file not found on server."}
 
                 # Hum AI ko khud ek background prompt bhejenge
                 vision_prompt = "Please analyze this image carefully. Describe what you see in detail, including objects, people, environment, and any written text."
@@ -652,9 +654,8 @@ class LumirEngine:
 
                         # Check karo ki extension image ka hi ho
                         if last_file.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                            # URL se local path nikalo (e.g. '/uploads/pic.jpg' -> 'uploads/pic.jpg')
-                            local_path = last_file.lstrip('/')
-                            if os.path.exists(local_path):
+                            local_path = resolve_input_path(last_file)
+                            if local_path and os.path.exists(local_path):
                                 target_image_path = local_path
                                 print(f"👁️ [ENGINE] Sending image to AI: {target_image_path}")
 
