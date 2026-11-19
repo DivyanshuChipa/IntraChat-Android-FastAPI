@@ -532,6 +532,31 @@ class MainActivity : ComponentActivity() {
                                         typingStatuses = chatViewModel.typingStatuses,
                                         activeChatUser = chatViewModel.activeChatUser,
                                         onChatClick = { currentChatReceiver = it },
+                                        onCallClick = { target ->
+                                            val contactItem =
+                                                contactViewModel.contacts.find { it.username == target }
+
+                                            val photo =
+                                                contactItem?.profilePhoto?.let {
+                                                    settingsManager.getBaseUrl()
+                                                        .removeSuffix("/") + it
+                                                }
+
+                                            if (target.equals("Lumir", ignoreCase = true)) {
+                                                // 🤖 LUMIR AI VOICE CALL
+                                                chatViewModel.sendCallRequest(target)
+                                                callViewModel.onStartOutgoingCall(target, photo)
+                                                callViewModel.onCallConnected()
+                                                lumirVoiceManager.startSession()
+                                                proximitySensor.deactivate(true)
+                                            } else {
+                                                // 👤 HUMAN WEBRTC PEER CALL
+                                                chatViewModel.sendCallRequest(target)
+                                                callViewModel.onStartOutgoingCall(target, photo)
+                                                webRTCClient.startCall(target)
+                                                proximitySensor.deactivate(true)
+                                            }
+                                        },
                                         onSettingsClick = { showSettings = true },
                                         onSmbClick = { showSmbBrowser = true },
                                         onWebDropClick = { showWebDrop = true },

@@ -89,18 +89,31 @@ fun CallScreen(
         }
     }
 
+    val isLumir = state.targetUser.equals("Lumir", ignoreCase = true)
+
+    val backgroundBrush = if (isLumir) {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF261245),
+                Color(0xFF381464),
+                Color(0xFF53167D),
+                Color(0xFF2E0C4C)
+            )
+        )
+    } else {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF321954),
+                Color(0xFF9B28D9),
+                Color(0xFFE5B80E)
+            )
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF321954),
-                        Color(0xFF9B28D9),
-                        Color(0xFFE5B80E)
-                    )
-                )
-            ),
+            .background(backgroundBrush),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -110,20 +123,18 @@ fun CallScreen(
                 .fillMaxSize()
                 .padding(vertical = 60.dp)
         ) {
-            val isLumir = state.targetUser.equals("Lumir", ignoreCase = true)
-
             // --- TOP SECTION: Avatar & Visualizer ---
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (isLumir) {
-                    // 🔮 Futuristic Hexagonal Synaptic Cyber-Core for Lumir AI
+                    // 🔮 Holographic 3D Hexagonal Quantum Core for Lumir AI
                     Box(
                         modifier = Modifier
-                            .size(200.dp)
+                            .size(280.dp)
                             .padding(bottom = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         LumirCyberCore(
-                            size = 200.dp,
+                            size = 280.dp,
                             isListening = isListening,
                             isThinking = isThinking,
                             isSpeaking = isSpeaking,

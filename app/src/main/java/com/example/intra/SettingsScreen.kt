@@ -178,6 +178,9 @@ fun SettingsScreen(
     // 🖐️ LEFT-HANDED MODE STATE
     var isLeftHandModeEnabled by remember { mutableStateOf(settingsManager.isLeftHandModeEnabled()) }
 
+    // 📞 SWIPE TO CALL STATE
+    var isSwipeToCallEnabled by remember { mutableStateOf(settingsManager.isSwipeToCallEnabled()) }
+
     // 🎛️ THUMB ARC KNOB STATE
     var isThumbArcKnobEnabled by remember { mutableStateOf(settingsManager.isThumbArcKnobEnabled()) }
 
@@ -643,6 +646,50 @@ fun SettingsScreen(
                         onCheckedChange = { enabled ->
                             isLeftHandModeEnabled = enabled
                             settingsManager.setLeftHandModeEnabled(enabled)
+                        }
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+
+                // 📞 SWIPE TO CALL (SAMSUNG J2 STYLE - EXPERIMENTAL)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Swipe to Call", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    "EXPERIMENTAL",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+                        Text(
+                            "Swipe contact card to quickly start a call (Samsung J2 style). Adapts to Left-Handed Mode.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = isSwipeToCallEnabled,
+                        onCheckedChange = { enabled ->
+                            isSwipeToCallEnabled = enabled
+                            settingsManager.setSwipeToCallEnabled(enabled)
                         }
                     )
                 }

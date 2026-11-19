@@ -60,6 +60,18 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.ui.draw.scale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +80,7 @@ fun ContactListScreen(
     typingStatuses: Map<String, Boolean>,
     activeChatUser: String? = null,
     onChatClick: (String) -> Unit,
+    onCallClick: (String) -> Unit = {},
     onSettingsClick: () -> Unit,
     onSmbClick: () -> Unit,
     onWebDropClick: () -> Unit = {},
@@ -82,6 +95,7 @@ fun ContactListScreen(
     var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
     var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
     var isLeftHandMode by remember { mutableStateOf(settingsManager.isLeftHandModeEnabled()) }
+    var isSwipeToCallEnabled by remember { mutableStateOf(settingsManager.isSwipeToCallEnabled()) }
     var isThumbArcKnobEnabled by remember { mutableStateOf(settingsManager.isThumbArcKnobEnabled()) }
     var isCornerJogDialEnabled by remember { mutableStateOf(settingsManager.isCornerJogDialEnabled()) }
     var selectedHubIndex by remember { mutableIntStateOf(0) }
@@ -109,6 +123,7 @@ fun ContactListScreen(
         isIptvEnabled = settingsManager.isIptvEnabled()
         isDriveEnabled = settingsManager.isIntraDriveEnabled()
         isLeftHandMode = settingsManager.isLeftHandModeEnabled()
+        isSwipeToCallEnabled = settingsManager.isSwipeToCallEnabled()
         isThumbArcKnobEnabled = settingsManager.isThumbArcKnobEnabled()
         isCornerJogDialEnabled = settingsManager.isCornerJogDialEnabled()
     }
@@ -430,7 +445,7 @@ fun ContactListScreen(
                     // ✅ STEP 2: LUMIR BOT ITEM (Yahan add karo)
                     if (showLumir) { // 🤖 Check visibility setting
                         item {
-                            ContactItem(
+                            SwipeableContactItem(
                                 name = "Lumir",
                                 subtitle = "AI Assistant & Utilities",
                                 isTyping = false, // Abhi ke liye false
@@ -441,7 +456,10 @@ fun ContactListScreen(
                                 unreadCount = 0,
                                 isActive = activeChatUser == "Lumir",
                                 iconResourceId = R.drawable.lumir7, // 🤖 Use Custom Vector
+                                canSwipeCall = isSwipeToCallEnabled,
+                                isLeftHandMode = isLeftHandMode,
                                 onClick = { onChatClick("Lumir") },
+                                onCallClick = { onCallClick("Lumir") },
                                 onProfileClick = {
                                     selectedProfileForDialog = ProfileDialogData("Lumir", null, Icons.Default.SmartToy, Color(0xFF1100FF), R.drawable.lumir7)
                                 }
@@ -467,7 +485,7 @@ fun ContactListScreen(
                                 user.unreadCount // Chat closed hai, actual count dikhao
                             }
 
-                            ContactItem(
+                            SwipeableContactItem(
                                 name = user.username,
                                 subtitle = "Tap to chat",
                                 isTyping = isUserTyping,
@@ -477,7 +495,10 @@ fun ContactListScreen(
                                 profilePhotoUrl = user.profilePhoto,
                                 unreadCount = displayUnreadCount, // 🆕 Updated logic
                                 isActive = activeChatUser == user.username, // 🆕 Active detection
+                                canSwipeCall = isSwipeToCallEnabled,
+                                isLeftHandMode = isLeftHandMode,
                                 onClick = { onChatClick(user.username) },
+                                onCallClick = { onCallClick(user.username) },
                                 onProfileClick = {
                                     selectedProfileForDialog = ProfileDialogData(user.username, user.profilePhoto, Icons.Filled.Person, Color(0xFFB39DDB), null)
                                 }
@@ -664,6 +685,191 @@ data class ProfileDialogData(
     val iconResourceId: Int?
 )
 
+// 📳 SAMSUNG J2 STYLE SWIPE TO CALL WRAPPER
+@Composable
+fun SwipeableContactItem(
+    name: String,
+    subtitle: String,
+    isTyping: Boolean,
+    icon: ImageVector,
+    iconTint: Color,
+    isDark: Boolean,
+    profilePhotoUrl: String? = null,
+    unreadCount: Int = 0,
+    isActive: Boolean = false,
+    iconResourceId: Int? = null,
+    canSwipeCall: Boolean = true,
+    isLeftHandMode: Boolean = false,
+    onClick: () -> Unit,
+    onCallClick: () -> Unit,
+    onProfileClick: () -> Unit
+) {
+    if (!canSwipeCall) {
+        ContactItem(
+            name = name,
+            subtitle = subtitle,
+            isTyping = isTyping,
+            icon = icon,
+            iconTint = iconTint,
+            isDark = isDark,
+            profilePhotoUrl = profilePhotoUrl,
+            unreadCount = unreadCount,
+            isActive = isActive,
+            iconResourceId = iconResourceId,
+            onClick = onClick,
+            onProfileClick = onProfileClick
+        )
+        return
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    val haptic = LocalHapticFeedback.current
+    var hasVibrated by remember { mutableStateOf(false) }
+
+    val density = LocalDensity.current
+    val thresholdPx = with(density) { 90.dp.toPx() }
+    val maxDragPx = with(density) { 150.dp.toPx() }
+
+    val callGreen = Color(0xFF10B981)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+    ) {
+        // BACKGROUND ACTION LAYER (Samsung J2 Call Style)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(callGreen),
+            contentAlignment = if (isLeftHandMode) Alignment.CenterEnd else Alignment.CenterStart
+        ) {
+            val dragProgress = (kotlin.math.abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.3f)
+            val iconScale = (0.7f + 0.5f * dragProgress).coerceIn(0.7f, 1.25f)
+            val textAlpha = (dragProgress - 0.25f).coerceIn(0f, 1f)
+
+            Row(
+                modifier = Modifier.padding(horizontal = 22.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isLeftHandMode) {
+                    Text(
+                        text = "Calling...",
+                        color = Color.White.copy(alpha = textAlpha),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.Call,
+                        contentDescription = "Call",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .scale(iconScale)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Call,
+                        contentDescription = "Call",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .scale(iconScale)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Calling...",
+                        color = Color.White.copy(alpha = textAlpha),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
+        // FOREGROUND CONTACT ROW
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { androidx.compose.ui.unit.IntOffset(offsetX.value.toInt(), 0) }
+                .pointerInput(isLeftHandMode) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val triggered = if (isLeftHandMode) {
+                                offsetX.value <= -thresholdPx
+                            } else {
+                                offsetX.value >= thresholdPx
+                            }
+
+                            if (triggered) {
+                                onCallClick()
+                            }
+
+                            hasVibrated = false
+                            coroutineScope.launch {
+                                offsetX.animateTo(
+                                    0f,
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                )
+                            }
+                        },
+                        onDragCancel = {
+                            hasVibrated = false
+                            coroutineScope.launch {
+                                offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                            }
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            val current = offsetX.value
+                            val next = if (isLeftHandMode) {
+                                (current + dragAmount).coerceIn(-maxDragPx, 0f)
+                            } else {
+                                (current + dragAmount).coerceIn(0f, maxDragPx)
+                            }
+
+                            coroutineScope.launch {
+                                offsetX.snapTo(next)
+                            }
+
+                            val isOverThreshold = if (isLeftHandMode) {
+                                next <= -thresholdPx
+                            } else {
+                                next >= thresholdPx
+                            }
+
+                            if (isOverThreshold && !hasVibrated) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                hasVibrated = true
+                            } else if (!isOverThreshold && hasVibrated) {
+                                hasVibrated = false
+                            }
+                        }
+                    )
+                }
+        ) {
+            ContactItem(
+                name = name,
+                subtitle = subtitle,
+                isTyping = isTyping,
+                icon = icon,
+                iconTint = iconTint,
+                isDark = isDark,
+                profilePhotoUrl = profilePhotoUrl,
+                unreadCount = unreadCount,
+                isActive = isActive,
+                iconResourceId = iconResourceId,
+                onClick = onClick,
+                onProfileClick = onProfileClick
+            )
+        }
+    }
+}
+
 @Composable
 fun ContactItem(
     name: String,
@@ -684,11 +890,12 @@ fun ContactItem(
     val typingColor = Color(0xFFD175FF)
     val avatarBg = if (isDark) Color(0xFF2A2B33) else Color(0xFFEDE7F6)
 
-    // 🆕 Active chat ka background color
+    // 🆕 Active chat ka background color (solid so swipe reveals call deck underneath)
+    val defaultSurface = if (isDark) Color(0xFF14151E) else MaterialTheme.colorScheme.surface
     val backgroundColor = if (isActive) {
         if (isDark) Color(0xFF1E1E2E) else Color(0xFFE8DEF8)
     } else {
-        Color.Transparent
+        defaultSurface
     }
 
     val context = LocalContext.current
