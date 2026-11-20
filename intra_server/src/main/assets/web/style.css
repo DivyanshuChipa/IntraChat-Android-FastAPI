@@ -38,62 +38,124 @@
     font-family: 'Roboto', sans-serif;
 }
 
-/* Auth Page Styling */
+/* Auth Page Styling - Dreamy Animated Sky Background */
 body.auth-page {
-    background-color: var(--bg-color);
-    height: 100vh;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow-x: hidden;
+    background: #1a1528 url('/assets/animated_assets/converted_Dreamy Crescent Moon Cloudscape-2_conv_1795098013461_gfqc0.webp') no-repeat center center / cover;
+}
+
+/* Full Viewport Ambient Sky Video */
+.video-background-container {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+}
+
+#bg-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+.video-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 10, 30, 0.08);
+    pointer-events: none;
+}
+
+/* Reduced Motion Mode Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    #bg-video {
+        display: none !important;
+    }
+}
+
+.auth-container {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 390px;
+    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.auth-container {
-    width: 100%;
-    max-width: 400px;
-    padding: 20px;
-}
-
+/* Original Clean White Card with Balanced Soft Shadow */
 .auth-card {
-    background: var(--card-bg);
-    padding: 40px 30px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    background: #ffffff;
+    width: 100%;
+    padding: 38px 30px;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
     text-align: center;
 }
 
+/* Original Compact Brand Logo */
+.auth-logo {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 12px auto;
+    display: block;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(124, 77, 255, 0.35);
+}
+
+/* Original Typography */
 .brand-title {
     color: var(--primary-color);
-    font-size: 3rem;
+    font-size: 2.2rem;
     font-weight: 700;
-    margin-bottom: 0;
+    margin-bottom: 2px;
 }
 
 .brand-subtitle {
     color: var(--text-secondary);
-    font-size: 1rem;
-    margin-bottom: 30px;
-    letter-spacing: 1px;
+    font-size: 0.95rem;
+    margin-bottom: 26px;
+    letter-spacing: 0.5px;
 }
 
+/* Original Clean Input Fields */
 .input-group {
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .input-group input {
     width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 1rem;
+    padding: 13px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
     outline: none;
-    transition: border-color 0.3s;
-    background: #fff;
-    color: #333;
+    transition: all 0.2s ease;
+    background: #f8fafc;
+    color: #1e293b;
 }
 
 .input-group input:focus {
     border-color: var(--primary-color);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(103, 58, 183, 0.15);
 }
 
 .toggle-password {
@@ -105,24 +167,31 @@ body.auth-page {
     color: var(--text-secondary);
 }
 
+.toggle-password:hover {
+    color: var(--primary-color);
+}
+
+/* Original Purple Login Button */
 #auth-btn {
     width: 100%;
-    padding: 14px;
+    padding: 13px;
     background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
     cursor: pointer;
     margin-top: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: background-color 0.3s, transform 0.1s;
+    box-shadow: 0 4px 14px rgba(103, 58, 183, 0.3);
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
     text-transform: uppercase;
 }
 
 #auth-btn:hover {
     background-color: var(--primary-dark);
+    box-shadow: 0 6px 18px rgba(103, 58, 183, 0.4);
 }
 
 #auth-btn:active {
@@ -130,7 +199,7 @@ body.auth-page {
 }
 
 .toggle-text {
-    margin-top: 25px;
+    margin-top: 24px;
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
@@ -138,11 +207,18 @@ body.auth-page {
 #toggle-link {
     color: var(--primary-color);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 #toggle-link:hover {
     text-decoration: underline;
+}
+
+.error-msg {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--error-color);
+}
 }
 
 .error-msg {
