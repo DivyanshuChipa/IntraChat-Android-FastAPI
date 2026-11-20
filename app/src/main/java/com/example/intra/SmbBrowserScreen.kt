@@ -71,7 +71,6 @@ fun SmbBrowserScreen(
     // Apps Hub and Quick Access Dialog States
     var isHubExpanded by remember { mutableStateOf(false) }
     var showWebDropDialog by remember { mutableStateOf(false) }
-    var showIntraDriveDialog by remember { mutableStateOf(false) }
 
     // Protocol Selection & Port
     var selectedProtocol by remember { mutableStateOf(NetworkProtocol.SMB) }
@@ -488,18 +487,7 @@ fun SmbBrowserScreen(
                                         tint = topBarIconColor
                                     )
                                 }
-                                // 2. IntraDrive (Network Storage / WebDAV)
-                                IconButton(onClick = {
-                                    isHubExpanded = false
-                                    showIntraDriveDialog = true
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Filled.FolderShared,
-                                        contentDescription = "IntraDrive",
-                                        tint = topBarIconColor
-                                    )
-                                }
-                                // 3. FTP / Network Protocol (Future placeholder / toast)
+                                // 2. FTP / Network Protocol (Future placeholder / toast)
                                 IconButton(onClick = {
                                     isHubExpanded = false
                                     Toast.makeText(context, "FTP & Cloud storage coming soon! 🌐", Toast.LENGTH_SHORT).show()
@@ -1086,17 +1074,6 @@ fun SmbBrowserScreen(
             baseUrl = settingsManager.getBaseUrl(),
             isDark = isDark,
             onDismiss = { showWebDropDialog = false }
-        )
-    }
-
-    // ----------------------------------------------------
-    // Render IntraDrive QR & Link Dialog
-    // ----------------------------------------------------
-    if (showIntraDriveDialog) {
-        IntraDriveDialog(
-            baseUrl = settingsManager.getBaseUrl(),
-            isDark = isDark,
-            onDismiss = { showIntraDriveDialog = false }
         )
     }
 }

@@ -90,10 +90,9 @@ fun ContactListScreen(
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
 
-    // Refresh Lumir, IPTV, and IntraDrive states whenever screen appears
+    // Refresh Lumir and IPTV states whenever screen appears
     var showLumir by remember { mutableStateOf(settingsManager.isShowLumirEnabled()) }
     var isIptvEnabled by remember { mutableStateOf(settingsManager.isIptvEnabled()) }
-    var isDriveEnabled by remember { mutableStateOf(settingsManager.isIntraDriveEnabled()) }
     var isLeftHandMode by remember { mutableStateOf(settingsManager.isLeftHandModeEnabled()) }
     var isSwipeToCallEnabled by remember { mutableStateOf(settingsManager.isSwipeToCallEnabled()) }
     var isThumbArcKnobEnabled by remember { mutableStateOf(settingsManager.isThumbArcKnobEnabled()) }
@@ -104,16 +103,14 @@ fun ContactListScreen(
     var selectedProfileForDialog by remember { mutableStateOf<ProfileDialogData?>(null) }
     var isHubExpanded by remember { mutableStateOf(false) }
     var showWebDropDialog by remember { mutableStateOf(false) }
-    var showIntraDriveDialog by remember { mutableStateOf(false) }
 
     // 🔙 System Back Button: Close Hub/Dialogs first if open, instead of minimizing app
     BackHandler(
-        enabled = isHubExpanded || selectedProfileForDialog != null || showWebDropDialog || showIntraDriveDialog
+        enabled = isHubExpanded || selectedProfileForDialog != null || showWebDropDialog
     ) {
         when {
             selectedProfileForDialog != null -> selectedProfileForDialog = null
             showWebDropDialog -> showWebDropDialog = false
-            showIntraDriveDialog -> showIntraDriveDialog = false
             isHubExpanded -> isHubExpanded = false
         }
     }
@@ -121,7 +118,6 @@ fun ContactListScreen(
     androidx.compose.runtime.LaunchedEffect(Unit) {
         showLumir = settingsManager.isShowLumirEnabled()
         isIptvEnabled = settingsManager.isIptvEnabled()
-        isDriveEnabled = settingsManager.isIntraDriveEnabled()
         isLeftHandMode = settingsManager.isLeftHandModeEnabled()
         isSwipeToCallEnabled = settingsManager.isSwipeToCallEnabled()
         isThumbArcKnobEnabled = settingsManager.isThumbArcKnobEnabled()
@@ -129,13 +125,10 @@ fun ContactListScreen(
     }
 
     // 🎛️ Dynamically build Hub tools list for Arc Knob & TopBar
-    val hubItems = remember(isIptvEnabled, isDriveEnabled) {
+    val hubItems = remember(isIptvEnabled) {
         buildList {
             add(HubItem("WebDrop", Icons.Filled.NearMe) { onWebDropClick() })
             add(HubItem("SMB Network", Icons.Filled.Storage) { onSmbClick() })
-            if (isDriveEnabled) {
-                add(HubItem("IntraDrive", Icons.Filled.FolderShared) { showIntraDriveDialog = true })
-            }
             if (isIptvEnabled) {
                 add(HubItem("Live TV", Icons.Filled.Tv) { onIptvClick() })
             }
@@ -326,20 +319,7 @@ fun ContactListScreen(
                                             tint = topBarIconColor
                                         )
                                     }
-                                    // 3. IntraDrive (Network Storage / WebDAV)
-                                    if (isDriveEnabled) {
-                                        IconButton(onClick = {
-                                            isHubExpanded = false
-                                            showIntraDriveDialog = true
-                                        }) {
-                                            Icon(
-                                                imageVector = Icons.Filled.FolderShared,
-                                                contentDescription = "IntraDrive",
-                                                tint = topBarIconColor
-                                            )
-                                        }
-                                    }
-                                    // 4. SMB Browser Icon
+                                    // 3. SMB Browser Icon
                                     IconButton(onClick = {
                                         isHubExpanded = false
                                         onSmbClick()
@@ -585,15 +565,6 @@ fun ContactListScreen(
             baseUrl = settingsManager.getBaseUrl(),
             isDark = isDark,
             onDismiss = { showWebDropDialog = false }
-        )
-    }
-
-    // Render IntraDrive QR & Link Dialog
-    if (showIntraDriveDialog) {
-        IntraDriveDialog(
-            baseUrl = settingsManager.getBaseUrl(),
-            isDark = isDark,
-            onDismiss = { showIntraDriveDialog = false }
         )
     }
 }
