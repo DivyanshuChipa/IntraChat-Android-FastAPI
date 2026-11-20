@@ -95,9 +95,12 @@ namespace IntraServerControlCenter {
             this.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
 
             // Icon extraction
-            string iconPath = Path.Combine(baseDir, "icon.ico");
+            string iconPath = Path.Combine(baseDir, "assets", "intraserver-256x256.ico");
+            if (!File.Exists(iconPath)) iconPath = Path.Combine(baseDir, "icon.ico");
             if (File.Exists(iconPath)) {
                 try { this.Icon = new Icon(iconPath); } catch {}
+            } else {
+                try { this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch {}
             }
 
             // 1. TOP STATUS PANEL

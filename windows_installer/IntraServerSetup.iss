@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6 (https://jrsoftware.org/isdl.php)
 
 #define MyAppName "Intra Server"
-#define MyAppVersion "3.8.2"
+#define MyAppVersion "3.8.3"
 #define MyAppPublisher "IntraChat"
 #define MyAppExeName "IntraServer.exe"
 
@@ -20,6 +20,8 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64
+SetupIconFile=assets\intraserver-256x256.ico
+UninstallIconFile=assets\intraserver-256x256.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -33,9 +35,9 @@ Name: "firewallrule"; Description: "Allow Intra Server through Windows Firewall 
 Source: "..\dist\IntraServer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\intraserver-256x256.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\assets\intraserver-256x256.ico"
 
 [Run]
 ; Add Windows Firewall inbound rule for Port 8000

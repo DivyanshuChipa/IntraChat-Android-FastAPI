@@ -12,9 +12,19 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="auth-page">
+    <!-- Cinematic Ambient Video Background Layer -->
+    <div class="video-background-container">
+        <video autoplay muted loop playsinline 
+               poster="/assets/animated_assets/converted_Dreamy Crescent Moon Cloudscape-2_conv_1795098013461_gfqc0.webp" 
+               id="bg-video">
+            <source src="/assets/animated_assets/convert_1795097372746_jrmbp.webm" type="video/webm">
+        </video>
+        <div class="video-overlay"></div>
+    </div>
+
     <div class="auth-container">
-        <div class="auth-card" style="text-align: center;">
-            <img src="/assets/intra_logo/android-chrome-192x192.png" alt="Intra Logo" style="width: 56px; height: 56px; margin: 0 auto 12px auto; display: block; border-radius: 14px; box-shadow: 0 4px 16px rgba(124, 77, 255, 0.4);">
+        <div class="auth-card">
+            <img src="/assets/intra_logo/android-chrome-192x192.png" alt="Intra Logo" class="auth-logo">
             <h1 class="brand-title">Intra</h1>
             <p class="brand-subtitle">LAN Messenger</p>
 
