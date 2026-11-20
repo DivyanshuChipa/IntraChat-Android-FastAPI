@@ -31,6 +31,13 @@ ACCESS_TOKEN_EXPIRE_DAYS = 30
 init_db()
 init_msg_db()
 
+# Ensure Intra external binaries directory is in system PATH (FFmpeg, Tesseract, yt-dlp)
+try:
+    from capability_manager import inject_tools_to_path
+    inject_tools_to_path()
+except Exception as e:
+    print(f"⚠️ Capability tools PATH notice: {e}")
+
 ADMIN_SECRET = os.getenv("INTRA_ADMIN_KEY")
 if not ADMIN_SECRET:
     # Try to get from Database

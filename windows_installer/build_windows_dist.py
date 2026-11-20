@@ -57,7 +57,18 @@ def main():
     else:
         print("  ℹ️ No embedded runtime found in windows_installer/runtime. Distribution will use system Python.")
 
-    # 5. Copy icons if present
+    # 5. Copy Installer Assets (icons, banners)
+    assets_src = os.path.join(SCRIPT_DIR, "assets")
+    assets_dest = os.path.join(DIST_DIR, "assets")
+    if os.path.exists(assets_src):
+        print("Copying installer assets (logos & icons)...")
+        shutil.copytree(assets_src, assets_dest, dirs_exist_ok=True)
+        # Also copy primary icon to root as icon.ico for backward compatibility
+        primary_ico = os.path.join(assets_src, "intraserver-256x256.ico")
+        if os.path.exists(primary_ico):
+            shutil.copy(primary_ico, os.path.join(DIST_DIR, "icon.ico"))
+            print("  ✅ Bundled intraserver-256x256.ico into dist/IntraServer/assets/ & icon.ico")
+
     for icon_name in ["icon.ico", "icon.png"]:
         src_icon = os.path.join(REPO_ROOT, icon_name)
         if os.path.exists(src_icon):
@@ -94,9 +105,15 @@ def main():
             "/r:System.Windows.Forms.dll,System.Drawing.dll",
             f"/out:{exe_target}",
         ]
-        icon_path = os.path.join(REPO_ROOT, "icon.ico")
-        if os.path.exists(icon_path):
+        icon_candidates = [
+            os.path.join(SCRIPT_DIR, "assets", "intraserver-256x256.ico"),
+            os.path.join(DIST_DIR, "assets", "intraserver-256x256.ico"),
+            os.path.join(REPO_ROOT, "icon.ico"),
+        ]
+        icon_path = next((p for p in icon_candidates if os.path.exists(p)), None)
+        if icon_path:
             cmd.append(f"/win32icon:{icon_path}")
+            print(f"  🎨 Embedding native Win32 icon: {icon_path}")
         cmd.append(cs_source)
 
         res = subprocess.run(cmd, capture_output=True, text=True)

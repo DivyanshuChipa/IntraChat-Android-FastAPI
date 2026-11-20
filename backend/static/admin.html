@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     <link rel="icon" type="image/x-icon" href="/assets/intra_logo/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/intra_logo/favicon-32x32.png">
     <link rel="apple-touch-icon" href="/assets/intra_logo/apple-touch-icon.png">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -268,8 +271,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .panel-header {
@@ -328,8 +338,15 @@
             border-bottom: 1px solid var(--border);
         }
 
-        th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
-        th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+        th:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
 
         td {
             padding: 14px 16px;
@@ -378,10 +395,25 @@
             border-radius: 12px;
         }
 
-        .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-        .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-        .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-        .badge-muted { background: rgba(154, 161, 188, 0.15); color: var(--text-muted); }
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .badge-muted {
+            background: rgba(154, 161, 188, 0.15);
+            color: var(--text-muted);
+        }
 
         .action-btns {
             display: flex;
@@ -401,14 +433,38 @@
             gap: 5px;
         }
 
-        .btn-approve { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
-        .btn-approve:hover { background: var(--success); color: #fff; }
+        .btn-approve {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
 
-        .btn-reset { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
-        .btn-reset:hover { background: var(--warning); color: #111; }
+        .btn-approve:hover {
+            background: var(--success);
+            color: #fff;
+        }
 
-        .btn-delete { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
-        .btn-delete:hover { background: var(--danger); color: #fff; }
+        .btn-reset {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-reset:hover {
+            background: var(--warning);
+            color: #111;
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-delete:hover {
+            background: var(--danger);
+            color: #fff;
+        }
 
         /* Form Controls */
         .form-grid {
@@ -429,7 +485,10 @@
             margin-bottom: 8px;
         }
 
-        input[type="text"], input[type="number"], input[type="password"], select {
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        select {
             width: 100%;
             background-color: var(--bg-elevated);
             border: 1px solid var(--border);
@@ -441,7 +500,8 @@
             transition: border-color 0.2s;
         }
 
-        input:focus, select:focus {
+        input:focus,
+        select:focus {
             border-color: var(--accent-primary);
         }
 
@@ -485,7 +545,10 @@
         .slider {
             position: absolute;
             cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: var(--bg-elevated);
             border: 1px solid var(--border);
             transition: .3s;
@@ -504,12 +567,12 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: var(--accent-primary);
             border-color: var(--accent-primary);
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(22px);
             background-color: #fff;
         }
@@ -537,7 +600,10 @@
         /* Modal */
         .modal-overlay {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: rgba(0, 0, 0, 0.75);
             display: flex;
             align-items: center;
@@ -581,7 +647,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -594,6 +660,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- Header -->
@@ -621,22 +688,29 @@
         <!-- Sidebar -->
         <nav class="sidebar">
             <div class="nav-item active" onclick="switchTab('users', this)">
-                <img src="/assets/admin_icons/users_management-white.webp" class="nav-icon" alt="Users"> Users Management
+                <img src="/assets/admin_icons/users_management-white.webp" class="nav-icon" alt="Users"> Users
+                Management
             </div>
             <div class="nav-item" onclick="switchTab('system', this)">
-                <img src="/assets/admin_icons/hardware_health_white.webp" class="nav-icon" alt="System"> System & Telemetry
+                <img src="/assets/admin_icons/hardware_health_dark.webp" class="nav-icon" alt="System"> System &
+                Telemetry
             </div>
             <div class="nav-item" onclick="switchTab('security', this)">
                 <i class="fas fa-shield-alt"></i> Access & Security
             </div>
             <div class="nav-item" onclick="switchTab('lumir', this)">
-                <img src="/assets/admin_icons/ai_neural_core_white.webp" class="nav-icon" alt="Lumir"> Lumir AI & Voice
+                <img src="/assets/admin_icons/ai_neural_core_dark.webp" class="nav-icon" alt="Lumir"> Lumir AI & Voice
+            </div>
+            <div class="nav-item" onclick="switchTab('capabilities', this)">
+                <img src="/assets/admin_icons/system_terminal_dark.webp" class="nav-icon" alt="Capabilities">
+                Capabilities & Addons
             </div>
             <div class="nav-item" onclick="switchTab('weather', this)">
                 <i class="fas fa-cloud-sun"></i> Weather Sentinel
             </div>
             <div class="nav-item" onclick="switchTab('storage', this)">
-                <img src="/assets/admin_icons/storage_vault_white.webp" class="nav-icon" alt="Storage"> Storage & Maintenance
+                <img src="/assets/admin_icons/storage_vault_dark.webp" class="nav-icon" alt="Storage"> Storage &
+                Maintenance
             </div>
         </nav>
 
@@ -647,10 +721,12 @@
             <div id="tab-users" class="tab-panel active">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/users_management-white.webp" style="width:28px; height:28px;" alt="Users">
+                        <img src="/assets/admin_icons/users_management-white.webp" style="width:28px; height:28px;"
+                            alt="Users">
                         Users & Account Approvals
                     </h2>
-                    <p class="panel-subtitle">Manage registered LAN chat users, approve pending accounts, and manage credentials.</p>
+                    <p class="panel-subtitle">Manage registered LAN chat users, approve pending accounts, and manage
+                        credentials.</p>
                 </div>
 
                 <div class="card">
@@ -672,7 +748,10 @@
                                 </tr>
                             </thead>
                             <tbody id="users-tbody">
-                                <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Loading users...</td></tr>
+                                <tr>
+                                    <td colspan="4" style="text-align:center; color:var(--text-muted);">Loading users...
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -683,16 +762,18 @@
             <div id="tab-system" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/hardware_health_white.webp" style="width:28px; height:28px;" alt="Hardware">
+                        <img src="/assets/admin_icons/hardware_health_dark.webp" style="width:28px; height:28px;"
+                            alt="Hardware">
                         Hardware & Server Health
                     </h2>
-                    <p class="panel-subtitle">Realtime server telemetry, CPU/RAM utilization, and active client connections.</p>
+                    <p class="panel-subtitle">Realtime server telemetry, CPU/RAM utilization, and active client
+                        connections.</p>
                 </div>
 
                 <div class="stat-grid">
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
-                            <img src="/assets/admin_icons/hardware_health_white.webp" alt="CPU">
+                            <img src="/assets/admin_icons/hardware_health_dark.webp" alt="CPU">
                         </div>
                         <div class="stat-info" style="flex:1;">
                             <h3 id="stat-cpu">-- %</h3>
@@ -705,7 +786,7 @@
 
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
-                            <img src="/assets/admin_icons/ai_neural_core_white.webp" alt="RAM">
+                            <img src="/assets/admin_icons/ai_neural_core_dark.webp" alt="RAM">
                         </div>
                         <div class="stat-info" style="flex:1;">
                             <h3 id="stat-ram">-- %</h3>
@@ -718,7 +799,7 @@
 
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
-                            <img src="/assets/admin_icons/storage_vault_white.webp" alt="Disk">
+                            <img src="/assets/admin_icons/storage_vault_dark.webp" alt="Disk">
                         </div>
                         <div class="stat-info" style="flex:1;">
                             <h3 id="stat-disk">-- %</h3>
@@ -745,14 +826,16 @@
 
                 <div class="card">
                     <div class="card-title">
-                        <img src="/assets/admin_icons/system_terminal_white.webp" style="width:20px; height:20px; margin-right:8px; vertical-align:middle;" alt="Terminal">
+                        <img src="/assets/admin_icons/system_terminal_dark.webp"
+                            style="width:20px; height:20px; margin-right:8px; vertical-align:middle;" alt="Terminal">
                         Realtime Telemetry Monitor
                         <button class="btn-outline" style="margin-left: auto;" onclick="loadSystemStatus()">
                             <i class="fas fa-sync-alt"></i> Refresh Now
                         </button>
                     </div>
                     <p style="color:var(--text-muted); font-size:14px;">
-                        Hardware metrics are polled from the FastAPI host machine. High CPU loads may indicate background video transcoding, speech synthesis, or vector searches.
+                        Hardware metrics are polled from the FastAPI host machine. High CPU loads may indicate
+                        background video transcoding, speech synthesis, or vector searches.
                     </p>
                 </div>
             </div>
@@ -770,7 +853,8 @@
                     <div class="toggle-row">
                         <div class="toggle-info">
                             <h4>Require Admin Approval</h4>
-                            <p>When enabled, new registrations must be manually approved by you before they can login or chat.</p>
+                            <p>When enabled, new registrations must be manually approved by you before they can login or
+                                chat.</p>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="toggle-approval" onchange="toggleRequireApproval(this.checked)">
@@ -781,7 +865,8 @@
                     <div class="toggle-row">
                         <div class="toggle-info">
                             <h4>LAN Auto-Discovery (Broadcast)</h4>
-                            <p>Allows phones on your Wi-Fi to automatically detect this server without typing IP manually. Disable for Stealth Mode.</p>
+                            <p>Allows phones on your Wi-Fi to automatically detect this server without typing IP
+                                manually. Disable for Stealth Mode.</p>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="toggle-discovery" onchange="toggleDiscovery(this.checked)">
@@ -795,10 +880,12 @@
             <div id="tab-lumir" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/ai_neural_core_white.webp" style="width:28px; height:28px;" alt="Lumir">
+                        <img src="/assets/admin_icons/ai_neural_core_dark.webp" style="width:28px; height:28px;"
+                            alt="Lumir">
                         Lumir AI Intelligence Engine
                     </h2>
-                    <p class="panel-subtitle">Configure backend LLM inference provider (llama.cpp / Ollama) and voice settings.</p>
+                    <p class="panel-subtitle">Configure backend LLM inference provider (llama.cpp / Ollama) and voice
+                        settings.</p>
                 </div>
 
                 <div class="card">
@@ -864,7 +951,8 @@
             <div id="tab-storage" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/storage_vault_white.webp" style="width:28px; height:28px;" alt="Storage">
+                        <img src="/assets/admin_icons/storage_vault_dark.webp" style="width:28px; height:28px;"
+                            alt="Storage">
                         Storage & LocalAppData Maintenance
                     </h2>
                     <p class="panel-subtitle">Manage uploaded media, vector memories, and cleanup old files.</p>
@@ -873,14 +961,53 @@
                 <div class="card">
                     <div class="card-title"><i class="fas fa-trash-alt"></i> Upload Files Pruning</div>
                     <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">
-                        All uploads and databases are safely isolated in <code>%LOCALAPPDATA%\IntraServer\</code>. Remove files older than X days to free disk space.
+                        All uploads and databases are safely isolated in <code>%LOCALAPPDATA%\IntraServer\</code>.
+                        Remove files older than X days to free disk space.
                     </p>
                     <div style="display:flex; gap:12px; align-items:center; max-width:400px;">
                         <input type="number" id="cleanup-days" value="30" min="1" placeholder="Days">
-                        <button class="btn-primary" style="background:#ef4444; white-space:nowrap;" onclick="runStorageCleanup()">
+                        <button class="btn-primary" style="background:#ef4444; white-space:nowrap;"
+                            onclick="runStorageCleanup()">
                             <i class="fas fa-broom"></i> Clean Up Old Files
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- 6. CAPABILITIES & ADDONS TAB -->
+            <div id="tab-capabilities" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <img src="/assets/admin_icons/system_terminal_dark.webp" style="width:28px; height:28px;"
+                            alt="Capabilities">
+                        Capabilities & External Tools
+                    </h2>
+                    <p class="panel-subtitle">Manage standalone binaries (FFmpeg, Tesseract OCR, yt-dlp) stored in
+                        Intra's dedicated local app directory.</p>
+                </div>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div
+                        style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                        <div>
+                            <div
+                                style="font-size:15px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-folder-open text-purple"></i> Intra Tools Directory
+                            </div>
+                            <div id="tools-dir-path"
+                                style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-top:4px;">
+                                Loading tools directory...
+                            </div>
+                        </div>
+                        <button class="btn-outline" onclick="loadCapabilities()">
+                            <i class="fas fa-sync-alt"></i> Refresh Status
+                        </button>
+                    </div>
+                </div>
+
+                <div id="capabilities-grid" class="form-grid"
+                    style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+                    <div style="color:var(--text-muted); font-size:14px;">Loading capability status...</div>
                 </div>
             </div>
 
@@ -891,7 +1018,8 @@
     <div id="auth-modal" class="modal-overlay" style="display:none;">
         <div class="modal-card">
             <h2><i class="fas fa-key text-purple"></i> Admin Key Required</h2>
-            <p>Enter the persistent <code>INTRA_ADMIN_KEY</code> from the server console logs to access the admin dashboard.</p>
+            <p>Enter the persistent <code>INTRA_ADMIN_KEY</code> from the server console logs to access the admin
+                dashboard.</p>
             <div class="form-group">
                 <label>Admin Secret Key</label>
                 <input type="password" id="input-admin-key" placeholder="Paste Admin Secret Key here...">
@@ -929,6 +1057,7 @@
             if (tabId === "system") loadSystemStatus();
             if (tabId === "security") loadSettings();
             if (tabId === "lumir") loadAIConfig();
+            if (tabId === "capabilities") loadCapabilities();
             if (tabId === "weather") loadLocation();
         }
 
@@ -1004,12 +1133,12 @@
             }
 
             tbody.innerHTML = data.users.map(u => {
-                const avatar = u.profile_photo 
-                    ? `<img src="${u.profile_photo}" onerror="this.src=''"/>` 
+                const avatar = u.profile_photo
+                    ? `<img src="${u.profile_photo}" onerror="this.src=''"/>`
                     : u.username.charAt(0).toUpperCase();
 
                 const isApproved = u.is_approved === 1 || u.is_approved === true;
-                const statusBadge = isApproved 
+                const statusBadge = isApproved
                     ? `<span class="badge badge-success"><i class="fas fa-check"></i> Approved</span>`
                     : `<span class="badge badge-warning"><i class="fas fa-clock"></i> Pending</span>`;
 
@@ -1141,6 +1270,123 @@
             if (res && res.success) showToast(res.message);
         }
 
+        // ================= 🧩 CAPABILITIES & ADDONS =================
+        let capPollTimer = null;
+
+        async function loadCapabilities() {
+            const data = await fetchAdmin("/admin/capabilities");
+            if (!data || !data.success) return;
+
+            const dirEl = document.getElementById("tools-dir-path");
+            if (dirEl) dirEl.innerText = data.tools_dir || "Standard system paths";
+
+            const container = document.getElementById("capabilities-grid");
+            if (!container) return;
+            container.innerHTML = "";
+
+            const activeTasks = data.active_tasks || {};
+            let hasRunningTask = false;
+
+            data.capabilities.forEach(cap => {
+                const task = activeTasks[cap.key];
+                const isRunning = task && task.status === "in_progress";
+                if (isRunning) hasRunningTask = true;
+
+                let statusBadge = "";
+                if (isRunning) {
+                    statusBadge = `<span class="badge badge-warning"><i class="fas fa-spinner fa-spin"></i> Installing (${task.percent || 10}%)</span>`;
+                } else if (cap.installed) {
+                    const srcLabel = cap.source === "local" ? "Intra Local" : "System PATH";
+                    statusBadge = `<span class="badge badge-success"><i class="fas fa-check-circle"></i> Installed (${srcLabel})</span>`;
+                } else {
+                    statusBadge = `<span class="badge badge-danger"><i class="fas fa-times-circle"></i> Missing</span>`;
+                }
+
+                let actionBtn = "";
+                if (isRunning) {
+                    actionBtn = `<button class="btn-action" disabled style="opacity:0.7; cursor:not-allowed;"><i class="fas fa-spinner fa-spin"></i> Downloading...</button>`;
+                } else if (!cap.installed) {
+                    actionBtn = `<button class="btn-action btn-approve" onclick="installCapability('${cap.key}')"><i class="fas fa-download"></i> Install Addon</button>`;
+                } else if (cap.can_uninstall) {
+                    actionBtn = `<button class="btn-action btn-delete" onclick="uninstallCapability('${cap.key}')"><i class="fas fa-trash-alt"></i> Remove Local</button>`;
+                } else {
+                    actionBtn = `<span style="font-size:12px; color:var(--text-muted);"><i class="fas fa-shield-alt"></i> System Installed</span>`;
+                }
+
+                let progressHtml = "";
+                if (isRunning) {
+                    progressHtml = `
+                        <div class="progress-bar-bg" style="margin-top:12px; height:8px;">
+                            <div class="progress-bar-fill" style="width: ${Math.max(8, task.percent || 10)}%;"></div>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;"><i class="fas fa-sync fa-spin"></i> ${task.message || "Downloading..."}</div>
+                    `;
+                } else if (task && task.status === "failed") {
+                    progressHtml = `
+                        <div style="font-size:11px; color:var(--danger); margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> ${task.message}</div>
+                    `;
+                }
+
+                let pathDisplay = cap.path ? `<div style="font-family:monospace; font-size:11px; color:var(--text-muted); margin-top:8px; word-break:break-all;"><i class="fas fa-terminal"></i> ${cap.path}</div>` : '';
+
+                const card = document.createElement("div");
+                card.className = "card";
+                card.style.display = "flex";
+                card.style.flexDirection = "column";
+                card.style.justifyContent = "space-between";
+                card.innerHTML = `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px;">
+                            <h3 style="font-size:16px; font-weight:700; color:var(--text-main); margin:0;">${cap.title}</h3>
+                            ${statusBadge}
+                        </div>
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:10px; line-height:1.5;">${cap.description}</p>
+                        ${pathDisplay}
+                        ${progressHtml}
+                    </div>
+                    <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
+                        ${actionBtn}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            if (hasRunningTask) {
+                if (!capPollTimer) {
+                    capPollTimer = setInterval(loadCapabilities, 1500);
+                }
+            } else {
+                if (capPollTimer) {
+                    clearInterval(capPollTimer);
+                    capPollTimer = null;
+                }
+            }
+        }
+
+        async function installCapability(toolKey) {
+            const res = await fetchAdmin(`/admin/capabilities/install?tool_key=${encodeURIComponent(toolKey)}`, { method: "POST" });
+            if (res && res.success) {
+                showToast(`Started downloading & installing ${toolKey}...`);
+                loadCapabilities();
+                if (!capPollTimer) {
+                    capPollTimer = setInterval(loadCapabilities, 1500);
+                }
+            } else {
+                showToast(res ? res.message : "Failed to start install.", true);
+            }
+        }
+
+        async function uninstallCapability(toolKey) {
+            if (!confirm(`Are you sure you want to remove ${toolKey} local binaries from %LOCALAPPDATA%/IntraServer/bin?`)) return;
+            const res = await fetchAdmin(`/admin/capabilities/uninstall?tool_key=${encodeURIComponent(toolKey)}`, { method: "POST" });
+            if (res && res.success) {
+                showToast(res.message);
+                loadCapabilities();
+            } else {
+                showToast(res ? res.message : "Failed to remove tool.", true);
+            }
+        }
+
         // Initial Boot
         window.addEventListener("DOMContentLoaded", () => {
             if (!adminKey) {
@@ -1152,4 +1398,5 @@
         });
     </script>
 </body>
+
 </html>

@@ -3,12 +3,13 @@ import os
 import time
 import psutil
 from fastapi import APIRouter, Depends
+
+router = APIRouter(prefix="/admin", tags=["Admin"])
+
 from server import verify_admin
 from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location, get_environment_settings, set_environment_settings, set_server_discovery, get_server_discovery
 from messages import cleanup_old_messages
 from chat import connected_clients   # 👈 SOURCE OF TRUTH
-
-router = APIRouter(prefix="/admin", tags=["Admin"])
 
 # ================= USERS LIST + ONLINE STATUS =================
 @router.get("/users")
@@ -218,6 +219,111 @@ def admin_get_system_status(admin=Depends(verify_admin)):
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+# ================= 🧩 CAPABILITIES & ADDONS (FFmpeg, Tesseract, yt-dlp) =================
+import sys
+import threading
+from typing import Dict, Any
+from capability_manager import (
+    CAPABILITIES,
+    detect_capability,
+    download_and_install_capability,
+    uninstall_local_capability,
+    get_intra_tools_dir
+)
+
+# In-memory tracking for active installations
+_install_tasks: Dict[str, Dict[str, Any]] = {}
+
+@router.get("/capabilities")
+def admin_get_capabilities(admin=Depends(verify_admin)):
+    tools = []
+    for key, config in CAPABILITIES.items():
+        detection = detect_capability(key)
+        tools.append({
+            "key": key,
+            "name": config.get("name", key),
+            "title": config.get("title", key),
+            "description": config.get("description", ""),
+            "installed": detection.get("installed", False),
+            "source": detection.get("source", "none"),
+            "path": detection.get("path"),
+            "can_uninstall": detection.get("can_uninstall", False)
+        })
+    return {
+        "success": True,
+        "platform": sys.platform,
+        "tools_dir": get_intra_tools_dir(),
+        "capabilities": tools,
+        "active_tasks": _install_tasks
+    }
+
+@router.get("/capabilities/status")
+def admin_get_capabilities_status(admin=Depends(verify_admin)):
+    return {
+        "success": True,
+        "active_tasks": _install_tasks
+    }
+
+@router.post("/capabilities/install")
+def admin_install_capability(tool_key: str, admin=Depends(verify_admin)):
+    if tool_key not in CAPABILITIES:
+        return {"success": False, "message": f"Unknown capability '{tool_key}'."}
+
+    current = _install_tasks.get(tool_key)
+    if current and current.get("status") == "in_progress":
+        return {"success": True, "message": "Installation already in progress."}
+
+    _install_tasks[tool_key] = {
+        "status": "in_progress",
+        "percent": 5,
+        "message": f"Starting installation of {tool_key}..."
+    }
+
+    def _worker():
+        def _cb(pct: int, msg: str):
+            _install_tasks[tool_key] = {
+                "status": "in_progress",
+                "percent": pct,
+                "message": msg
+            }
+
+        res = download_and_install_capability(tool_key, progress_callback=_cb)
+        if res.get("success"):
+            _install_tasks[tool_key] = {
+                "status": "completed",
+                "percent": 100,
+                "message": res.get("message", "Installed successfully!"),
+                "path": res.get("path")
+            }
+        else:
+            _install_tasks[tool_key] = {
+                "status": "failed",
+                "percent": 0,
+                "message": res.get("message", "Installation failed.")
+            }
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+
+    return {"success": True, "message": f"Installation started for {tool_key}."}
+
+@router.post("/capabilities/uninstall")
+def admin_uninstall_capability(tool_key: str, admin=Depends(verify_admin)):
+    if tool_key not in CAPABILITIES:
+        return {"success": False, "message": f"Unknown capability '{tool_key}'."}
+
+    removed = uninstall_local_capability(tool_key)
+    if tool_key in _install_tasks:
+        del _install_tasks[tool_key]
+
+    return {
+        "success": True,
+        "removed": removed,
+        "message": f"{tool_key} local binaries uninstalled successfully."
+    }
+
 
 
 
