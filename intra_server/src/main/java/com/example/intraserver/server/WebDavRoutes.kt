@@ -31,14 +31,17 @@ import java.util.UUID
  */
 fun Route.webDavRoutes(
     driveDir: File,
-    isEnabled: () -> Boolean
+    isEnabled: () -> Boolean,
+    isAuthRequired: () -> Boolean = { false },
+    getUsername: () -> String = { "admin" },
+    getPassword: () -> String = { "" }
 ) {
     driveDir.mkdirs()
 
     // 1. Root /drive
     route("/drive") {
         handle {
-            handleWebDavRequest(call, driveDir, "", isEnabled)
+            handleWebDavRequest(call, driveDir, "", isEnabled, isAuthRequired, getUsername, getPassword)
         }
     }
 
@@ -47,7 +50,7 @@ fun Route.webDavRoutes(
         handle {
             val pathSegments = call.parameters.getAll("path") ?: emptyList()
             val relativePath = pathSegments.joinToString(File.separator)
-            handleWebDavRequest(call, driveDir, relativePath, isEnabled)
+            handleWebDavRequest(call, driveDir, relativePath, isEnabled, isAuthRequired, getUsername, getPassword)
         }
     }
 }
@@ -56,7 +59,10 @@ private suspend fun handleWebDavRequest(
     call: ApplicationCall,
     driveDir: File,
     rawRelativePath: String,
-    isEnabled: () -> Boolean
+    isEnabled: () -> Boolean,
+    isAuthRequired: () -> Boolean,
+    getUsername: () -> String,
+    getPassword: () -> String
 ) {
     // 🛡️ Security Check: Ensure IntraDrive is toggled ON by Admin
     if (!isEnabled()) {
@@ -70,6 +76,24 @@ private suspend fun handleWebDavRequest(
             HttpStatusCode.Forbidden
         )
         return
+    }
+
+    // 🔐 WebDAV HTTP Basic Authentication
+    if (isAuthRequired()) {
+        val authHeader = call.request.header("Authorization")
+        if (!validateBasicAuth(authHeader, getUsername(), getPassword())) {
+            call.response.header("WWW-Authenticate", "Basic realm=\"IntraDrive\"")
+            val unauthorizedXml = """<?xml version="1.0" encoding="utf-8"?>
+<D:error xmlns:D="DAV:">
+  <D:need-privileges>Authentication required for IntraDrive.</D:need-privileges>
+</D:error>"""
+            call.respondText(
+                unauthorizedXml,
+                ContentType.parse("application/xml; charset=utf-8"),
+                HttpStatusCode.Unauthorized
+            )
+            return
+        }
     }
 
     val method = call.request.httpMethod.value.uppercase()
@@ -500,5 +524,23 @@ private fun getMimeType(filename: String): String {
         "txt" -> "text/plain"
         "zip" -> "application/zip"
         else -> "application/octet-stream"
+    }
+}
+
+private fun validateBasicAuth(authHeader: String?, expectedUser: String, expectedPass: String): Boolean {
+    if (authHeader.isNullOrBlank() || !authHeader.startsWith("Basic ", ignoreCase = true)) {
+        return false
+    }
+    return try {
+        val b64Credentials = authHeader.substring(6).trim()
+        val decoded = String(android.util.Base64.decode(b64Credentials, android.util.Base64.DEFAULT), Charsets.UTF_8)
+        val colonIdx = decoded.indexOf(':')
+        if (colonIdx != -1) {
+            val user = decoded.substring(0, colonIdx)
+            val pass = decoded.substring(colonIdx + 1)
+            user == expectedUser && pass == expectedPass
+        } else false
+    } catch (_: Exception) {
+        false
     }
 }

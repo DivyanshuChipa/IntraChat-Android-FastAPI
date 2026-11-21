@@ -60,6 +60,9 @@ fun AdminScreen(
     var requireApproval by remember { mutableStateOf(db.getRequireApproval()) }
     var discoveryEnabled by remember { mutableStateOf(db.getDiscoveryEnabled()) }
     var intraDriveEnabled by remember { mutableStateOf(db.getIntraDriveEnabled()) }
+    var intraDriveAuthRequired by remember { mutableStateOf(db.getIntraDriveAuthRequired()) }
+    var intraDriveUsernameText by remember { mutableStateOf(db.getIntraDriveUsername()) }
+    var intraDrivePasswordText by remember { mutableStateOf(db.getIntraDrivePassword()) }
     var storageUsedMb by remember { mutableStateOf("0.00") }
     var uploadsCount by remember { mutableIntStateOf(0) }
 
@@ -81,6 +84,9 @@ fun AdminScreen(
         requireApproval = db.getRequireApproval()
         discoveryEnabled = db.getDiscoveryEnabled()
         intraDriveEnabled = db.getIntraDriveEnabled()
+        intraDriveAuthRequired = db.getIntraDriveAuthRequired()
+        intraDriveUsernameText = db.getIntraDriveUsername()
+        intraDrivePasswordText = db.getIntraDrivePassword()
 
         val aiCfg = db.getAiConfig()
         aiEnabled = aiCfg.aiEnabled
@@ -393,6 +399,66 @@ fun AdminScreen(
                                             Toast.makeText(context, "IntraDrive: ${if (checked) "ON" else "OFF"}", Toast.LENGTH_SHORT).show()
                                         }
                                     )
+                                }
+
+                                if (intraDriveEnabled) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("🔐 Require Password (Auth)", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                                            Text(
+                                                "Enable to protect /drive with HTTP Basic Auth.",
+                                                fontSize = 11.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                        Switch(
+                                            checked = intraDriveAuthRequired,
+                                            onCheckedChange = { checked ->
+                                                intraDriveAuthRequired = checked
+                                                db.setIntraDriveAuthRequired(checked)
+                                                Toast.makeText(context, "Drive Auth: ${if (checked) "ON" else "OFF"}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
+                                    }
+
+                                    if (intraDriveAuthRequired) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 12.dp, top = 8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            OutlinedTextField(
+                                                value = intraDriveUsernameText,
+                                                onValueChange = { intraDriveUsernameText = it },
+                                                label = { Text("Drive Username") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = intraDrivePasswordText,
+                                                onValueChange = { intraDrivePasswordText = it },
+                                                label = { Text("Drive Password") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            Button(
+                                                onClick = {
+                                                    db.setIntraDriveUsername(intraDriveUsernameText)
+                                                    db.setIntraDrivePassword(intraDrivePasswordText)
+                                                    Toast.makeText(context, "Drive credentials saved! 💾", Toast.LENGTH_SHORT).show()
+                                                },
+                                                modifier = Modifier.align(Alignment.End)
+                                            ) {
+                                                Text("Save Credentials")
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

@@ -197,6 +197,9 @@ fun Route.adminRoutes(db: ServerDatabase, context: Context, uploadDir: File) {
                 put("require_approval", db.getRequireApproval())
                 put("discovery_enabled", db.getDiscoveryEnabled())
                 put("intradrive_enabled", db.getIntraDriveEnabled())
+                put("intradrive_auth_required", db.getIntraDriveAuthRequired())
+                put("intradrive_username", db.getIntraDriveUsername())
+                put("has_intradrive_password", db.getIntraDrivePassword().isNotEmpty())
             }
             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
         }
@@ -266,6 +269,54 @@ fun Route.adminRoutes(db: ServerDatabase, context: Context, uploadDir: File) {
                 put("success", true)
                 put("message", "IntraDrive set to ${if (enabled) "ON" else "OFF"}")
                 put("intradrive_enabled", enabled)
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        }
+
+        // 7.2 🔐 Toggle IntraDrive Password Authentication
+        post("/toggle_drive_auth") {
+            if (!verifyAdminAuth(call)) {
+                call.respondAdminForbidden()
+                return@post
+            }
+
+            val requiredStr = call.request.queryParameters["required"]
+                ?: runCatching { JSONObject(call.receiveText()).optString("required") }.getOrNull()
+                ?: "false"
+
+            val required = requiredStr.toBoolean()
+            db.setIntraDriveAuthRequired(required)
+            ConnectionManager.log("👑 Admin set IntraDrive Auth Required: $required")
+
+            val res = JSONObject().apply {
+                put("success", true)
+                put("message", "IntraDrive Auth set to ${if (required) "REQUIRED" else "ANONYMOUS"}")
+                put("intradrive_auth_required", required)
+            }
+            call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
+        }
+
+        // 7.3 🔑 Set IntraDrive Username & Password Credentials
+        post("/set_drive_credentials") {
+            if (!verifyAdminAuth(call)) {
+                call.respondAdminForbidden()
+                return@post
+            }
+
+            val body = runCatching { JSONObject(call.receiveText()) }.getOrDefault(JSONObject())
+            val username = call.request.queryParameters["username"] 
+                ?: body.optString("username", "admin").trim()
+            val password = call.request.queryParameters["password"] 
+                ?: body.optString("password", "")
+
+            db.setIntraDriveUsername(username)
+            db.setIntraDrivePassword(password)
+            ConnectionManager.log("👑 Admin updated IntraDrive credentials for user '$username'")
+
+            val res = JSONObject().apply {
+                put("success", true)
+                put("message", "IntraDrive credentials updated successfully.")
+                put("username", username)
             }
             call.respondText(res.toString(), ContentType.Application.Json, HttpStatusCode.OK)
         }

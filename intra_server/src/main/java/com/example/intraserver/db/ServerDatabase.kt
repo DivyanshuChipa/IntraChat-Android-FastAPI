@@ -334,7 +334,7 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         setConfig("discovery_enabled", enabled.toString())
     }
 
-    // 🗄️ IntraDrive (WebDAV Network Drive) toggle
+    // 🗄️ IntraDrive (WebDAV Network Drive) toggle & Authentication
     @Synchronized
     fun getIntraDriveEnabled(): Boolean {
         return getConfig("intradrive_enabled", "false").toBoolean()
@@ -343,6 +343,36 @@ class ServerDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     @Synchronized
     fun setIntraDriveEnabled(enabled: Boolean) {
         setConfig("intradrive_enabled", enabled.toString())
+    }
+
+    @Synchronized
+    fun getIntraDriveAuthRequired(): Boolean {
+        return getConfig("intradrive_auth_required", "false").toBoolean()
+    }
+
+    @Synchronized
+    fun setIntraDriveAuthRequired(required: Boolean) {
+        setConfig("intradrive_auth_required", required.toString())
+    }
+
+    @Synchronized
+    fun getIntraDriveUsername(): String {
+        return getConfig("intradrive_username", "admin")
+    }
+
+    @Synchronized
+    fun setIntraDriveUsername(username: String) {
+        setConfig("intradrive_username", username.trim().ifEmpty { "admin" })
+    }
+
+    @Synchronized
+    fun getIntraDrivePassword(): String {
+        return getConfig("intradrive_password", "")
+    }
+
+    @Synchronized
+    fun setIntraDrivePassword(password: String) {
+        setConfig("intradrive_password", password)
     }
 
     // ==========================================

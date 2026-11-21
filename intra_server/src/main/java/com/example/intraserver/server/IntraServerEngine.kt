@@ -597,7 +597,13 @@ class IntraServerEngine(private val context: Context, private val port: Int = 80
                     webDropRoutes(uploadsDir, ::serveWebAsset)
 
                     // 13. 🗄️ IntraDrive (Native WebDAV Network Storage)
-                    webDavRoutes(driveDir) { db.getIntraDriveEnabled() }
+                    webDavRoutes(
+                        driveDir = driveDir,
+                        isEnabled = { db.getIntraDriveEnabled() },
+                        isAuthRequired = { db.getIntraDriveAuthRequired() },
+                        getUsername = { db.getIntraDriveUsername() },
+                        getPassword = { db.getIntraDrivePassword() }
+                    )
                 }
             }
 
