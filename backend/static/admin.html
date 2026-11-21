@@ -8,49 +8,171 @@
     <link rel="icon" type="image/x-icon" href="/assets/intra_logo/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/intra_logo/favicon-32x32.png">
     <link rel="apple-touch-icon" href="/assets/intra_logo/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-base: #0f111a;
-            --bg-surface: #181b26;
-            --bg-elevated: #212638;
-            --border: #2e344d;
-            --accent-primary: #7c4dff;
-            --accent-glow: rgba(124, 77, 255, 0.25);
-            --text-main: #f1f3f9;
-            --text-muted: #9aa1bc;
+            color-scheme: light;
+            --brand: #5a45b8;
+            --brand-deep: #433194;
+            --accent-pink: #b8438f;
+            --accent-violet: #6b4ec9;
+            --glow: 140, 110, 230;
+
+            --page-bg: #f3eef9;
+            --sidebar-bg: rgba(246, 241, 255, 0.92);
+            --surface: rgba(255, 255, 255, 0.78);
+            --surface-strong: rgba(255, 255, 255, 0.92);
+            --surface-border: rgba(90, 69, 184, 0.16);
+            --text-main: #1f1b2b;
+            --text-muted: #5d556e;
+            --danger: #ef4444;
             --success: #10b981;
             --warning: #f59e0b;
-            --danger: #ef4444;
             --info: #3b82f6;
+            --radius: 20px;
+            --tab-active-bg: linear-gradient(135deg, #6c54c7, #994c8e);
+
+            /* Legacy variable mapping */
+            --bg-base: var(--page-bg);
+            --bg-surface: var(--surface);
+            --bg-elevated: rgba(230, 222, 248, 0.6);
+            --border: var(--surface-border);
+            --accent-primary: var(--brand);
+            --accent-glow: rgba(var(--glow), 0.2);
+        }
+
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --brand: #b4a3ff;
+            --brand-deep: #8b78e6;
+            --accent-pink: #e9a6d2;
+            --accent-violet: #b9a9ff;
+            --glow: 185, 169, 255;
+
+            --page-bg: #1a1528;
+            --sidebar-bg: rgba(26, 21, 40, 0.94);
+            --surface: rgba(47, 40, 65, 0.74);
+            --surface-strong: rgba(54, 46, 72, 0.92);
+            --surface-border: rgba(203, 187, 255, 0.15);
+            --text-main: #f2edfc;
+            --text-muted: #b2a9c4;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --radius: 20px;
+            --tab-active-bg: linear-gradient(135deg, #7868c9, #a86eaa);
+
+            /* Legacy variable mapping */
+            --bg-base: var(--page-bg);
+            --bg-surface: var(--surface);
+            --bg-elevated: rgba(58, 49, 80, 0.6);
+            --border: var(--surface-border);
+            --accent-primary: var(--brand);
+            --accent-glow: rgba(var(--glow), 0.25);
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         body {
-            background-color: var(--bg-base);
+            position: relative;
+            isolation: isolate;
+            background: var(--page-bg);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            transition: background 0.3s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            z-index: -1;
+            inset: -18px;
+            background:
+                linear-gradient(rgba(26, 21, 40, 0.52), rgba(26, 21, 40, 0.64)),
+                url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+            filter: blur(9px);
+            opacity: 0.82;
+            transform: scale(1.025);
+            pointer-events: none;
+        }
+
+        [data-theme="light"] body::before {
+            background:
+                linear-gradient(rgba(245, 241, 251, 0.68), rgba(245, 241, 251, 0.76)),
+                url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+            opacity: 0.76;
+        }
+
+        /* SVG SPRITE STYLES */
+        .admin-icon-defs {
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+
+        .admin-icon {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            color: var(--brand);
+            vertical-align: middle;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .status-online .admin-icon {
+            color: #55c99a;
+            filter: drop-shadow(0 0 6px rgba(85, 201, 154, .55));
+        }
+
+        .status-online .admin-icon circle:last-child {
+            animation: online-pulse 1.8s ease-out infinite;
+            transform-origin: center;
+        }
+
+        @keyframes online-pulse {
+            50% { opacity: .3; transform: scale(1.3); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .status-online .admin-icon circle:last-child {
+                animation: none;
+            }
         }
 
         /* Top Header */
         header {
-            background-color: var(--bg-surface);
-            border-bottom: 1px solid var(--border);
-            padding: 16px 28px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--surface-border);
+            padding: 14px 28px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            gap: 16px;
         }
 
         .brand {
@@ -60,83 +182,97 @@
         }
 
         .brand-badge {
-            background: linear-gradient(135deg, #7c4dff, #b388ff);
+            background: linear-gradient(135deg, var(--brand), var(--accent-pink));
             color: #fff;
-            font-weight: 700;
-            font-size: 14px;
+            font-weight: 800;
+            font-size: 13px;
             padding: 6px 10px;
-            border-radius: 8px;
-            letter-spacing: 0.5px;
+            border-radius: 9px;
+            letter-spacing: 0.8px;
+            box-shadow: 0 4px 14px rgba(var(--glow), 0.35);
         }
 
         .brand-title {
-            font-size: 20px;
+            font-size: 19px;
             font-weight: 700;
             color: var(--text-main);
+            letter-spacing: -0.3px;
         }
 
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .status-badge {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
             font-size: 13px;
             font-weight: 600;
-            padding: 6px 12px;
+            padding: 7px 14px;
             border-radius: 20px;
             background: rgba(16, 185, 129, 0.12);
             color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.25);
-        }
-
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--success);
-            box-shadow: 0 0 8px var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.28);
+            backdrop-filter: blur(8px);
         }
 
         .btn-outline {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            color: var(--text-main);
             padding: 8px 14px;
-            border-radius: 8px;
+            border-radius: 11px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
-            transition: all 0.2s;
-            display: flex;
+            transition: all 0.2s ease;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .btn-outline:hover {
-            border-color: var(--text-muted);
+            border-color: var(--brand);
+            background: rgba(var(--glow), 0.14);
+            transform: translateY(-1px);
             color: var(--text-main);
+        }
+
+        .theme-toggle-btn {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
         }
 
         /* App Container */
         .admin-layout {
             display: flex;
             flex: 1;
+            min-height: calc(100vh - 67px);
         }
 
         /* Sidebar Tabs */
         .sidebar {
-            width: 250px;
-            background-color: var(--bg-surface);
-            border-right: 1px solid var(--border);
+            width: 260px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--surface-border);
             padding: 24px 14px;
             display: flex;
             flex-direction: column;
             gap: 6px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
         }
 
         .nav-item {
@@ -144,85 +280,151 @@
             align-items: center;
             gap: 12px;
             padding: 12px 16px;
-            border-radius: 10px;
+            border-radius: 14px;
             color: var(--text-muted);
             text-decoration: none;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.22s ease;
             border: 1px solid transparent;
         }
 
         .nav-item:hover {
-            background-color: var(--bg-elevated);
+            background: var(--surface);
             color: var(--text-main);
+            border-color: var(--surface-border);
+            transform: translateX(2px);
         }
 
         .nav-item.active {
-            background: var(--accent-glow);
-            color: #b388ff;
-            border-color: rgba(124, 77, 255, 0.35);
+            background: var(--tab-active-bg);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(var(--glow), 0.35);
         }
 
-        .nav-item i {
-            width: 20px;
-            text-align: center;
+        .nav-item.active .admin-icon {
+            color: #ffffff;
+            transform: scale(1.05);
         }
 
-        .nav-icon {
-            width: 20px;
-            height: 20px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 4px rgba(124, 77, 255, 0.4));
-            transition: transform 0.2s;
-            vertical-align: middle;
+        /* Main Content */
+        .content {
+            flex: 1;
+            padding: 32px 36px;
+            overflow-y: auto;
+            max-width: 1280px;
         }
 
-        .nav-item:hover .nav-icon {
-            transform: scale(1.15);
+        .tab-panel {
+            display: none;
         }
 
-        .brand-logo {
-            width: 32px;
-            height: 32px;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 0 12px rgba(124, 77, 255, 0.4);
+        .tab-panel.active {
+            display: block;
+            animation: fadeIn 0.25s ease-in-out;
         }
 
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .panel-header {
+            margin-bottom: 24px;
+        }
+
+        .panel-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .panel-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* DREAMY CARDS */
+        .card,
+        .admin-card {
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            box-shadow: 0 10px 32px rgba(45, 34, 74, 0.08);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 22px 24px;
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(var(--glow), 0.4);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        /* STATS GRID */
         .stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 18px;
             margin-bottom: 24px;
         }
 
         .stat-card {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 18px 20px;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            padding: 20px 22px;
             display: flex;
             align-items: center;
             gap: 16px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--brand);
         }
 
         .stat-icon-wrapper {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: rgba(124, 77, 255, 0.12);
-            border: 1px solid rgba(124, 77, 255, 0.25);
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: rgba(var(--glow), 0.16);
+            border: 1px solid rgba(var(--glow), 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
-        .stat-icon-wrapper img {
-            width: 28px;
-            height: 28px;
-            object-fit: contain;
+        .stat-icon-wrapper .admin-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--brand);
         }
 
         .stat-info h3 {
@@ -241,122 +443,63 @@
             width: 100%;
             height: 6px;
             background: var(--bg-elevated);
-            border-radius: 3px;
+            border-radius: 4px;
             margin-top: 8px;
             overflow: hidden;
         }
 
         .progress-bar-fill {
             height: 100%;
-            border-radius: 3px;
-            background: linear-gradient(90deg, #7c4dff, #06b6d4);
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--brand), var(--accent-pink));
             transition: width 0.4s ease;
         }
 
-        /* Main Content */
-        .content {
-            flex: 1;
-            padding: 32px 40px;
-            overflow-y: auto;
-            max-width: 1200px;
-        }
-
-        .tab-panel {
-            display: none;
-        }
-
-        .tab-panel.active {
-            display: block;
-            animation: fadeIn 0.25s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(4px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .panel-header {
-            margin-bottom: 24px;
-        }
-
-        .panel-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 6px;
-        }
-
-        .panel-subtitle {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        /* Cards */
-        .card {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-        }
-
-        .card-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Table */
-        .table-responsive {
+        /* TABLES */
+        .table-responsive,
+        .admin-table-wrap {
+            width: 100%;
             overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--surface-border);
+            background: var(--surface);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            text-align: left;
             font-size: 14px;
         }
 
         th {
-            background-color: var(--bg-elevated);
+            background: rgba(var(--glow), 0.08);
             color: var(--text-muted);
-            text-align: left;
-            padding: 12px 16px;
             font-weight: 600;
-            border-bottom: 1px solid var(--border);
-        }
-
-        th:first-child {
-            border-top-left-radius: 8px;
-            border-bottom-left-radius: 8px;
-        }
-
-        th:last-child {
-            border-top-right-radius: 8px;
-            border-bottom-right-radius: 8px;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--surface-border);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.6px;
         }
 
         td {
-            padding: 14px 16px;
-            border-bottom: 1px solid rgba(46, 52, 77, 0.6);
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--surface-border);
             color: var(--text-main);
             vertical-align: middle;
         }
 
-        tr:hover td {
-            background-color: rgba(33, 38, 56, 0.4);
+        tbody tr {
+            transition: background 0.15s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(var(--glow), 0.08);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
         }
 
         .user-cell {
@@ -369,14 +512,15 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #7c4dff, #448aff);
+            background: linear-gradient(135deg, var(--brand), var(--accent-pink));
+            color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             font-size: 14px;
-            color: #fff;
             overflow: hidden;
+            box-shadow: 0 2px 10px rgba(var(--glow), 0.3);
         }
 
         .user-avatar img {
@@ -385,133 +529,179 @@
             object-fit: cover;
         }
 
+        /* BADGES */
         .badge {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             font-size: 12px;
             font-weight: 600;
-            padding: 4px 10px;
+            padding: 5px 10px;
             border-radius: 12px;
         }
 
         .badge-success {
             background: rgba(16, 185, 129, 0.15);
             color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.25);
         }
 
         .badge-warning {
             background: rgba(245, 158, 11, 0.15);
             color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.25);
         }
 
         .badge-danger {
             background: rgba(239, 68, 68, 0.15);
             color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.25);
         }
 
         .badge-muted {
-            background: rgba(154, 161, 188, 0.15);
+            background: rgba(140, 130, 160, 0.15);
             color: var(--text-muted);
+            border: 1px solid rgba(140, 130, 160, 0.25);
+        }
+
+        /* BUTTONS & ACTIONS */
+        .btn-primary {
+            background: var(--tab-active-bg);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(var(--glow), 0.35);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(var(--glow), 0.45);
+        }
+
+        .btn-primary .admin-icon {
+            color: #fff;
+        }
+
+        .btn-action,
+        .admin-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid var(--surface-border);
+            border-radius: 10px;
+            padding: 7px 12px;
+            background: var(--surface);
+            color: var(--text-main);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover,
+        .admin-action:hover {
+            border-color: var(--brand);
+            background: rgba(var(--glow), 0.16);
+            transform: translateY(-1px);
+        }
+
+        .btn-action .admin-icon {
+            width: 15px;
+            height: 15px;
+            flex-basis: 15px;
+        }
+
+        .btn-approve {
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .btn-approve:hover {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: var(--success);
+        }
+
+        .btn-reset {
+            color: var(--brand);
+            border-color: rgba(var(--glow), 0.3);
+            background: rgba(var(--glow), 0.08);
+        }
+
+        .btn-delete {
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.18);
+            border-color: var(--danger);
         }
 
         .action-btns {
             display: flex;
+            align-items: center;
             gap: 8px;
         }
 
-        .btn-action {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .btn-approve {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-approve:hover {
-            background: var(--success);
-            color: #fff;
-        }
-
-        .btn-reset {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .btn-reset:hover {
-            background: var(--warning);
-            color: #111;
-        }
-
-        .btn-delete {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-delete:hover {
-            background: var(--danger);
-            color: #fff;
-        }
-
-        /* Form Controls */
+        /* FORMS & INPUTS */
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        .form-group {
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
             margin-bottom: 16px;
         }
 
-        label {
-            display: block;
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
             font-size: 13px;
             font-weight: 600;
             color: var(--text-muted);
-            margin-bottom: 8px;
         }
 
         input[type="text"],
-        input[type="number"],
         input[type="password"],
+        input[type="number"],
         select {
-            width: 100%;
-            background-color: var(--bg-elevated);
-            border: 1px solid var(--border);
+            background: var(--surface-strong);
+            border: 1px solid var(--surface-border);
             color: var(--text-main);
             padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 12px;
+            font-size: 13px;
             outline: none;
-            transition: border-color 0.2s;
+            transition: all 0.2s ease;
         }
 
         input:focus,
         select:focus {
-            border-color: var(--accent-primary);
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(var(--glow), 0.25);
         }
 
-        /* Toggle Switches */
+        /* TOGGLE SWITCH */
         .toggle-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 14px 0;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--surface-border);
         }
 
         .toggle-row:last-child {
@@ -521,12 +711,13 @@
         .toggle-info h4 {
             font-size: 15px;
             font-weight: 600;
-            margin-bottom: 4px;
+            color: var(--text-main);
         }
 
         .toggle-info p {
             font-size: 13px;
             color: var(--text-muted);
+            margin-top: 3px;
         }
 
         .switch {
@@ -534,6 +725,7 @@
             display: inline-block;
             width: 48px;
             height: 26px;
+            flex-shrink: 0;
         }
 
         .switch input {
@@ -545,12 +737,9 @@
         .slider {
             position: absolute;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background-color: var(--bg-elevated);
-            border: 1px solid var(--border);
+            border: 1px solid var(--surface-border);
             transition: .3s;
             border-radius: 26px;
         }
@@ -562,92 +751,78 @@
             width: 18px;
             left: 3px;
             bottom: 3px;
-            background-color: var(--text-muted);
+            background-color: #fff;
             transition: .3s;
             border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
         }
 
-        input:checked+.slider {
-            background-color: var(--accent-primary);
-            border-color: var(--accent-primary);
+        input:checked + .slider {
+            background: var(--tab-active-bg);
+            border-color: transparent;
         }
 
-        input:checked+.slider:before {
+        input:checked + .slider:before {
             transform: translateX(22px);
-            background-color: #fff;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #7c4dff, #651fff);
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 4px 14px var(--accent-glow);
-            transform: translateY(-1px);
-        }
-
-        /* Modal */
+        /* MODAL */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.75);
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            backdrop-filter: blur(4px);
+            padding: 20px;
         }
 
         .modal-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
+            background: var(--surface-strong);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
             padding: 32px;
             width: 100%;
             max-width: 440px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+            text-align: center;
+            animation: fadeIn 0.25s ease-out;
         }
 
         .modal-card h2 {
             font-size: 20px;
             font-weight: 700;
+            color: var(--text-main);
             margin-bottom: 8px;
         }
 
         .modal-card p {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-muted);
             margin-bottom: 20px;
+            line-height: 1.5;
         }
 
+        /* TOAST */
         .notification {
             position: fixed;
             bottom: 24px;
             right: 24px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            padding: 14px 20px;
-            border-radius: 10px;
-            font-size: 14px;
+            background: var(--surface-strong);
+            border: 1px solid var(--surface-border);
+            color: var(--text-main);
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-size: 13px;
             font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(12px);
             display: flex;
             align-items: center;
             gap: 10px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -658,60 +833,170 @@
             transform: translateY(0);
             opacity: 1;
         }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(var(--glow), 0.14);
+            color: var(--brand);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .admin-layout {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                flex-direction: row;
+                overflow-x: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--surface-border);
+                padding: 12px 16px;
+            }
+            .nav-item {
+                white-space: nowrap;
+            }
+            .content {
+                padding: 20px 16px;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <!-- SVG SPRITE (CHATGPT DEFINITIONS) -->
+    <svg class="admin-icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <symbol id="admin-users" viewBox="0 0 24 24">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </symbol>
 
-    <!-- Header -->
+        <symbol id="admin-system" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="12" rx="2"/>
+            <path d="M7 20h10M12 16v4M6 11h3l2-4 3 6 2-3h2"/>
+        </symbol>
+
+        <symbol id="admin-security" viewBox="0 0 24 24">
+            <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/>
+            <path d="m9 12 2 2 4-4"/>
+        </symbol>
+
+        <symbol id="admin-lumir" viewBox="0 0 24 24">
+            <path d="m12 2 2.2 6 6 2.2-6 2.2-2.2 6-2.2-6L4 10.2 9.8 8 12 2Z"/>
+            <path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z"/>
+            <path d="M5 3v3M3.5 4.5h3"/>
+        </symbol>
+
+        <symbol id="admin-capabilities" viewBox="0 0 24 24">
+            <path d="M4 5h16M4 9h10M4 13h16M4 17h10M4 21h16"/>
+            <path d="m17 8 3 3-3 3"/>
+        </symbol>
+
+        <symbol id="admin-weather" viewBox="0 0 24 24">
+            <path d="M6 18h11a4 4 0 0 0 .3-8A6 6 0 0 0 6 8.5 4.8 4.8 0 0 0 6 18Z"/>
+            <path d="m13 12-2 4h3l-2 4"/>
+        </symbol>
+
+        <symbol id="admin-storage" viewBox="0 0 24 24">
+            <ellipse cx="12" cy="5" rx="8" ry="3"/>
+            <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>
+        </symbol>
+
+        <symbol id="admin-online" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8"/>
+            <path d="m8.5 12 2.3 2.3 4.8-5"/>
+            <circle cx="19.5" cy="5" r="1.5"/>
+        </symbol>
+
+        <symbol id="admin-theme" viewBox="0 0 24 24">
+            <path d="M17.8 15.2A7.3 7.3 0 0 1 8.8 6.2a7.5 7.5 0 1 0 9 9Z"/>
+            <circle cx="16.5" cy="7.5" r="2"/>
+            <path d="M16.5 3.8v1M16.5 10.2v1M12.8 7.5h1M19.2 7.5h1"/>
+        </symbol>
+
+        <symbol id="admin-check" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="m8 12 2.5 2.5L16 9"/>
+        </symbol>
+
+        <symbol id="admin-ban" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="m6 6 12 12"/>
+        </symbol>
+
+        <symbol id="admin-trash" viewBox="0 0 24 24">
+            <path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m4 4v5m4-5v5"/>
+        </symbol>
+
+        <symbol id="admin-refresh" viewBox="0 0 24 24">
+            <path d="M20 7v5h-5M4 17v-5h5"/>
+            <path d="M5.7 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.3 15"/>
+        </symbol>
+
+        <symbol id="admin-bell" viewBox="0 0 24 24">
+            <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/>
+            <path d="m19 2 .7 1.8L21.5 4.5l-1.8.7L19 7l-.7-1.8-1.8-.7 1.8-.7L19 2Z"/>
+        </symbol>
+    </svg>
+
+    <!-- Top Header -->
     <header>
         <div class="brand">
-            <img src="/assets/intra_logo/android-chrome-192x192.png" alt="Intra Logo" class="brand-logo">
             <span class="brand-badge">INTRA</span>
             <span class="brand-title">Server Admin Console</span>
         </div>
         <div class="header-actions">
-            <div class="status-badge">
-                <span class="pulse-dot"></span>
+            <div class="status-badge status-online">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-online"></use></svg>
                 <span>FastAPI Active</span>
             </div>
+            <button class="btn-outline theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light/Dark Theme">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-theme"></use></svg>
+            </button>
             <button class="btn-outline" onclick="changeAdminKey()">
                 <i class="fas fa-key"></i> Key
             </button>
             <a href="/" class="btn-outline" target="_blank">
                 <i class="fas fa-comments"></i> Web Chat
             </a>
+            <a href="/drop" class="btn-outline" target="_blank">
+                <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-storage"></use></svg> WebDrop
+            </a>
         </div>
     </header>
 
     <div class="admin-layout">
-        <!-- Sidebar -->
+        <!-- Sidebar Navigation -->
         <nav class="sidebar">
             <div class="nav-item active" onclick="switchTab('users', this)">
-                <img src="/assets/admin_icons/users_management-white.webp" class="nav-icon" alt="Users"> Users
-                Management
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-users"></use></svg>
+                <span>Users Management</span>
             </div>
             <div class="nav-item" onclick="switchTab('system', this)">
-                <img src="/assets/admin_icons/hardware_health_dark.webp" class="nav-icon" alt="System"> System &
-                Telemetry
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-system"></use></svg>
+                <span>System & Telemetry</span>
             </div>
             <div class="nav-item" onclick="switchTab('security', this)">
-                <i class="fas fa-shield-alt"></i> Access & Security
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-security"></use></svg>
+                <span>Access & Security</span>
             </div>
             <div class="nav-item" onclick="switchTab('lumir', this)">
-                <img src="/assets/admin_icons/ai_neural_core_dark.webp" class="nav-icon" alt="Lumir"> Lumir AI & Voice
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                <span>Lumir AI & Voice</span>
             </div>
             <div class="nav-item" onclick="switchTab('capabilities', this)">
-                <img src="/assets/admin_icons/system_terminal_dark.webp" class="nav-icon" alt="Capabilities">
-                Capabilities & Addons
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
+                <span>Capabilities & Addons</span>
             </div>
             <div class="nav-item" onclick="switchTab('weather', this)">
-                <img src="/assets/admin_icons/weather_sentinel_dark.webp" class="nav-icon" alt="Weather"> Weather
-                Sentinel
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-weather"></use></svg>
+                <span>Weather Sentinel</span>
             </div>
             <div class="nav-item" onclick="switchTab('storage', this)">
-                <img src="/assets/admin_icons/storage_vault_dark.webp" class="nav-icon" alt="Storage"> Storage &
-                Maintenance
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-storage"></use></svg>
+                <span>Storage & Maintenance</span>
             </div>
         </nav>
 
@@ -722,19 +1007,18 @@
             <div id="tab-users" class="tab-panel active">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/users_management-white.webp" style="width:28px; height:28px;"
-                            alt="Users">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-users"></use></svg>
                         Users & Account Approvals
                     </h2>
-                    <p class="panel-subtitle">Manage registered LAN chat users, approve pending accounts, and manage
-                        credentials.</p>
+                    <p class="panel-subtitle">Manage registered LAN chat users, approve pending accounts, and manage credentials.</p>
                 </div>
 
                 <div class="card">
                     <div class="card-title">
-                        <i class="fas fa-list text-purple"></i> Registered LAN Accounts
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-users"></use></svg>
+                        Registered LAN Accounts
                         <button class="btn-outline" style="margin-left: auto;" onclick="loadUsers()">
-                            <i class="fas fa-sync-alt"></i> Refresh
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg> Refresh
                         </button>
                     </div>
 
@@ -750,8 +1034,7 @@
                             </thead>
                             <tbody id="users-tbody">
                                 <tr>
-                                    <td colspan="4" style="text-align:center; color:var(--text-muted);">Loading users...
-                                    </td>
+                                    <td colspan="4" style="text-align:center; color:var(--text-muted);">Loading users...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -759,22 +1042,20 @@
                 </div>
             </div>
 
-            <!-- ⚡ SYSTEM & HARDWARE TELEMETRY TAB -->
+            <!-- 2. SYSTEM & HARDWARE TELEMETRY TAB -->
             <div id="tab-system" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/hardware_health_dark.webp" style="width:28px; height:28px;"
-                            alt="Hardware">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-system"></use></svg>
                         Hardware & Server Health
                     </h2>
-                    <p class="panel-subtitle">Realtime server telemetry, CPU/RAM utilization, and active client
-                        connections.</p>
+                    <p class="panel-subtitle">Realtime server telemetry, CPU/RAM utilization, and active client connections.</p>
                 </div>
 
                 <div class="stat-grid">
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
-                            <img src="/assets/admin_icons/hardware_health_dark.webp" alt="CPU">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-system"></use></svg>
                         </div>
                         <div class="stat-info" style="flex:1;">
                             <h3 id="stat-cpu">-- %</h3>
@@ -787,7 +1068,7 @@
 
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
-                            <img src="/assets/admin_icons/ai_neural_core_dark.webp" alt="RAM">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-lumir"></use></svg>
                         </div>
                         <div class="stat-info" style="flex:1;">
                             <h3 id="stat-ram">-- %</h3>
@@ -800,7 +1081,7 @@
 
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
-                            <img src="/assets/admin_icons/storage_vault_dark.webp" alt="Disk">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-storage"></use></svg>
                         </div>
                         <div class="stat-info" style="flex:1;">
                             <h3 id="stat-disk">-- %</h3>
@@ -813,7 +1094,7 @@
 
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
-                            <img src="/assets/admin_icons/users_management-white.webp" alt="Clients">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-users"></use></svg>
                         </div>
                         <div class="stat-info" style="flex:1;">
                             <h3 id="stat-clients">0</h3>
@@ -827,35 +1108,38 @@
 
                 <div class="card">
                     <div class="card-title">
-                        <img src="/assets/admin_icons/system_terminal_dark.webp"
-                            style="width:20px; height:20px; margin-right:8px; vertical-align:middle;" alt="Terminal">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
                         Realtime Telemetry Monitor
                         <button class="btn-outline" style="margin-left: auto;" onclick="loadSystemStatus()">
-                            <i class="fas fa-sync-alt"></i> Refresh Now
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg> Refresh Now
                         </button>
                     </div>
-                    <p style="color:var(--text-muted); font-size:14px;">
-                        Hardware metrics are polled from the FastAPI host machine. High CPU loads may indicate
-                        background video transcoding, speech synthesis, or vector searches.
+                    <p style="color:var(--text-muted); font-size:14px; line-height:1.6;">
+                        Hardware metrics are polled from the FastAPI host machine. High CPU loads may indicate background video transcoding, speech synthesis, or vector searches.
                     </p>
                 </div>
             </div>
 
-            <!-- 2. SECURITY TAB -->
+            <!-- 3. SECURITY TAB -->
             <div id="tab-security" class="tab-panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">Server Access & Discovery</h2>
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-security"></use></svg>
+                        Server Access & Discovery
+                    </h2>
                     <p class="panel-subtitle">Control registration gates and local network visibility.</p>
                 </div>
 
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-lock"></i> Gatekeeper Controls</div>
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-security"></use></svg>
+                        Gatekeeper Controls
+                    </div>
 
                     <div class="toggle-row">
                         <div class="toggle-info">
                             <h4>Require Admin Approval</h4>
-                            <p>When enabled, new registrations must be manually approved by you before they can login or
-                                chat.</p>
+                            <p>When enabled, new registrations must be manually approved by you before they can login or chat.</p>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="toggle-approval" onchange="toggleRequireApproval(this.checked)">
@@ -866,8 +1150,7 @@
                     <div class="toggle-row">
                         <div class="toggle-info">
                             <h4>LAN Auto-Discovery (Broadcast)</h4>
-                            <p>Allows phones on your Wi-Fi to automatically detect this server without typing IP
-                                manually. Disable for Stealth Mode.</p>
+                            <p>Allows phones on your Wi-Fi to automatically detect this server without typing IP manually. Disable for Stealth Mode.</p>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="toggle-discovery" onchange="toggleDiscovery(this.checked)">
@@ -877,12 +1160,11 @@
                 </div>
             </div>
 
-            <!-- 3. LUMIR AI TAB -->
+            <!-- 4. LUMIR AI TAB -->
             <div id="tab-lumir" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/ai_neural_core_dark.webp" style="width:28px; height:28px;"
-                            alt="Lumir">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
                         Lumir AI Intelligence Engine
                     </h2>
                     <p class="panel-subtitle">Configure LLM inference providers, smart models routing, and Node 2 distributed voice engine.</p>
@@ -890,7 +1172,10 @@
 
                 <!-- LLM Neural Gateway & Routing -->
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-brain text-purple"></i> LLM Neural Gateway & Routing</div>
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                        LLM Neural Gateway & Routing
+                    </div>
 
                     <div class="toggle-row" style="margin-bottom: 16px;">
                         <div class="toggle-info">
@@ -937,7 +1222,10 @@
 
                 <!-- Distributed Voice Node -->
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-microphone-alt text-purple"></i> Distributed Voice Engine (Node 2 STT & TTS)</div>
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                        Distributed Voice Engine (Node 2 STT & TTS)
+                    </div>
 
                     <div class="toggle-row" style="margin-bottom: 16px;">
                         <div class="toggle-info">
@@ -962,20 +1250,20 @@
                     <div id="voice-node-status" style="font-size:13px; font-weight:600; min-height:20px; margin-top:8px;"></div>
                 </div>
 
-                <div style="display:flex; gap:12px; align-items:center;">
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
                     <button class="btn-primary" onclick="saveAIConfig()">
-                        <i class="fas fa-save"></i> Save AI Configuration
+                        <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-check"></use></svg>
+                        Save AI Configuration
                     </button>
                     <span id="ai-status-msg" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
                 </div>
             </div>
 
-            <!-- 4. WEATHER SENTINEL TAB -->
+            <!-- 5. WEATHER SENTINEL TAB -->
             <div id="tab-weather" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/weather_sentinel_dark.webp" style="width:28px; height:28px;"
-                            alt="Weather">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-weather"></use></svg>
                         Weather Sentinel & Climate Automation
                     </h2>
                     <p class="panel-subtitle">Smart environmental conditions monitor, severe weather alarms, and autonomous family warnings.</p>
@@ -983,7 +1271,10 @@
 
                 <!-- Smart Environment Monitor Card -->
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-shield-virus text-purple"></i> Smart Environment Sentinel</div>
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-weather"></use></svg>
+                        Smart Environment Sentinel
+                    </div>
 
                     <div class="toggle-row" style="margin-bottom: 16px;">
                         <div class="toggle-info">
@@ -1020,13 +1311,16 @@
 
                     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:8px;">
                         <button class="btn-primary" onclick="saveEnvironmentSettings()">
-                            <i class="fas fa-save"></i> Save Sentinel Settings
+                            <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-check"></use></svg>
+                            Save Sentinel Settings
                         </button>
                         <button class="btn-outline" onclick="testWeatherSync()">
-                            <i class="fas fa-cloud-download-alt"></i> Test Weather Sync
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg>
+                            Test Weather Sync
                         </button>
                         <button class="btn-outline" onclick="testSentinelAlert()">
-                            <i class="fas fa-bell"></i> Test Sentinel Alert
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-bell"></use></svg>
+                            Test Sentinel Alert
                         </button>
                         <span id="env-status-msg" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
                     </div>
@@ -1034,7 +1328,10 @@
 
                 <!-- Weather Location Card -->
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-map-marker-alt text-purple"></i> Default Location Coordinates</div>
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-weather"></use></svg>
+                        Default Location Coordinates
+                    </div>
 
                     <div class="form-group">
                         <label>Search City (Open-Meteo Geocoding)</label>
@@ -1058,71 +1355,70 @@
                         </div>
                     </div>
                     <button class="btn-primary" onclick="saveLocation()">
-                        <i class="fas fa-save"></i> Save Coordinates
+                        <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-check"></use></svg>
+                        Save Coordinates
                     </button>
                 </div>
             </div>
 
-            <!-- 5. STORAGE & MAINTENANCE TAB -->
+            <!-- 6. STORAGE & MAINTENANCE TAB -->
             <div id="tab-storage" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/storage_vault_dark.webp" style="width:28px; height:28px;"
-                            alt="Storage">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-storage"></use></svg>
                         Storage & LocalAppData Maintenance
                     </h2>
                     <p class="panel-subtitle">Manage uploaded media, vector memories, and cleanup old files.</p>
                 </div>
 
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-trash-alt"></i> Upload Files Pruning</div>
-                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-trash"></use></svg>
+                        Upload Files Pruning
+                    </div>
+                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px; line-height:1.6;">
                         All uploads and databases are safely isolated in <code>%LOCALAPPDATA%\IntraServer\</code>.
                         Remove files older than X days to free disk space.
                     </p>
-                    <div style="display:flex; gap:12px; align-items:center; max-width:400px;">
-                        <input type="number" id="cleanup-days" value="30" min="1" placeholder="Days">
-                        <button class="btn-primary" style="background:#ef4444; white-space:nowrap;"
-                            onclick="runStorageCleanup()">
-                            <i class="fas fa-broom"></i> Clean Up Old Files
+                    <div style="display:flex; gap:12px; align-items:center; max-width:400px; flex-wrap:wrap;">
+                        <input type="number" id="cleanup-days" value="30" min="1" placeholder="Days" style="width:120px;">
+                        <button class="btn-primary" style="background:#ef4444; white-space:nowrap;" onclick="runStorageCleanup()">
+                            <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-trash"></use></svg>
+                            Clean Up Old Files
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- 6. CAPABILITIES & ADDONS TAB -->
+            <!-- 7. CAPABILITIES & ADDONS TAB -->
             <div id="tab-capabilities" class="tab-panel">
                 <div class="panel-header">
                     <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
-                        <img src="/assets/admin_icons/system_terminal_dark.webp" style="width:28px; height:28px;"
-                            alt="Capabilities">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
                         Capabilities & External Tools
                     </h2>
-                    <p class="panel-subtitle">Manage standalone binaries (FFmpeg, Tesseract OCR, yt-dlp) stored in
-                        Intra's dedicated local app directory.</p>
+                    <p class="panel-subtitle">Manage standalone binaries (FFmpeg, Tesseract OCR, yt-dlp) stored in Intra's dedicated local app directory.</p>
                 </div>
 
                 <div class="card" style="margin-bottom: 20px;">
-                    <div
-                        style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
                         <div>
-                            <div
-                                style="font-size:15px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                                <i class="fas fa-folder-open text-purple"></i> Intra Tools Directory
+                            <div style="font-size:15px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                                <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
+                                Intra Tools Directory
                             </div>
-                            <div id="tools-dir-path"
-                                style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-top:4px;">
+                            <div id="tools-dir-path" style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-top:4px;">
                                 Loading tools directory...
                             </div>
                         </div>
                         <button class="btn-outline" onclick="loadCapabilities()">
-                            <i class="fas fa-sync-alt"></i> Refresh Status
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg>
+                            Refresh Status
                         </button>
                     </div>
                 </div>
 
-                <div id="capabilities-grid" class="form-grid"
-                    style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+                <div id="capabilities-grid" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
                     <div style="color:var(--text-muted); font-size:14px;">Loading capability status...</div>
                 </div>
             </div>
@@ -1133,14 +1429,16 @@
     <!-- Admin Key Modal -->
     <div id="auth-modal" class="modal-overlay" style="display:none;">
         <div class="modal-card">
-            <h2><i class="fas fa-key text-purple"></i> Admin Key Required</h2>
-            <p>Enter the persistent <code>INTRA_ADMIN_KEY</code> from the server console logs to access the admin
-                dashboard.</p>
-            <div class="form-group">
+            <h2>
+                <i class="fas fa-key" style="color:var(--brand); margin-right:6px;"></i>
+                Admin Key Required
+            </h2>
+            <p>Enter the persistent <code>INTRA_ADMIN_KEY</code> from the server console logs to access the admin dashboard.</p>
+            <div class="form-group" style="text-align:left;">
                 <label>Admin Secret Key</label>
                 <input type="password" id="input-admin-key" placeholder="Paste Admin Secret Key here...">
             </div>
-            <button class="btn-primary" style="width:100%; justify-content:center;" onclick="submitAdminKey()">
+            <button class="btn-primary" style="width:100%; justify-content:center; margin-top:8px;" onclick="submitAdminKey()">
                 Authenticate & Connect
             </button>
         </div>
@@ -1153,6 +1451,23 @@
 
     <script>
         let adminKey = localStorage.getItem("intra_admin_key") || "";
+
+        // ================= 🌙 THEME INITIALIZATION =================
+        function initTheme() {
+            const saved = localStorage.getItem("theme") || "dark";
+            document.documentElement.setAttribute("data-theme", saved);
+            document.body.setAttribute("data-theme", saved);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute("data-theme") || "dark";
+            const next = current === "dark" ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", next);
+            document.body.setAttribute("data-theme", next);
+            localStorage.setItem("theme", next);
+        }
+
+        initTheme();
 
         function showToast(msg, isError = false) {
             const toast = document.getElementById("toast");
@@ -1255,7 +1570,7 @@
 
                 const isApproved = u.is_approved === 1 || u.is_approved === true;
                 const statusBadge = isApproved
-                    ? `<span class="badge badge-success"><i class="fas fa-check"></i> Approved</span>`
+                    ? `<span class="badge badge-success"><svg class="admin-icon" style="width:13px;height:13px;color:var(--success);" aria-hidden="true"><use href="#admin-check"></use></svg> Approved</span>`
                     : `<span class="badge badge-warning"><i class="fas fa-clock"></i> Pending</span>`;
 
                 const presenceBadge = u.is_online
@@ -1263,7 +1578,7 @@
                     : `<span class="badge badge-muted"><i class="fas fa-circle" style="font-size:8px;"></i> Offline</span>`;
 
                 const approveBtn = !isApproved
-                    ? `<button class="btn-action btn-approve" onclick="approveUser('${u.username}')"><i class="fas fa-check"></i> Approve</button>`
+                    ? `<button class="btn-action btn-approve" onclick="approveUser('${u.username}')"><svg class="admin-icon" style="width:14px;height:14px;color:var(--success);" aria-hidden="true"><use href="#admin-check"></use></svg> Approve</button>`
                     : ``;
 
                 return `
@@ -1280,7 +1595,7 @@
                             <div class="action-btns">
                                 ${approveBtn}
                                 <button class="btn-action btn-reset" onclick="resetPassword('${u.username}')"><i class="fas fa-key"></i> Reset</button>
-                                <button class="btn-action btn-delete" onclick="deleteUser('${u.username}')"><i class="fas fa-trash"></i></button>
+                                <button class="btn-action btn-delete" onclick="deleteUser('${u.username}')" title="Delete User"><svg class="admin-icon" style="width:14px;height:14px;color:var(--danger);" aria-hidden="true"><use href="#admin-trash"></use></svg></button>
                             </div>
                         </td>
                     </tr>
@@ -1401,7 +1716,7 @@
                 const caps = nodeInfo.capabilities || {};
                 const stt = caps.stt || "ok";
                 const tts = caps.tts_primary || "ok";
-                statusEl.innerHTML = `<span style="color:var(--success);"><i class="fas fa-check-circle"></i> Online (${latency} ms) | STT: ${stt} | TTS: ${tts}</span>`;
+                statusEl.innerHTML = `<span style="color:var(--success);"><svg class="admin-icon" style="width:14px;height:14px;color:var(--success);" aria-hidden="true"><use href="#admin-check"></use></svg> Online (${latency} ms) | STT: ${stt} | TTS: ${tts}</span>`;
                 showToast(`Voice Node reachable in ${latency} ms!`);
             } else {
                 statusEl.innerHTML = `<span style="color:var(--danger);"><i class="fas fa-times-circle"></i> ${res ? res.message : "Connection failed"}</span>`;
@@ -1411,13 +1726,11 @@
 
         // ================= WEATHER LOCATION & SENTINEL =================
         async function loadLocation() {
-            // Load Location Coordinates
             const locData = await fetchAdmin("/admin/weather_location");
             if (locData && locData.success) {
                 document.getElementById("geo-lat").value = locData.default_lat ?? "";
                 document.getElementById("geo-lon").value = locData.default_lon ?? "";
             }
-            // Load Sentinel Settings
             await loadEnvironmentSettings();
         }
 
@@ -1440,10 +1753,10 @@
                         document.getElementById("geo-lat").value = top.latitude;
                         document.getElementById("geo-lon").value = top.longitude;
                         const parts = [top.name, top.admin1, top.country].filter(Boolean);
-                        statusEl.innerHTML = `<span style="color:var(--success);"><i class="fas fa-check"></i> Found: ${parts.join(", ")} (${top.latitude}, ${top.longitude})</span>`;
+                        statusEl.innerHTML = `<span style="color:var(--success);"><svg class="admin-icon" style="width:14px;height:14px;color:var(--success);" aria-hidden="true"><use href="#admin-check"></use></svg> Found: ${parts.join(", ")} (${top.latitude}, ${top.longitude})</span>`;
                         showToast(`Found ${top.name}! Coordinates filled.`);
                     } else {
-                        statusEl.innerHTML = `<span style="color:var(--danger);"><i class="fas fa-times"></i> City not found.</span>`;
+                        statusEl.innerHTML = `<span style="color:var(--danger);"><svg class="admin-icon" style="width:14px;height:14px;color:var(--danger);" aria-hidden="true"><use href="#admin-ban"></use></svg> City not found.</span>`;
                         showToast("City not found.", true);
                     }
                 } else {
@@ -1556,9 +1869,9 @@
                     statusBadge = `<span class="badge badge-warning"><i class="fas fa-spinner fa-spin"></i> Installing (${task.percent || 10}%)</span>`;
                 } else if (cap.installed) {
                     const srcLabel = cap.source === "local" ? "Intra Local" : "System PATH";
-                    statusBadge = `<span class="badge badge-success"><i class="fas fa-check-circle"></i> Installed (${srcLabel})</span>`;
+                    statusBadge = `<span class="badge badge-success"><svg class="admin-icon" style="width:13px;height:13px;color:var(--success);" aria-hidden="true"><use href="#admin-check"></use></svg> Installed (${srcLabel})</span>`;
                 } else {
-                    statusBadge = `<span class="badge badge-danger"><i class="fas fa-times-circle"></i> Missing</span>`;
+                    statusBadge = `<span class="badge badge-danger"><svg class="admin-icon" style="width:13px;height:13px;color:var(--danger);" aria-hidden="true"><use href="#admin-ban"></use></svg> Missing</span>`;
                 }
 
                 let actionBtn = "";
@@ -1567,9 +1880,9 @@
                 } else if (!cap.installed) {
                     actionBtn = `<button class="btn-action btn-approve" onclick="installCapability('${cap.key}')"><i class="fas fa-download"></i> Install Addon</button>`;
                 } else if (cap.can_uninstall) {
-                    actionBtn = `<button class="btn-action btn-delete" onclick="uninstallCapability('${cap.key}')"><i class="fas fa-trash-alt"></i> Remove Local</button>`;
+                    actionBtn = `<button class="btn-action btn-delete" onclick="uninstallCapability('${cap.key}')"><svg class="admin-icon" style="width:14px;height:14px;color:var(--danger);" aria-hidden="true"><use href="#admin-trash"></use></svg> Remove Local</button>`;
                 } else {
-                    actionBtn = `<span style="font-size:12px; color:var(--text-muted);"><i class="fas fa-shield-alt"></i> System Installed</span>`;
+                    actionBtn = `<span style="font-size:12px; color:var(--text-muted); display:inline-flex; align-items:center; gap:5px;"><svg class="admin-icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#admin-security"></use></svg> System Installed</span>`;
                 }
 
                 let progressHtml = "";
@@ -1603,7 +1916,7 @@
                         ${pathDisplay}
                         ${progressHtml}
                     </div>
-                    <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
+                    <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--surface-border); display:flex; justify-content:flex-end;">
                         ${actionBtn}
                     </div>
                 `;
