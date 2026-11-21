@@ -15,23 +15,23 @@
     --text-secondary: #5d556e;
     --error-color: #f44336;
 
-    /* Dreamy Chat Theme (Light - Deeper Richer Purple Tone) */
+    /* Dreamy Chat Theme (Light - Translucent Ethereal Glass) */
     --bg-page: #f3eef9;
-    --sidebar-bg: rgba(246, 241, 255, 0.94);
+    --sidebar-bg: rgba(246, 241, 255, 0.82);
     --sidebar-item-hover: rgba(220, 208, 248, 0.65);
     --sidebar-item-active: rgba(200, 185, 244, 0.85);
-    --chat-bg: #f3eef9;
-    --surface: rgba(255, 255, 255, 0.9);
-    --surface-border: rgba(90, 69, 184, 0.22);
+    --chat-bg: transparent;
+    --surface: rgba(255, 255, 255, 0.86);
+    --surface-border: rgba(90, 69, 184, 0.18);
 
     --bubble-sent: linear-gradient(135deg, #6c54c7, #994c8e);
-    --bubble-received: rgba(255, 255, 255, 0.92);
+    --bubble-received: rgba(255, 255, 255, 0.88);
     --text-main: #1f1b2b;
     --text-muted: #5d556e;
-    --border-color: rgba(90, 69, 184, 0.2);
+    --border-color: rgba(90, 69, 184, 0.18);
 
-    --input-bg: rgba(255, 255, 255, 0.92);
-    --header-border: rgba(90, 69, 184, 0.2);
+    --input-bg: rgba(255, 255, 255, 0.88);
+    --header-border: rgba(90, 69, 184, 0.18);
 }
 
 [data-theme="dark"] {
@@ -51,22 +51,22 @@
     --text-secondary: #b2a9c4;
     --error-color: #f44336;
 
-    /* Dreamy Chat Theme (Dark) */
+    /* Dreamy Chat Theme (Dark - Frosted Midnight Violet) */
     --bg-page: #1a1528;
-    --sidebar-bg: rgba(26, 21, 40, 0.95);
+    --sidebar-bg: rgba(26, 21, 40, 0.84);
     --sidebar-item-hover: rgba(56, 46, 80, 0.65);
     --sidebar-item-active: rgba(85, 68, 128, 0.75);
-    --chat-bg: #211d30;
-    --surface: rgba(47, 40, 65, 0.88);
+    --chat-bg: transparent;
+    --surface: rgba(47, 40, 65, 0.82);
     --surface-border: rgba(203, 187, 255, 0.14);
 
     --bubble-sent: linear-gradient(135deg, #7868c9, #a86eaa);
-    --bubble-received: rgba(54, 47, 71, 0.88);
+    --bubble-received: rgba(54, 47, 71, 0.82);
     --text-main: #f2edfc;
     --text-muted: #b2a9c4;
     --border-color: rgba(203, 187, 255, 0.14);
 
-    --input-bg: rgba(48, 41, 65, 0.92);
+    --input-bg: rgba(48, 41, 65, 0.86);
     --header-border: rgba(203, 187, 255, 0.13);
 }
 
@@ -285,19 +285,22 @@ body:not(.auth-page)::before {
     z-index: -1;
     inset: -18px;
     background:
-      linear-gradient(rgba(26, 21, 40, 0.46), rgba(26, 21, 40, 0.56)),
-      url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
-    filter: blur(10px);
+        linear-gradient(rgba(26, 21, 40, 0.48), rgba(26, 21, 40, 0.58)),
+        url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+    filter: blur(9px);
     opacity: 0.85;
-    transform: scale(1.03);
+    transform: scale(1.025);
     pointer-events: none;
 }
 
-[data-theme="light"] body:not(.auth-page)::before {
+body[data-theme="light"]:not(.auth-page)::before,
+[data-theme="light"] body:not(.auth-page)::before,
+html[data-theme="light"] body:not(.auth-page)::before {
     background:
-      linear-gradient(rgba(245, 241, 251, 0.62), rgba(245, 241, 251, 0.70)),
-      url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
-    opacity: 0.78;
+        linear-gradient(rgba(245, 241, 251, 0.64), rgba(245, 241, 251, 0.72)),
+        url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+    filter: blur(9px);
+    opacity: 0.82;
 }
 
 /* Sidebar */
@@ -498,7 +501,7 @@ body:not(.auth-page)::before {
     object-fit: cover;
     background: var(--surface);
     border: 2px solid var(--surface-border);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     transition: transform 0.2s, border-color 0.2s;
     flex-shrink: 0;
 }
@@ -553,8 +556,15 @@ body:not(.auth-page)::before {
 }
 
 @keyframes modalPop {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .settings-header {
@@ -624,7 +634,7 @@ body:not(.auth-page)::before {
     justify-content: center;
     font-size: 13px;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .settings-uname {
@@ -772,8 +782,15 @@ body:not(.auth-page)::before {
 }
 
 @keyframes gentle-glow {
-    0% { filter: drop-shadow(0 0 2px rgba(var(--glow), 0.4)); transform: scale(1); }
-    100% { filter: drop-shadow(0 0 8px rgba(var(--glow), 0.9)); transform: scale(1.15); }
+    0% {
+        filter: drop-shadow(0 0 2px rgba(var(--glow), 0.4));
+        transform: scale(1);
+    }
+
+    100% {
+        filter: drop-shadow(0 0 8px rgba(var(--glow), 0.9));
+        transform: scale(1.15);
+    }
 }
 
 .icon-btn-highlight {
@@ -812,8 +829,15 @@ body:not(.auth-page)::before {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .msg-bubble {
@@ -895,7 +919,7 @@ body:not(.auth-page)::before {
     border-radius: 999px;
     background: var(--input-bg);
     box-shadow: 0 10px 32px rgba(54, 39, 84, 0.12),
-                0 0 24px rgba(var(--glow), 0.12);
+        0 0 24px rgba(var(--glow), 0.12);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -904,7 +928,7 @@ body:not(.auth-page)::before {
 .chat-input-pill:focus-within {
     border-color: var(--brand);
     box-shadow: 0 12px 36px rgba(54, 39, 84, 0.16),
-                0 0 28px rgba(var(--glow), 0.25);
+        0 0 28px rgba(var(--glow), 0.25);
     background: var(--surface);
 }
 
@@ -994,7 +1018,7 @@ body:not(.auth-page)::before {
     padding: 34px 28px;
     border-radius: 24px;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     width: 90%;
     max-width: 320px;
     color: var(--text-main);
@@ -1028,21 +1052,35 @@ body:not(.auth-page)::before {
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.btn-call:active { transform: scale(0.95); }
-.accept { background: #10b981; color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
-.reject { background: #ef4444; color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+.btn-call:active {
+    transform: scale(0.95);
+}
+
+.accept {
+    background: #10b981;
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.reject {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
     body:not(.auth-page) {
         position: relative;
     }
+
     #sidebar {
         width: 100% !important;
         position: absolute;
         height: 100%;
         z-index: 10;
     }
+
     #chat-area {
         width: 100%;
         position: absolute;
@@ -1050,12 +1088,15 @@ body:not(.auth-page)::before {
         z-index: 5;
         display: none;
     }
+
     body.chat-open #sidebar {
         display: none;
     }
+
     body.chat-open #chat-area {
         display: flex;
     }
+
     #sidebar-toggle {
         display: none;
     }
@@ -1065,17 +1106,24 @@ body:not(.auth-page)::before {
 ::-webkit-scrollbar {
     width: 6px;
 }
+
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
     background: rgba(var(--glow), 0.4);
     border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
     background: var(--brand);
 }
-#chat-title { flex: 1; font-size: 1.1rem; }
+
+#chat-title {
+    flex: 1;
+    font-size: 1.1rem;
+}
 
 
 .media-preview-container {
@@ -1166,8 +1214,13 @@ body:not(.auth-page)::before {
 }
 
 @keyframes spin-square {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Retro Windows 98 / XP Segmented Block Progress Bar */
@@ -1213,8 +1266,15 @@ body:not(.auth-page)::before {
 }
 
 @keyframes retro-pulse {
-    0% { opacity: 0.65; filter: brightness(1); }
-    100% { opacity: 1; filter: brightness(1.35); }
+    0% {
+        opacity: 0.65;
+        filter: brightness(1);
+    }
+
+    100% {
+        opacity: 1;
+        filter: brightness(1.35);
+    }
 }
 
 .retro-progress-labels {
@@ -1302,5 +1362,5 @@ body:not(.auth-page)::before {
     font-size: 0.75rem;
     font-weight: 500;
     opacity: 0.8;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }

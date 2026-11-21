@@ -158,6 +158,7 @@ function initSettings() {
   if (lumirToggle) {
     lumirToggle.checked = lumirVisible;
   }
+
 }
 
 function toggleLumirVisibility() {
@@ -168,12 +169,14 @@ function toggleLumirVisibility() {
 
 function initTheme() {
   const theme = localStorage.getItem("theme") || "light";
+  document.documentElement.setAttribute("data-theme", theme);
   document.body.setAttribute("data-theme", theme);
 }
 
 function toggleTheme() {
-  const current = document.body.getAttribute("data-theme");
+  const current = document.documentElement.getAttribute("data-theme") || document.body.getAttribute("data-theme") || "light";
   const next = current === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
   document.body.setAttribute("data-theme", next);
   localStorage.setItem("theme", next);
 }
