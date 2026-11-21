@@ -626,7 +626,7 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
 
-                // 📞 SWIPE TO CALL (SAMSUNG J2 STYLE - EXPERIMENTAL)
+                // 📞 SWIPE TO CALL (SAMSUNG J2 STYLE - HERO FEATURE)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -637,15 +637,15 @@ fun SettingsScreen(
                             Text("Swipe to Call", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.width(6.dp))
                             Surface(
-                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    "EXPERIMENTAL",
+                                    "HERO",
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.tertiary
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
