@@ -269,12 +269,35 @@ body.auth-page {
 
 /* ================= DREAMY CHAT LAYOUT & COMPONENTS ================= */
 body:not(.auth-page) {
+    position: relative;
+    isolation: isolate;
     display: flex;
     height: 100vh;
     background: var(--bg-page);
     color: var(--text-main);
     transition: background 0.3s ease, color 0.3s ease;
     overflow: hidden;
+}
+
+body:not(.auth-page)::before {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    inset: -18px;
+    background:
+      linear-gradient(rgba(26, 21, 40, 0.46), rgba(26, 21, 40, 0.56)),
+      url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+    filter: blur(10px);
+    opacity: 0.85;
+    transform: scale(1.03);
+    pointer-events: none;
+}
+
+[data-theme="light"] body:not(.auth-page)::before {
+    background:
+      linear-gradient(rgba(245, 241, 251, 0.62), rgba(245, 241, 251, 0.70)),
+      url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+    opacity: 0.78;
 }
 
 /* Sidebar */
@@ -685,7 +708,7 @@ body:not(.auth-page) {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: var(--chat-bg);
+    background: transparent;
     position: relative;
     height: 100vh;
 }
