@@ -196,9 +196,24 @@ function showSidebar() {
 }
 
 function toggleSettings() {
-  const panel = document.getElementById("settings-panel");
-  panel.style.display = panel.style.display === "flex" ? "none" : "flex";
+  const overlay = document.getElementById("settings-overlay");
+  if (!overlay) return;
+  const isHidden = overlay.style.display === "none" || !overlay.style.display;
+  overlay.style.display = isHidden ? "flex" : "none";
+  if (isHidden) {
+    const uDisplay = document.getElementById("settings-username-display");
+    if (uDisplay && myUsername) uDisplay.innerText = myUsername;
+  }
 }
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const overlay = document.getElementById("settings-overlay");
+    if (overlay && overlay.style.display !== "none") {
+      overlay.style.display = "none";
+    }
+  }
+});
 
 async function logout() {
   localStorage.removeItem("username");
@@ -225,6 +240,8 @@ async function uploadPhoto() {
     const data = await res.json();
     if (data.success) {
       document.getElementById("my-avatar").src = data.profile_photo + "?t=" + Date.now();
+      const myThumb = document.getElementById("my-profile-thumb");
+      if (myThumb) myThumb.src = data.profile_photo + "?t=" + Date.now();
       alert("Profile photo updated!");
       loadUsers(); // refresh user list to show new photo
     } else {
@@ -302,6 +319,8 @@ async function loadUsers() {
         // Current user
         if (user.profile_photo) {
           document.getElementById("my-avatar").src = user.profile_photo;
+          const myThumb = document.getElementById("my-profile-thumb");
+          if (myThumb) myThumb.src = user.profile_photo;
           userAvatars[myUsername] = user.profile_photo;
         }
       }
@@ -441,9 +460,24 @@ async function selectUser(name) {
   document.getElementById("messages").innerHTML = "";
   lastRenderedDateStr = null;
 
+  // Header avatar & status details
+  const headerAvatar = document.getElementById("header-avatar");
+  const headerSubtitle = document.getElementById("header-subtitle");
+
+  if (name === "Lumir") {
+    if (headerAvatar) headerAvatar.src = "/assets/lumir5.svg";
+    if (headerSubtitle) headerSubtitle.innerText = "AI Neural Companion";
+  } else if (name === "Family Group") {
+    if (headerAvatar) headerAvatar.src = "/assets/family_group.svg";
+    if (headerSubtitle) headerSubtitle.innerText = "Public LAN Broadcast";
+  } else {
+    if (headerAvatar) headerAvatar.src = userAvatars[name] || "/assets/lumir5.svg";
+    if (headerSubtitle) headerSubtitle.innerText = "Intra Private Chat";
+  }
+
   // Mobile navigation
   document.body.classList.add("chat-open");
-  document.getElementById("back-btn").style.display = window.innerWidth <= 768 ? "block" : "none";
+  document.getElementById("back-btn").style.display = window.innerWidth <= 768 ? "inline-flex" : "none";
 
   // Show call button for private chats
   const chatActions = document.getElementById("chat-actions");
@@ -943,8 +977,8 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
       </div>`;
     }
   } else {
-    // 🔥 LINKIFY TEXT
-    content += linkify(text);
+    // 🔥 LINKIFY + MARKDOWN + FALLBACK
+    content += formatMessageText(text);
   }
 
   bubble.innerHTML = content;
@@ -1087,8 +1121,51 @@ function sendText(text) {
 }
 
 /***********************
- * HELPERS
+ * HELPERS & FORMATTING
  ***********************/
+function formatMessageText(text) {
+  if (!text) return "";
+  
+  let formatted = text;
+  
+  // Check for Fallback Mode tag: *(Fallback Mode)* or (Fallback Mode)
+  let hasFallback = false;
+  if (formatted.includes("*(Fallback Mode)*") || formatted.includes("(Fallback Mode)")) {
+    hasFallback = true;
+    formatted = formatted.replace(/\*?\(Fallback Mode\)\*?\s*:?\s*/gi, "");
+  }
+
+  // Escape HTML to prevent injection
+  formatted = formatted
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Format code spans `code`
+  formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:rgba(var(--glow),0.18); padding:2px 6px; border-radius:6px; font-family:\'JetBrains Mono\',monospace; font-size:0.88em;">$1</code>');
+
+  // Format bold **text**
+  formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+
+  // Format italic *text*
+  formatted = formatted.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+
+  // Linkify URLs
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  formatted = formatted.replace(urlRegex, function (url) {
+    return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline; word-break: break-all;">${url}</a>`;
+  });
+
+  // Convert newlines to <br>
+  formatted = formatted.replace(/\n/g, '<br>');
+
+  if (hasFallback) {
+    formatted = `<div class="fallback-badge">⚡ Fallback Model</div>` + formatted;
+  }
+
+  return formatted;
+}
+
 function linkify(text) {
   // Regex for URLs starting with http:// or https://
   const urlRegex = /(https?:\/\/[^\s]+)/g;

@@ -147,6 +147,18 @@ def admin_set_environment_settings(
     set_environment_settings(enabled, mode, temp, wind, rain)
     return {"success": True, "message": "Smart Environment settings updated successfully!"}
 
+@router.post("/test_weather_sync")
+async def admin_test_weather_sync(admin=Depends(verify_admin)):
+    import tasks
+    await tasks.sync_weather_data()
+    return {"success": True, "message": "Weather sync executed and cache updated!"}
+
+@router.post("/test_sentinel_alert")
+async def admin_test_sentinel_alert(admin=Depends(verify_admin)):
+    import tasks
+    await tasks.hourly_sentinel_check()
+    return {"success": True, "message": "Sentinel alert check executed successfully!"}
+
 # ================= AI SETTINGS =================
 @router.get("/ai_settings")
 def admin_get_ai_settings(admin=Depends(verify_admin)):

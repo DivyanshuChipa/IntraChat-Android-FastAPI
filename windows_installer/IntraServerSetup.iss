@@ -22,6 +22,7 @@ WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64
 SetupIconFile=assets\intraserver-256x256.ico
 UninstallIconFile=assets\intraserver-256x256.ico
+LicenseFile=..\LICENSE
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -33,6 +34,7 @@ Name: "firewallrule"; Description: "Allow Intra Server through Windows Firewall 
 [Files]
 ; Dist folder contents produced by build_windows_dist.py
 Source: "..\dist\IntraServer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\intraserver-256x256.ico"

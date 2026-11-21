@@ -706,7 +706,8 @@
                 Capabilities & Addons
             </div>
             <div class="nav-item" onclick="switchTab('weather', this)">
-                <i class="fas fa-cloud-sun"></i> Weather Sentinel
+                <img src="/assets/admin_icons/weather_sentinel_dark.webp" class="nav-icon" alt="Weather"> Weather
+                Sentinel
             </div>
             <div class="nav-item" onclick="switchTab('storage', this)">
                 <img src="/assets/admin_icons/storage_vault_dark.webp" class="nav-icon" alt="Storage"> Storage &
@@ -884,60 +885,175 @@
                             alt="Lumir">
                         Lumir AI Intelligence Engine
                     </h2>
-                    <p class="panel-subtitle">Configure backend LLM inference provider (llama.cpp / Ollama) and voice
-                        settings.</p>
+                    <p class="panel-subtitle">Configure LLM inference providers, smart models routing, and Node 2 distributed voice engine.</p>
                 </div>
 
+                <!-- LLM Neural Gateway & Routing -->
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-robot"></i> LLM Neural Gateway</div>
+                    <div class="card-title"><i class="fas fa-brain text-purple"></i> LLM Neural Gateway & Routing</div>
+
+                    <div class="toggle-row" style="margin-bottom: 16px;">
+                        <div class="toggle-info">
+                            <h4>Enable Lumir AI Assistant</h4>
+                            <p>Activate local LLM intelligence for chat companionship, tool routing, and automation.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="ai-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Inference Provider</label>
                             <select id="ai-provider">
-                                <option value="llama.cpp">llama-server (llama.cpp GGUF)</option>
+                                <option value="auto">Auto-Detect</option>
                                 <option value="ollama">Ollama (/api/chat)</option>
-                                <option value="openai">OpenAI Compatible Endpoint</option>
+                                <option value="llamacpp">llama.cpp (OpenAI API)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Model Identifier</label>
-                            <input type="text" id="ai-model" placeholder="e.g. qwen2.5:0.5b or default">
+                            <label>AI Server URL</label>
+                            <input type="text" id="ai-url" placeholder="http://localhost:11434">
                         </div>
                         <div class="form-group">
-                            <label>Host Address</label>
-                            <input type="text" id="ai-host" placeholder="127.0.0.1 or LAN IP">
+                            <label>Main Model Identifier</label>
+                            <input type="text" id="ai-model" placeholder="e.g. gpt-oss:20b-cloud, qwen2.5:14b">
                         </div>
                         <div class="form-group">
-                            <label>Port</label>
-                            <input type="number" id="ai-port" placeholder="8080 or 11434">
+                            <label>Vision Model (Multi-Modal)</label>
+                            <input type="text" id="ai-vision" placeholder="e.g. gemma:27b-cloud">
                         </div>
                         <div class="form-group">
-                            <label>Creativity / Temperature (0.1 - 1.0)</label>
-                            <input type="number" step="0.05" id="ai-temp" placeholder="0.7">
+                            <label>Fallback Model (Lightweight)</label>
+                            <input type="text" id="ai-fallback" placeholder="e.g. gemma3:270m">
+                        </div>
+                        <div class="form-group">
+                            <label>Smart Models (Comma Separated)</label>
+                            <input type="text" id="ai-smart-models" placeholder="gpt-oss:20b-cloud, qwen2.5:14b">
                         </div>
                     </div>
+                </div>
+
+                <!-- Distributed Voice Node -->
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-microphone-alt text-purple"></i> Distributed Voice Engine (Node 2 STT & TTS)</div>
+
+                    <div class="toggle-row" style="margin-bottom: 16px;">
+                        <div class="toggle-info">
+                            <h4>Enable Node 2 Voice Engine</h4>
+                            <p>Offload faster-whisper STT and Piper TTS synthesis to dedicated compute node.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="voice-node-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Voice Server URL</label>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <input type="text" id="voice-node-url" placeholder="http://192.168.31.94:8005" style="flex:1;">
+                            <button class="btn-outline" style="white-space:nowrap;" onclick="testVoiceNode()">
+                                <i class="fas fa-plug"></i> Test Voice Node
+                            </button>
+                        </div>
+                    </div>
+                    <div id="voice-node-status" style="font-size:13px; font-weight:600; min-height:20px; margin-top:8px;"></div>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center;">
                     <button class="btn-primary" onclick="saveAIConfig()">
-                        <i class="fas fa-save"></i> Save AI Settings
+                        <i class="fas fa-save"></i> Save AI Configuration
                     </button>
+                    <span id="ai-status-msg" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
                 </div>
             </div>
 
             <!-- 4. WEATHER SENTINEL TAB -->
             <div id="tab-weather" class="tab-panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">Weather Sentinel & Automation</h2>
-                    <p class="panel-subtitle">Default coordinates for climate alerts and autonomous family warnings.</p>
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <img src="/assets/admin_icons/weather_sentinel_dark.webp" style="width:28px; height:28px;"
+                            alt="Weather">
+                        Weather Sentinel & Climate Automation
+                    </h2>
+                    <p class="panel-subtitle">Smart environmental conditions monitor, severe weather alarms, and autonomous family warnings.</p>
                 </div>
 
+                <!-- Smart Environment Monitor Card -->
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-map-marker-alt"></i> Default Location Coordinates</div>
+                    <div class="card-title"><i class="fas fa-shield-virus text-purple"></i> Smart Environment Sentinel</div>
+
+                    <div class="toggle-row" style="margin-bottom: 16px;">
+                        <div class="toggle-info">
+                            <h4>Enable Weather Sentinel</h4>
+                            <p>Continuously monitors local weather hazards and sends proactive safety warnings.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="sentinel-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Latitude</label>
+                            <label>Monitoring Mode</label>
+                            <select id="env-mode">
+                                <option value="auto">Auto-Pilot (Smart Hourly Monitor)</option>
+                                <option value="normal">Normal (7 AM Daily Digest)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Alert Temperature Limit (°C)</label>
+                            <input type="number" step="0.5" id="alert-temp" placeholder="40.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Alert Wind Speed Limit (km/h)</label>
+                            <input type="number" step="1.0" id="alert-wind" placeholder="40.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Alert Rain Limit (mm)</label>
+                            <input type="number" step="0.5" id="alert-rain" placeholder="5.0">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                        <button class="btn-primary" onclick="saveEnvironmentSettings()">
+                            <i class="fas fa-save"></i> Save Sentinel Settings
+                        </button>
+                        <button class="btn-outline" onclick="testWeatherSync()">
+                            <i class="fas fa-cloud-download-alt"></i> Test Weather Sync
+                        </button>
+                        <button class="btn-outline" onclick="testSentinelAlert()">
+                            <i class="fas fa-bell"></i> Test Sentinel Alert
+                        </button>
+                        <span id="env-status-msg" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
+                    </div>
+                </div>
+
+                <!-- Weather Location Card -->
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-map-marker-alt text-purple"></i> Default Location Coordinates</div>
+
+                    <div class="form-group">
+                        <label>Search City (Open-Meteo Geocoding)</label>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <input type="text" id="city-search-input" placeholder="e.g. Gwalior, Guna, New Delhi" style="flex:1;">
+                            <button class="btn-outline" style="white-space:nowrap;" onclick="searchCityCoordinates()">
+                                <i class="fas fa-search"></i> Search City
+                            </button>
+                        </div>
+                        <div id="city-search-status" style="font-size:12px; margin-top:6px; color:var(--text-muted);"></div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Default Latitude</label>
                             <input type="number" step="0.0001" id="geo-lat" placeholder="26.2183">
                         </div>
                         <div class="form-group">
-                            <label>Longitude</label>
+                            <label>Default Longitude</label>
                             <input type="number" step="0.0001" id="geo-lon" placeholder="78.1828">
                         </div>
                     </div>
@@ -1217,49 +1333,192 @@
             if (res && res.success) showToast(enabled ? "LAN Discovery Broadcast Enabled." : "Stealth Mode Activated.");
         }
 
-        // ================= LUMIR AI =================
+        // ================= LUMIR AI & VOICE NODE =================
         async function loadAIConfig() {
-            const data = await fetchAdmin("/admin/ai_config");
+            const data = await fetchAdmin("/admin/ai_settings");
             if (data && data.success && data.config) {
                 const c = data.config;
-                document.getElementById("ai-provider").value = c.provider || "llama.cpp";
-                document.getElementById("ai-model").value = c.model || "";
-                document.getElementById("ai-host").value = c.host || "127.0.0.1";
-                document.getElementById("ai-port").value = c.port || 8080;
-                document.getElementById("ai-temp").value = c.temperature || 0.7;
+                document.getElementById("ai-enabled").checked = Boolean(c.ai_enabled);
+                
+                const prov = (c.ai_provider || "auto").toLowerCase();
+                if (prov === "ollama") {
+                    document.getElementById("ai-provider").value = "ollama";
+                } else if (prov === "llamacpp" || prov === "llama.cpp") {
+                    document.getElementById("ai-provider").value = "llamacpp";
+                } else {
+                    document.getElementById("ai-provider").value = "auto";
+                }
+
+                document.getElementById("ai-url").value = c.ollama_url || "http://localhost:11434";
+                document.getElementById("ai-model").value = c.ai_model || "gpt-oss:20b-cloud";
+                document.getElementById("ai-vision").value = c.ai_vision_model || "gemma:27b-cloud";
+                document.getElementById("ai-fallback").value = c.ai_fallback || "gemma3:270m";
+                document.getElementById("ai-smart-models").value = c.ai_smart_models || "gpt-oss:20b-cloud";
+
+                document.getElementById("voice-node-enabled").checked = Boolean(c.voice_node_enabled);
+                document.getElementById("voice-node-url").value = c.voice_node_url || "http://192.168.31.94:8005";
+                document.getElementById("ai-status-msg").innerText = "Settings loaded.";
             }
         }
 
         async function saveAIConfig() {
-            const payload = {
-                provider: document.getElementById("ai-provider").value,
-                model: document.getElementById("ai-model").value.trim(),
-                host: document.getElementById("ai-host").value.trim(),
-                port: parseInt(document.getElementById("ai-port").value) || 8080,
-                temperature: parseFloat(document.getElementById("ai-temp").value) || 0.7,
-            };
-            const res = await fetchAdmin("/admin/ai_config", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            if (res && res.success) showToast("Lumir AI configuration updated!");
+            const enabled = document.getElementById("ai-enabled").checked;
+            const provider = document.getElementById("ai-provider").value;
+            const url = encodeURIComponent(document.getElementById("ai-url").value.trim());
+            const model = encodeURIComponent(document.getElementById("ai-model").value.trim());
+            const vision = encodeURIComponent(document.getElementById("ai-vision").value.trim());
+            const fallback = encodeURIComponent(document.getElementById("ai-fallback").value.trim());
+            const smartModels = encodeURIComponent(document.getElementById("ai-smart-models").value.trim());
+            const voiceEnabled = document.getElementById("voice-node-enabled").checked;
+            const voiceUrl = encodeURIComponent(document.getElementById("voice-node-url").value.trim());
+
+            const endpoint = `/admin/ai_settings?enabled=${enabled}&model=${model}&url=${url}&vision=${vision}&fallback=${fallback}&smart_models=${smartModels}&voice_node_url=${voiceUrl}&voice_node_enabled=${voiceEnabled}&ai_provider=${provider}`;
+            
+            const res = await fetchAdmin(endpoint, { method: "POST" });
+            if (res && res.success) {
+                showToast("Lumir AI configuration updated!");
+                document.getElementById("ai-status-msg").innerText = "✅ Saved successfully!";
+                setTimeout(() => { document.getElementById("ai-status-msg").innerText = ""; }, 4000);
+            } else {
+                showToast(res ? res.message : "Failed to save AI configuration", true);
+            }
         }
 
-        // ================= WEATHER LOCATION =================
+        async function testVoiceNode() {
+            const url = document.getElementById("voice-node-url").value.trim();
+            const statusEl = document.getElementById("voice-node-status");
+            if (!url) {
+                showToast("Please enter Voice Server URL first!", true);
+                return;
+            }
+
+            statusEl.innerHTML = `<span style="color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Probing Node 2 Voice Server...</span>`;
+            
+            const res = await fetchAdmin(`/admin/test_voice_node?url=${encodeURIComponent(url)}`);
+            if (res && res.success) {
+                const latency = res.latency_ms || 0;
+                const nodeInfo = res.node_info || {};
+                const caps = nodeInfo.capabilities || {};
+                const stt = caps.stt || "ok";
+                const tts = caps.tts_primary || "ok";
+                statusEl.innerHTML = `<span style="color:var(--success);"><i class="fas fa-check-circle"></i> Online (${latency} ms) | STT: ${stt} | TTS: ${tts}</span>`;
+                showToast(`Voice Node reachable in ${latency} ms!`);
+            } else {
+                statusEl.innerHTML = `<span style="color:var(--danger);"><i class="fas fa-times-circle"></i> ${res ? res.message : "Connection failed"}</span>`;
+                showToast("Voice Node unreachable.", true);
+            }
+        }
+
+        // ================= WEATHER LOCATION & SENTINEL =================
         async function loadLocation() {
-            const data = await fetchAdmin("/admin/location");
-            if (data && data.success) {
-                document.getElementById("geo-lat").value = data.latitude;
-                document.getElementById("geo-lon").value = data.longitude;
+            // Load Location Coordinates
+            const locData = await fetchAdmin("/admin/weather_location");
+            if (locData && locData.success) {
+                document.getElementById("geo-lat").value = locData.default_lat ?? "";
+                document.getElementById("geo-lon").value = locData.default_lon ?? "";
+            }
+            // Load Sentinel Settings
+            await loadEnvironmentSettings();
+        }
+
+        async function searchCityCoordinates() {
+            const city = document.getElementById("city-search-input").value.trim();
+            const statusEl = document.getElementById("city-search-status");
+            if (!city) {
+                showToast("Please enter a city name to search.", true);
+                return;
+            }
+
+            statusEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Searching Open-Meteo geocoding...`;
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const results = data.results || [];
+                    if (results.length > 0) {
+                        const top = results[0];
+                        document.getElementById("geo-lat").value = top.latitude;
+                        document.getElementById("geo-lon").value = top.longitude;
+                        const parts = [top.name, top.admin1, top.country].filter(Boolean);
+                        statusEl.innerHTML = `<span style="color:var(--success);"><i class="fas fa-check"></i> Found: ${parts.join(", ")} (${top.latitude}, ${top.longitude})</span>`;
+                        showToast(`Found ${top.name}! Coordinates filled.`);
+                    } else {
+                        statusEl.innerHTML = `<span style="color:var(--danger);"><i class="fas fa-times"></i> City not found.</span>`;
+                        showToast("City not found.", true);
+                    }
+                } else {
+                    statusEl.innerHTML = `<span style="color:var(--danger);"><i class="fas fa-exclamation-triangle"></i> Geocoding API returned status ${res.status}</span>`;
+                }
+            } catch (err) {
+                statusEl.innerHTML = `<span style="color:var(--danger);"><i class="fas fa-exclamation-triangle"></i> Network error during city search.</span>`;
             }
         }
 
         async function saveLocation() {
             const lat = parseFloat(document.getElementById("geo-lat").value);
             const lon = parseFloat(document.getElementById("geo-lon").value);
-            const res = await fetchAdmin(`/admin/location?latitude=${lat}&longitude=${lon}`, { method: "POST" });
-            if (res && res.success) showToast("Default coordinates updated!");
+            if (isNaN(lat) || isNaN(lon)) {
+                showToast("Please enter valid numeric coordinates.", true);
+                return;
+            }
+            const res = await fetchAdmin(`/admin/weather_location?lat=${lat}&lon=${lon}`, { method: "POST" });
+            if (res && res.success) showToast("Weather location coordinates saved!");
+            else showToast(res ? res.message : "Failed to save location coordinates.", true);
+        }
+
+        async function loadEnvironmentSettings() {
+            const data = await fetchAdmin("/admin/environment_settings");
+            if (data && data.success && data.settings) {
+                const s = data.settings;
+                document.getElementById("sentinel-enabled").checked = s.sentinel_enabled === "1" || s.sentinel_enabled === true || s.sentinel_enabled === 1;
+                document.getElementById("env-mode").value = s.env_mode || "auto";
+                document.getElementById("alert-temp").value = s.alert_temp ?? 40.0;
+                document.getElementById("alert-wind").value = s.alert_wind ?? 40.0;
+                document.getElementById("alert-rain").value = s.alert_rain ?? 5.0;
+            }
+        }
+
+        async function saveEnvironmentSettings() {
+            const enabled = document.getElementById("sentinel-enabled").checked;
+            const mode = document.getElementById("env-mode").value;
+            const temp = parseFloat(document.getElementById("alert-temp").value);
+            const wind = parseFloat(document.getElementById("alert-wind").value);
+            const rain = parseFloat(document.getElementById("alert-rain").value);
+
+            if (isNaN(temp) || isNaN(wind) || isNaN(rain)) {
+                showToast("Threshold limits must be valid numbers.", true);
+                return;
+            }
+
+            const endpoint = `/admin/environment_settings?enabled=${enabled}&mode=${encodeURIComponent(mode)}&temp=${temp}&wind=${wind}&rain=${rain}`;
+            const res = await fetchAdmin(endpoint, { method: "POST" });
+            if (res && res.success) {
+                showToast("Smart Environment settings saved successfully!");
+                document.getElementById("env-status-msg").innerText = "✅ Saved!";
+                setTimeout(() => { document.getElementById("env-status-msg").innerText = ""; }, 4000);
+            } else {
+                showToast(res ? res.message : "Failed to save Sentinel settings.", true);
+            }
+        }
+
+        async function testWeatherSync() {
+            showToast("Triggering weather sync...");
+            const res = await fetchAdmin("/admin/test_weather_sync", { method: "POST" });
+            if (res && res.success) {
+                showToast(res.message || "Weather cache updated!");
+            } else {
+                showToast(res ? res.message : "Weather sync failed.", true);
+            }
+        }
+
+        async function testSentinelAlert() {
+            showToast("Running Sentinel hazard check...");
+            const res = await fetchAdmin("/admin/test_sentinel_alert", { method: "POST" });
+            if (res && res.success) {
+                showToast(res.message || "Sentinel hazard check completed!");
+            } else {
+                showToast(res ? res.message : "Sentinel check failed.", true);
+            }
         }
 
         // ================= CLEANUP =================
