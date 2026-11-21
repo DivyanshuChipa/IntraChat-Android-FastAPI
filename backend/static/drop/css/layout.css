@@ -1,0 +1,125 @@
+/* HEADER */
+header {
+  width: 100%;
+  max-width: 920px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 12px 0;
+  gap: 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--brand), var(--accent-pink));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(var(--glow), 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.brand-text h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-main);
+}
+
+.brand-text p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* MAIN CONTAINER */
+main {
+  width: 100%;
+  max-width: 920px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* TABS */
+.nav-tabs {
+  display: flex;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 5px;
+  border: 1px solid var(--surface-border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+}
+
+.nav-tab {
+  flex: 1;
+  padding: 11px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: all 0.25s ease;
+}
+
+.nav-tab.active {
+  background: var(--tab-active-bg);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(var(--glow), 0.35);
+}
+
+.nav-tab svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-tab.active svg path,
+.nav-tab.active svg rect {
+  stroke: #fff;
+}
+
+/* SEARCH & FILTER BAR */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* FILE LIST GRID */
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 14px;
+}
+
+/* TEXT CLIPBOARD SECTION */
+.clipboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intra - Web Admin Console</title>
+    <link rel="icon" type="image/x-icon" href="/assets/intra_logo/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/intra_logo/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/assets/intra_logo/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/admin/css/theme.css">
+    <link rel="stylesheet" href="/static/admin/css/layout.css">
+    <link rel="stylesheet" href="/static/admin/css/components.css">
+</head>
+
+<body>
+    <!-- SVG SPRITE -->
+    <svg class="admin-icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <symbol id="admin-users" viewBox="0 0 24 24">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </symbol>
+
+        <symbol id="admin-system" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="12" rx="2"/>
+            <path d="M7 20h10M12 16v4M6 11h3l2-4 3 6 2-3h2"/>
+        </symbol>
+
+        <symbol id="admin-security" viewBox="0 0 24 24">
+            <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/>
+            <path d="m9 12 2 2 4-4"/>
+        </symbol>
+
+        <symbol id="admin-lumir" viewBox="0 0 24 24">
+            <path d="m12 2 2.2 6 6 2.2-6 2.2-2.2 6-2.2-6L4 10.2 9.8 8 12 2Z"/>
+            <path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z"/>
+            <path d="M5 3v3M3.5 4.5h3"/>
+        </symbol>
+
+        <symbol id="admin-capabilities" viewBox="0 0 24 24">
+            <path d="M4 5h16M4 9h10M4 13h16M4 17h10M4 21h16"/>
+            <path d="m17 8 3 3-3 3"/>
+        </symbol>
+
+        <symbol id="admin-weather" viewBox="0 0 24 24">
+            <path d="M6 18h11a4 4 0 0 0 .3-8A6 6 0 0 0 6 8.5 4.8 4.8 0 0 0 6 18Z"/>
+            <path d="m13 12-2 4h3l-2 4"/>
+        </symbol>
+
+        <symbol id="admin-storage" viewBox="0 0 24 24">
+            <ellipse cx="12" cy="5" rx="8" ry="3"/>
+            <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>
+        </symbol>
+
+        <symbol id="admin-online" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8"/>
+            <path d="m8.5 12 2.3 2.3 4.8-5"/>
+            <circle cx="19.5" cy="5" r="1.5"/>
+        </symbol>
+
+        <symbol id="admin-theme" viewBox="0 0 24 24">
+            <path d="M17.8 15.2A7.3 7.3 0 0 1 8.8 6.2a7.5 7.5 0 1 0 9 9Z"/>
+            <circle cx="16.5" cy="7.5" r="2"/>
+            <path d="M16.5 3.8v1M16.5 10.2v1M12.8 7.5h1M19.2 7.5h1"/>
+        </symbol>
+
+        <symbol id="admin-check" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="m8 12 2.5 2.5L16 9"/>
+        </symbol>
+
+        <symbol id="admin-ban" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="m6 6 12 12"/>
+        </symbol>
+
+        <symbol id="admin-trash" viewBox="0 0 24 24">
+            <path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m4 4v5m4-5v5"/>
+        </symbol>
+
+        <symbol id="admin-refresh" viewBox="0 0 24 24">
+            <path d="M20 7v5h-5M4 17v-5h5"/>
+            <path d="M5.7 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.3 15"/>
+        </symbol>
+
+        <symbol id="admin-bell" viewBox="0 0 24 24">
+            <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/>
+            <path d="m19 2 .7 1.8L21.5 4.5l-1.8.7L19 7l-.7-1.8-1.8-.7 1.8-.7L19 2Z"/>
+        </symbol>
+    </svg>
+
+    <!-- Top Header -->
+    <header>
+        <div class="brand">
+            <span class="brand-badge">INTRA</span>
+            <span class="brand-title">Server Admin Console</span>
+        </div>
+        <div class="header-actions">
+            <div class="status-badge status-online">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-online"></use></svg>
+                <span>FastAPI Active</span>
+            </div>
+            <button id="btn-theme-toggle" class="btn-outline theme-toggle-btn" title="Toggle Light/Dark Theme">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-theme"></use></svg>
+            </button>
+            <button id="btn-change-key" class="btn-outline">
+                <i class="fas fa-key"></i> Key
+            </button>
+            <a href="/" class="btn-outline" target="_blank">
+                <i class="fas fa-comments"></i> Web Chat
+            </a>
+            <a href="/drop" class="btn-outline" target="_blank">
+                <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-storage"></use></svg> WebDrop
+            </a>
+        </div>
+    </header>
+
+    <div class="admin-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="admin-sidebar">
+            <div class="nav-item active" data-tab="users">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-users"></use></svg>
+                <span>Users Management</span>
+            </div>
+            <div class="nav-item" data-tab="system">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-system"></use></svg>
+                <span>System & Telemetry</span>
+            </div>
+            <div class="nav-item" data-tab="security">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-security"></use></svg>
+                <span>Access & Security</span>
+            </div>
+            <div class="nav-item" data-tab="lumir">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                <span>Lumir AI & Voice</span>
+            </div>
+            <div class="nav-item" data-tab="capabilities">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
+                <span>Capabilities & Addons</span>
+            </div>
+            <div class="nav-item" data-tab="weather">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-weather"></use></svg>
+                <span>Weather Sentinel</span>
+            </div>
+            <div class="nav-item" data-tab="storage">
+                <svg class="admin-icon" aria-hidden="true"><use href="#admin-storage"></use></svg>
+                <span>Storage & Maintenance</span>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+
+            <!-- 1. USERS TAB -->
+            <div id="tab-users" class="tab-panel active">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-users"></use></svg>
+                        Users & Account Approvals
+                    </h2>
+                    <p class="panel-subtitle">Manage registered LAN chat users, approve pending accounts, and manage credentials.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-users"></use></svg>
+                        Registered LAN Accounts
+                        <button id="btn-refresh-users" class="btn-outline" style="margin-left: auto;">
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg> Refresh
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Status</th>
+                                    <th>Presence</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr>
+                                    <td colspan="4" style="text-align:center; color:var(--text-muted);">Loading users...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. SYSTEM & HARDWARE TELEMETRY TAB -->
+            <div id="tab-system" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-system"></use></svg>
+                        Hardware & Server Health
+                    </h2>
+                    <p class="panel-subtitle">Realtime server telemetry, CPU/RAM utilization, and active client connections.</p>
+                </div>
+
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-system"></use></svg>
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-cpu">-- %</h3>
+                            <p>CPU Utilization</p>
+                            <div class="progress-bar-bg">
+                                <div id="bar-cpu" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-ram">-- %</h3>
+                            <p id="stat-ram-sub">Memory (RAM)</p>
+                            <div class="progress-bar-bg">
+                                <div id="bar-ram" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-storage"></use></svg>
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-disk">-- %</h3>
+                            <p id="stat-disk-sub">Disk Space</p>
+                            <div class="progress-bar-bg">
+                                <div id="bar-disk" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <svg class="admin-icon" aria-hidden="true"><use href="#admin-users"></use></svg>
+                        </div>
+                        <div class="stat-info" style="flex:1;">
+                            <h3 id="stat-clients">0</h3>
+                            <p>Active LAN Clients</p>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" style="width: 100%; background: #10b981;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
+                        Realtime Telemetry Monitor
+                        <button id="btn-refresh-system" class="btn-outline" style="margin-left: auto;">
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg> Refresh Now
+                        </button>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:14px; line-height:1.6;">
+                        Hardware metrics are polled from the FastAPI host machine. High CPU loads may indicate background video transcoding, speech synthesis, or vector searches.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 3. SECURITY TAB -->
+            <div id="tab-security" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-security"></use></svg>
+                        Server Access & Discovery
+                    </h2>
+                    <p class="panel-subtitle">Control registration gates and local network visibility.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-security"></use></svg>
+                        Gatekeeper Controls
+                    </div>
+
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <h4>Require Admin Approval</h4>
+                            <p>When enabled, new registrations must be manually approved by you before they can login or chat.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-approval">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <h4>LAN Auto-Discovery (Broadcast)</h4>
+                            <p>Allows phones on your Wi-Fi to automatically detect this server without typing IP manually. Disable for Stealth Mode.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-discovery">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. LUMIR AI TAB -->
+            <div id="tab-lumir" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                        Lumir AI Intelligence Engine
+                    </h2>
+                    <p class="panel-subtitle">Configure LLM inference providers, smart models routing, and Node 2 distributed voice engine.</p>
+                </div>
+
+                <!-- LLM Neural Gateway & Routing -->
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                        LLM Neural Gateway & Routing
+                    </div>
+
+                    <div class="toggle-row" style="margin-bottom: 16px;">
+                        <div class="toggle-info">
+                            <h4>Enable Lumir AI Assistant</h4>
+                            <p>Activate local LLM intelligence for chat companionship, tool routing, and automation.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="ai-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Inference Provider</label>
+                            <select id="ai-provider">
+                                <option value="auto">Auto-Detect</option>
+                                <option value="ollama">Ollama (/api/chat)</option>
+                                <option value="llamacpp">llama.cpp (OpenAI API)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>AI Server URL</label>
+                            <input type="text" id="ai-url" placeholder="http://localhost:11434">
+                        </div>
+                        <div class="form-group">
+                            <label>Main Model Identifier</label>
+                            <input type="text" id="ai-model" placeholder="e.g. gpt-oss:20b-cloud, qwen2.5:14b">
+                        </div>
+                        <div class="form-group">
+                            <label>Vision Model (Multi-Modal)</label>
+                            <input type="text" id="ai-vision" placeholder="e.g. gemma:27b-cloud">
+                        </div>
+                        <div class="form-group">
+                            <label>Fallback Model (Lightweight)</label>
+                            <input type="text" id="ai-fallback" placeholder="e.g. gemma3:270m">
+                        </div>
+                        <div class="form-group">
+                            <label>Smart Models (Comma Separated)</label>
+                            <input type="text" id="ai-smart-models" placeholder="gpt-oss:20b-cloud, qwen2.5:14b">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distributed Voice Node -->
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
+                        Distributed Voice Engine (Node 2 STT & TTS)
+                    </div>
+
+                    <div class="toggle-row" style="margin-bottom: 16px;">
+                        <div class="toggle-info">
+                            <h4>Enable Node 2 Voice Engine</h4>
+                            <p>Offload faster-whisper STT and Piper TTS synthesis to dedicated compute node.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="voice-node-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Voice Server URL</label>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <input type="text" id="voice-node-url" placeholder="http://192.168.31.94:8005" style="flex:1;">
+                            <button id="btn-test-voice" class="btn-outline" style="white-space:nowrap;">
+                                <i class="fas fa-plug"></i> Test Voice Node
+                            </button>
+                        </div>
+                    </div>
+                    <div id="voice-node-status" style="font-size:13px; font-weight:600; min-height:20px; margin-top:8px;"></div>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                    <button id="btn-save-ai" class="btn-primary">
+                        <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-check"></use></svg>
+                        Save AI Configuration
+                    </button>
+                    <span id="ai-status-msg" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
+                </div>
+            </div>
+
+            <!-- 5. WEATHER SENTINEL TAB -->
+            <div id="tab-weather" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-weather"></use></svg>
+                        Weather Sentinel & Climate Automation
+                    </h2>
+                    <p class="panel-subtitle">Smart environmental conditions monitor, severe weather alarms, and autonomous family warnings.</p>
+                </div>
+
+                <!-- Smart Environment Monitor Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-weather"></use></svg>
+                        Smart Environment Sentinel
+                    </div>
+
+                    <div class="toggle-row" style="margin-bottom: 16px;">
+                        <div class="toggle-info">
+                            <h4>Enable Weather Sentinel</h4>
+                            <p>Continuously monitors local weather hazards and sends proactive safety warnings.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="sentinel-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Monitoring Mode</label>
+                            <select id="env-mode">
+                                <option value="auto">Auto-Pilot (Smart Hourly Monitor)</option>
+                                <option value="normal">Normal (7 AM Daily Digest)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Alert Temperature Limit (°C)</label>
+                            <input type="number" step="0.5" id="alert-temp" placeholder="40.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Alert Wind Speed Limit (km/h)</label>
+                            <input type="number" step="1.0" id="alert-wind" placeholder="40.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Alert Rain Limit (mm)</label>
+                            <input type="number" step="0.5" id="alert-rain" placeholder="5.0">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                        <button id="btn-save-env" class="btn-primary">
+                            <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-check"></use></svg>
+                            Save Sentinel Settings
+                        </button>
+                        <button id="btn-test-weather-sync" class="btn-outline">
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg>
+                            Test Weather Sync
+                        </button>
+                        <button id="btn-test-sentinel-alert" class="btn-outline">
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-bell"></use></svg>
+                            Test Sentinel Alert
+                        </button>
+                        <span id="env-status-msg" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
+                    </div>
+                </div>
+
+                <!-- Weather Location Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-weather"></use></svg>
+                        Default Location Coordinates
+                    </div>
+
+                    <div class="form-group">
+                        <label>Search City (Open-Meteo Geocoding)</label>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <input type="text" id="city-search-input" placeholder="e.g. Gwalior, Guna, New Delhi" style="flex:1;">
+                            <button id="btn-search-city" class="btn-outline" style="white-space:nowrap;">
+                                <i class="fas fa-search"></i> Search City
+                            </button>
+                        </div>
+                        <div id="city-search-status" style="font-size:12px; margin-top:6px; color:var(--text-muted);"></div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Default Latitude</label>
+                            <input type="number" step="0.0001" id="geo-lat" placeholder="26.2183">
+                        </div>
+                        <div class="form-group">
+                            <label>Default Longitude</label>
+                            <input type="number" step="0.0001" id="geo-lon" placeholder="78.1828">
+                        </div>
+                    </div>
+                    <button id="btn-save-location" class="btn-primary">
+                        <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-check"></use></svg>
+                        Save Coordinates
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. STORAGE & MAINTENANCE TAB -->
+            <div id="tab-storage" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-storage"></use></svg>
+                        Storage & LocalAppData Maintenance
+                    </h2>
+                    <p class="panel-subtitle">Manage uploaded media, vector memories, and cleanup old files.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-trash"></use></svg>
+                        Upload Files Pruning
+                    </div>
+                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px; line-height:1.6;">
+                        All uploads and databases are safely isolated in <code>%LOCALAPPDATA%\IntraServer\</code>.
+                        Remove files older than X days to free disk space.
+                    </p>
+                    <div style="display:flex; gap:12px; align-items:center; max-width:400px; flex-wrap:wrap;">
+                        <input type="number" id="cleanup-days" value="30" min="1" placeholder="Days" style="width:120px;">
+                        <button id="btn-run-cleanup" class="btn-primary" style="background:#ef4444; white-space:nowrap;">
+                            <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-trash"></use></svg>
+                            Clean Up Old Files
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. CAPABILITIES & ADDONS TAB -->
+            <div id="tab-capabilities" class="tab-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" style="display:flex; align-items:center; gap:10px;">
+                        <svg class="admin-icon" style="width:26px; height:26px;" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
+                        Capabilities & External Tools
+                    </h2>
+                    <p class="panel-subtitle">Manage standalone binaries (FFmpeg, Tesseract OCR, yt-dlp) stored in Intra's dedicated local app directory.</p>
+                </div>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                        <div>
+                            <div style="font-size:15px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                                <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-capabilities"></use></svg>
+                                Intra Tools Directory
+                            </div>
+                            <div id="tools-dir-path" style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-top:4px;">
+                                Loading tools directory...
+                            </div>
+                        </div>
+                        <button id="btn-refresh-capabilities" class="btn-outline">
+                            <svg class="admin-icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#admin-refresh"></use></svg>
+                            Refresh Status
+                        </button>
+                    </div>
+                </div>
+
+                <div id="capabilities-grid" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+                    <div style="color:var(--text-muted); font-size:14px;">Loading capability status...</div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Admin Key Modal -->
+    <div id="auth-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <h2>
+                <i class="fas fa-key" style="color:var(--brand); margin-right:6px;"></i>
+                Admin Key Required
+            </h2>
+            <p>Enter the persistent <code>INTRA_ADMIN_KEY</code> from the server console logs to access the admin dashboard.</p>
+            <div class="form-group" style="text-align:left;">
+                <label>Admin Secret Key</label>
+                <input type="password" id="input-admin-key" placeholder="Paste Admin Secret Key here...">
+            </div>
+            <button id="btn-submit-admin-key" class="btn-primary" style="width:100%; justify-content:center; margin-top:8px;">
+                Authenticate & Connect
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="notification">
+        <i class="fas fa-info-circle"></i> <span id="toast-msg">Success</span>
+    </div>
+
+    <script type="module" src="/static/admin/js/main.js"></script>
+</body>
+
+</html>

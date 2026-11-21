@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles  # 👈 Add this import
 from pydantic import BaseModel
 from jose import jwt
@@ -256,6 +256,9 @@ from fastapi.responses import RedirectResponse
 
 @app.get("/admin")
 async def admin_dashboard_page():
+    admin_modular = os.path.join(BASE_DIR, "static", "admin", "admin.html")
+    if os.path.exists(admin_modular):
+        return FileResponse(admin_modular)
     admin_html = os.path.join(BASE_DIR, "static", "admin.html")
     if os.path.exists(admin_html):
         return FileResponse(admin_html)
@@ -266,4 +269,5 @@ async def admin_dashboard_page():
 # Agar yeh upar hui toh WS aur Login kaam nahi karenge.
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static_dir")
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

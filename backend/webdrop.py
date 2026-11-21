@@ -75,7 +75,10 @@ def _get_file_category(filename: str) -> str:
 
 @router.get("/drop")
 async def get_drop_page():
-    drop_html = Path("static/drop.html")
+    drop_modular = Path("backend/static/drop/drop.html") if Path("backend/static/drop/drop.html").exists() else Path("static/drop/drop.html")
+    if drop_modular.exists():
+        return FileResponse(drop_modular)
+    drop_html = Path("backend/static/drop.html") if Path("backend/static/drop.html").exists() else Path("static/drop.html")
     if drop_html.exists():
         return FileResponse(drop_html)
     raise HTTPException(status_code=404, detail="WebDrop page not found")
