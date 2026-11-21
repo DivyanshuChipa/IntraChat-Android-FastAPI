@@ -59,7 +59,9 @@
     }
 
     body {
-      background: radial-gradient(circle at 50% 0%, rgba(var(--glow), 0.14) 0%, var(--page-bg) 65%);
+      position: relative;
+      isolation: isolate;
+      background: var(--page-bg);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
@@ -67,6 +69,29 @@
       align-items: center;
       padding: 24px 16px 60px 16px;
       transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      z-index: -1;
+      inset: -18px;
+      background:
+        linear-gradient(rgba(26, 21, 40, 0.48), rgba(26, 21, 40, 0.58)),
+        url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+      filter: blur(9px);
+      opacity: 0.82;
+      transform: scale(1.025);
+      pointer-events: none;
+    }
+
+    body > * { position: relative; z-index: 1; }
+
+    [data-theme="light"] body::before {
+      background:
+        linear-gradient(rgba(245, 241, 251, 0.64), rgba(245, 241, 251, 0.72)),
+        url("/assets/animated_assets/converted_Dreamy%20Crescent%20Moon%20Cloudscape-2_conv_1795098013461_gfqc0.webp") center 42% / cover no-repeat;
+      opacity: 0.76;
     }
 
     /* HEADER */
@@ -156,6 +181,28 @@
       height: 18px;
       flex-shrink: 0;
     }
+
+    /* Keep inline icons visible across browsers: gradients referenced from a
+       separate hidden SVG can render as tiny dots or disappear altogether. */
+    svg [stroke="url(#drop-grad)"] {
+      stroke: var(--brand);
+    }
+
+    .btn-secondary svg,
+    .nav-tab svg,
+    .pill svg,
+    .file-card svg,
+    .copy-btn svg,
+    .link-btn svg {
+      display: block;
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      overflow: visible;
+    }
+
+    .pill svg { width: 16px; height: 16px; flex-basis: 16px; }
+    .drop-icon svg { overflow: visible; }
 
     /* MAIN CONTAINER */
     main {
