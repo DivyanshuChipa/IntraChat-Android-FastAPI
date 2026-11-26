@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 from server import verify_admin
-from users import get_all_users, delete_user_data, reset_user_password, set_require_approval, get_require_approval, approve_user_db, get_ai_config, set_ai_config, get_default_location, set_default_location, get_environment_settings, set_environment_settings, set_server_discovery, get_server_discovery
+from users import (
+    get_all_users, delete_user_data, reset_user_password, set_require_approval, 
+    get_require_approval, approve_user_db, get_ai_config, set_ai_config, 
+    get_default_location, set_default_location, get_environment_settings, 
+    set_environment_settings, set_server_discovery, get_server_discovery,
+    set_config_value, get_config_value
+)
 from messages import cleanup_old_messages
 from chat import connected_clients   # 👈 SOURCE OF TRUTH
 
@@ -162,7 +168,21 @@ async def admin_test_sentinel_alert(admin=Depends(verify_admin)):
 # ================= AI SETTINGS =================
 @router.get("/ai_settings")
 def admin_get_ai_settings(admin=Depends(verify_admin)):
-    return {"success": True, "config": get_ai_config()}
+    cfg = get_ai_config()
+    try:
+        from lumir.cloud_providers import get_api_key
+        g_k = get_api_key("gemini")
+        s_k = get_api_key("sarvam")
+        cfg["has_gemini"] = bool(g_k)
+        cfg["has_sarvam"] = bool(s_k)
+        cfg["gemini_masked"] = f"{g_k[:6]}...{g_k[-4:]}" if g_k and len(g_k) > 10 else ("Configured" if g_k else "")
+        cfg["sarvam_masked"] = f"{s_k[:6]}...{s_k[-4:]}" if s_k and len(s_k) > 10 else ("Configured" if s_k else "")
+    except Exception:
+        cfg["has_gemini"] = False
+        cfg["has_sarvam"] = False
+        cfg["gemini_masked"] = ""
+        cfg["sarvam_masked"] = ""
+    return {"success": True, "config": cfg}
 
 @router.post("/ai_settings")
 def admin_set_ai_settings(
@@ -175,10 +195,100 @@ def admin_set_ai_settings(
         voice_node_url: str = "http://localhost:8005",
         voice_node_enabled: bool = False,
         ai_provider: str = "auto",
+        node2_llama_url: str = "",
+        voice_provider: str = "auto",
+        voice_speaker: str = "simran_enhi_companion",
+        gemini_key: str = None,
+        sarvam_key: str = None,
         admin=Depends(verify_admin)
 ):
-    set_ai_config(enabled, model, url, vision, fallback, smart_models, voice_node_url, voice_node_enabled, ai_provider)
-    return {"success": True, "message": "AI settings updated successfully (including Node 2 Voice Engine & AI Provider)!"}
+    set_ai_config(enabled, model, url, vision, fallback, smart_models, voice_node_url, voice_node_enabled, ai_provider, node2_llama_url, voice_provider, voice_speaker)
+    
+    # Save API keys to DB if provided
+    if gemini_key and gemini_key.strip():
+        set_config_value("gemini_api_key", gemini_key.strip())
+    if sarvam_key and sarvam_key.strip():
+        set_config_value("sarvam_api_key", sarvam_key.strip())
+
+    return {"success": True, "message": "AI settings and API keys updated successfully!"}
+
+# ================= DYNAMIC MODEL FETCHER =================
+@router.get("/fetch_models")
+def admin_fetch_models(provider: str = "auto", url: str = None, admin=Depends(verify_admin)):
+    """
+    Dynamically discovers and lists models available for the selected inference provider.
+    Zero load: 1 lightweight HTTP call only on demand.
+    """
+    clean_prov = provider.strip().lower()
+    
+    # 1. SARVAM AI
+    if clean_prov == "sarvam":
+        models = [
+            {"id": "sarvam-105b-conversations", "name": "Sarvam 105B Conversations (Flagship Hindi ⚡ 0.38s)"},
+            {"id": "sarvam-105b", "name": "Sarvam 105B Base"},
+        ]
+        return {"success": True, "provider": "sarvam", "models": models}
+
+    # 2. GOOGLE GEMINI
+    elif clean_prov == "gemini":
+        from lumir.cloud_providers import get_api_key
+        g_key = get_api_key("gemini")
+        if not g_key:
+            return {"success": False, "message": "Gemini API key not configured yet. Please enter key above."}
+        try:
+            import requests
+            res = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={g_key}", timeout=8)
+            if res.status_code == 200:
+                raw_models = res.json().get("models", [])
+                models = []
+                for m in raw_models:
+                    m_id = m.get("name", "").replace("models/", "")
+                    methods = m.get("supportedGenerationMethods", [])
+                    if "generateContent" in methods:
+                        disp = m.get("displayName") or m_id
+                        models.append({"id": m_id, "name": f"{disp} ({m_id})"})
+                models.sort(key=lambda x: 0 if "flash" in x["id"].lower() else 1)
+                return {"success": True, "provider": "gemini", "models": models}
+            else:
+                return {"success": False, "message": f"Google API error (HTTP {res.status_code})"}
+        except Exception as e:
+            return {"success": False, "message": f"Could not reach Google API: {e}"}
+
+    # 3. OLLAMA
+    elif clean_prov == "ollama":
+        target_url = url or "http://localhost:11434"
+        try:
+            import requests
+            res = requests.get(f"{target_url.rstrip('/')}/api/tags", timeout=5)
+            if res.status_code == 200:
+                raw_models = res.json().get("models", [])
+                models = []
+                for m in raw_models:
+                    m_name = m.get("name", "")
+                    size_mb = round(m.get("size", 0) / (1024 * 1024))
+                    models.append({"id": m_name, "name": f"{m_name} ({size_mb} MB)"})
+                return {"success": True, "provider": "ollama", "models": models}
+            else:
+                return {"success": False, "message": f"Ollama returned HTTP {res.status_code}"}
+        except Exception as e:
+            return {"success": False, "message": f"Could not reach Ollama at {target_url}. Is it running?"}
+
+    # 4. LLAMACPP
+    elif clean_prov == "llamacpp":
+        target_url = url or "http://localhost:8080"
+        try:
+            import requests
+            endpoint = f"{target_url.rstrip('/')}/v1/models"
+            res = requests.get(endpoint, timeout=4)
+            if res.status_code == 200:
+                raw_models = res.json().get("data", [])
+                models = [{"id": m.get("id", ""), "name": m.get("id", "")} for m in raw_models if m.get("id")]
+                return {"success": True, "provider": "llamacpp", "models": models}
+        except Exception:
+            pass
+        return {"success": True, "provider": "llamacpp", "models": [{"id": "default", "name": "llama.cpp default loaded model"}]}
+
+    return {"success": False, "message": "Select a specific provider (Ollama, Gemini, Sarvam) to fetch models."}
 
 # ================= TEST VOICE NODE (NODE 2) =================
 @router.get("/test_voice_node")
@@ -210,6 +320,40 @@ def admin_test_voice_node(url: str = None, admin=Depends(verify_admin)):
             "success": False,
             "message": f"Could not reach Voice Node at {url}: {str(e)}"
         }
+
+@router.get("/test_cognitive_node")
+def admin_test_cognitive_node(url: str = None, admin=Depends(verify_admin)):
+    """Pings the llama.cpp / Cognitive worker endpoint to verify reachability and latency."""
+    if not url:
+        config = get_ai_config()
+        url = config.get("node2_llama_url", "")
+    
+    from lumir.cognitive_helper import test_node2_connection
+    return test_node2_connection(url, timeout=3.0)
+
+@router.get("/test_sarvam_voice")
+def admin_test_sarvam_voice(speaker: str = "simran_enhi_companion", admin=Depends(verify_admin)):
+    """Tests Sarvam Bulbul v4-flash TTS with a sample sentence and reports latency."""
+    from lumir.voice import sarvam_tts
+    import time
+    import base64
+    start = time.time()
+    try:
+        audio = sarvam_tts("नमस्ते! मैं लूमिर हूँ।", speaker=speaker, timeout=7.0)
+        latency = int((time.time() - start) * 1000)
+        if audio and len(audio) > 1000:
+            b64 = base64.b64encode(audio).decode("ascii")
+            return {
+                "success": True, 
+                "latency_ms": latency, 
+                "speaker": speaker, 
+                "audio_base64": b64,
+                "message": f"Online ({latency} ms) - Speaker: {speaker}"
+            }
+        else:
+            return {"success": False, "message": "Failed to synthesize audio from Sarvam."}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 # ================= ⚡ SYSTEM & HARDWARE TELEMETRY =================
 @router.get("/system_status")

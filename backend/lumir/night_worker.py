@@ -7,7 +7,7 @@ from users import get_all_users, get_ai_config
 from messages import get_lumir_history
 from lumir.ai_engine import ask_ai
 from lumir.memory_brain import prune_decayed_memories
-from lumir.summarizer import consolidate_recent_chats, DEFAULT_NODE2_URL
+from lumir.summarizer import consolidate_recent_chats
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ async def run_nightly_neocortex_consolidation():
     try:
         users = await asyncio.to_thread(get_all_users)
         config = await asyncio.to_thread(get_ai_config)
-        node2_url = config.get("node2_llama_url", DEFAULT_NODE2_URL)
+        node2_url = config.get("node2_llama_url")
 
         total_crystallized = 0
 

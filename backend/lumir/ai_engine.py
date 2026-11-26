@@ -4,6 +4,14 @@ import base64
 import os
 import re
 
+try:
+    from cloud_providers import call_gemini, call_sarvam, get_api_key
+except ImportError:
+    try:
+        from lumir.cloud_providers import call_gemini, call_sarvam, get_api_key
+    except ImportError:
+        call_gemini, call_sarvam, get_api_key = None, None, lambda x: ""
+
 _CACHED_SOUL = None
 
 def get_soul_instructions() -> str:
@@ -54,12 +62,18 @@ def prune_chat_history(history: list, max_assistant_words: int = 40) -> list:
 
 def detect_ai_provider(raw_url: str, provider_setting: str = "auto") -> str:
     """
-    Determines whether to use Ollama or llama.cpp (OpenAI compatible) based on
-    explicit setting or URL structure.
+    Determines whether to use Cloud (Gemini / Sarvam), Ollama, or llama.cpp
+    based on explicit setting, available API keys, or URL structure.
     """
     clean_setting = (provider_setting or "auto").strip().lower()
-    if clean_setting in ("ollama", "llamacpp"):
+    if clean_setting in ("gemini", "sarvam", "ollama", "llamacpp"):
         return clean_setting
+
+    # Smart Auto Detection: Check for Cloud API keys first
+    if get_api_key and get_api_key("gemini"):
+        return "gemini"
+    if get_api_key and get_api_key("sarvam"):
+        return "sarvam"
 
     clean_url = (raw_url or "").lower().strip()
     if ":8080" in clean_url or "/v1" in clean_url:
@@ -179,7 +193,35 @@ User: {sender}"""
         # Increased timeouts for local node processing
         request_timeout = 60 if not is_fallback else 120
 
-        if provider == "llamacpp":
+        # 🌟 CLOUD PROVIDERS (Gemini / Sarvam)
+        if not is_fallback and (provider == "gemini" or "gemini" in target_model.lower()):
+            if call_gemini:
+                clean_m = target_model if "gemini" in target_model.lower() else "gemini-flash-lite-latest"
+                return call_gemini(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    history=history,
+                    image_path=image_path,
+                    model=clean_m,
+                    username=sender
+                )
+            else:
+                raise Exception("Gemini provider module not available")
+
+        elif not is_fallback and (provider == "sarvam" or "sarvam" in target_model.lower()):
+            if call_sarvam:
+                clean_m = target_model if "sarvam" in target_model.lower() else "sarvam-105b-conversations"
+                return call_sarvam(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    history=history,
+                    model=clean_m,
+                    username=sender
+                )
+            else:
+                raise Exception("Sarvam provider module not available")
+
+        elif provider == "llamacpp":
             endpoint = f"{url}/v1/chat/completions" if not url.endswith("/v1") else f"{url}/chat/completions"
             payload = {
                 "model": target_model,

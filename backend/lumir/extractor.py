@@ -1,22 +1,18 @@
-import json
-import re
-import requests
 from typing import Optional, Dict
-
-DEFAULT_NODE2_URL = "http://192.168.31.94:8080"
+from .cognitive_helper import query_cognitive_task
 
 def extract_synthetic_amygdala_fact(
     text: str,
     ask_ai_fn,
     config: dict,
     sender: str = "User",
-    node2_url: str = DEFAULT_NODE2_URL
+    node2_url: str = None
 ) -> Optional[Dict]:
     """
     Synthetic Amygdala & Hippocampus Feature Extractor:
-    Orchestrated by Corpus Callosum:
-    - 1st Priority: Node 2 (Qwen 0.5B via llama.cpp) -> Ultra fast (~200ms JSON), zero load on cloud model.
-    - Fallback: Node 1 (Main Ollama) if Node 2 is offline.
+    - Tier 1: Configured Cognitive Node (llama.cpp / Qwen 0.5B via LAN or Local).
+    - Tier 2: Seamless fallback to Main Model (Gemini / Sarvam / Ollama).
+    - Generous 10s safe timeout for local compute machines.
     """
     text_clean = text.strip()
     if not text_clean or len(text_clean.split()) < 2:
@@ -48,61 +44,29 @@ Output ONLY the JSON object, nothing else."""
 
     user_prompt = f"Sender: {sender}\nMessage: \"{text_clean}\""
 
-    raw_response = None
+    # Use unified cognitive worker with 10s safety timeout
+    cfg = dict(config or {})
+    if node2_url:
+        cfg["node2_llama_url"] = node2_url
 
-    # 1. First priority: Offload to Node 2 (Qwen 0.5B on llama.cpp)
-    target_node2 = (config.get("node2_llama_url") if config else None) or node2_url or DEFAULT_NODE2_URL
-    if target_node2:
-        try:
-            url = f"{target_node2.rstrip('/')}/v1/chat/completions"
-            payload = {
-                "model": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                "temperature": 0.1,
-                "max_tokens": 150,
-                "response_format": {"type": "json_object"}
-            }
-            resp = requests.post(url, json=payload, timeout=5.0)
-            if resp.status_code == 200:
-                raw_response = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                print(f"🧠 [AMYGDALA - NODE 2]: Qwen successfully extracted memory/emotion for {sender}")
-            else:
-                print(f"⚠️ [AMYGDALA - NODE 2 HTTP {resp.status_code}]: {resp.text[:100]}")
-        except Exception as e:
-            print(f"⚠️ [AMYGDALA - NODE 2 FAILED]: {e.__class__.__name__}: {e}")
+    data = query_cognitive_task(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        config=cfg,
+        max_tokens=150,
+        timeout=10.0,
+        ask_ai_fn=ask_ai_fn,
+        sender=sender,
+        task_name="AMYGDALA"
+    )
 
-    # 2. Fallback to Node 1 Main Model if Node 2 did not respond
-    if not raw_response and ask_ai_fn:
-        try:
-            raw_response = ask_ai_fn(
-                prompt=user_prompt,
-                config=config,
-                history=[],
-                sender=sender,
-                custom_system_prompt=system_prompt
-            )
-            print(f"[AMYGDALA - NODE 1 FALLBACK]: Main AI extracted memory for {sender}")
-        except Exception as e:
-            print(f"[EXTRACTOR ERROR]: {e}")
-            return None
+    if not data or not isinstance(data, dict):
+        return None
 
-    if not raw_response or "has_fact" not in raw_response:
+    if not data.get("has_fact", False):
         return None
 
     try:
-        cleaned = raw_response.strip()
-        cleaned = re.sub(r"^```json\s*", "", cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r"^```\s*", "", cleaned)
-        cleaned = re.sub(r"```$", "", cleaned).strip()
-
-        data = json.loads(cleaned)
-        if not data.get("has_fact", False):
-            return None
-
-        # Sanitize values
         importance = float(data.get("importance", 5.0))
         importance = max(1.0, min(10.0, importance))
 
@@ -128,7 +92,6 @@ Output ONLY the JSON object, nothing else."""
             "category": str(data.get("category", "general")),
             "tags": [str(t).lower() for t in tags[:5]]
         }
-
     except Exception as e:
-        print(f"[EXTRACTOR JSON PARSE ERROR]: {e}")
+        print(f"[EXTRACTOR PARSE ERROR]: {e}")
         return None

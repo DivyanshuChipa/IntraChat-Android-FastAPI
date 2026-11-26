@@ -44,11 +44,37 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    # BYOK: Per-User Personal AI Keys
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN custom_gemini_key TEXT DEFAULT NULL")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN custom_sarvam_key TEXT DEFAULT NULL")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
 
 
 # --- Config Helpers ---
+def set_config_value(key: str, value: str):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", (key, str(value)))
+    conn.commit()
+    conn.close()
+
+
+def get_config_value(key: str) -> str:
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM config WHERE key = ?", (key,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else ""
 
 
 # --- Weather Location Config Helpers ---
@@ -350,7 +376,7 @@ def get_ai_config():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models', 'voice_node_url', 'voice_node_enabled', 'ai_provider')"
+        "SELECT key, value FROM config WHERE key IN ('ai_enabled', 'ai_model', 'ollama_url', 'ai_vision_model', 'ai_fallback', 'ai_smart_models', 'voice_node_url', 'voice_node_enabled', 'ai_provider', 'node2_llama_url', 'voice_provider', 'voice_speaker')"
     )
     rows = cursor.fetchall()
     conn.close()
@@ -360,12 +386,15 @@ def get_ai_config():
         "ai_enabled": False,
         "ai_model": "gpt-oss:20b-cloud",
         "ollama_url": "http://localhost:11434",
-        "ai_provider": "auto",  # auto, ollama, llamacpp
+        "ai_provider": "auto",  # auto, ollama, llamacpp, gemini, sarvam
         "ai_vision_model": "gemma:27b-cloud",  # Naya Vision Model
         "ai_fallback": "gemma3:270m",  # Naya Fallback Model
         "ai_smart_models": "gpt-oss:20b-cloud, llama3:8b",  # Inko Vector DB milega
         "voice_node_url": "http://localhost:8005",  # 🎙️ Node 2 Voice Microservice
         "voice_node_enabled": False,
+        "node2_llama_url": "",  # 🧠 Cognitive llama.cpp Worker URL (e.g. http://192.168.31.94:8080)
+        "voice_provider": "auto",  # auto, sarvam, node2, local
+        "voice_speaker": "simran_enhi_companion",  # Sarvam Bulbul v4-flash Indian female companion
     }
 
     for key, value in rows:
@@ -387,6 +416,9 @@ def set_ai_config(
     voice_node_url: str = "http://localhost:8005",
     voice_node_enabled: bool = False,
     ai_provider: str = "auto",
+    node2_llama_url: str = "",
+    voice_provider: str = "auto",
+    voice_speaker: str = "simran_enhi_companion",
 ):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
@@ -422,6 +454,18 @@ def set_ai_config(
     cursor.execute(
         "INSERT OR REPLACE INTO config (key, value) VALUES ('voice_node_enabled', ?)",
         ("1" if voice_node_enabled else "0",),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('node2_llama_url', ?)",
+        (node2_llama_url or "",),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('voice_provider', ?)",
+        (voice_provider or "auto",),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO config (key, value) VALUES ('voice_speaker', ?)",
+        (voice_speaker or "simran_enhi_companion",),
     )
     conn.commit()
     conn.close()

@@ -3,12 +3,13 @@ from .ai_engine import ask_ai
 import sys
 import os
 import re
+import threading
 import psutil
 import requests
 from .memory import search_facts_in_chroma, save_fact_to_chroma
 from .memory_brain import save_cognitive_memory, recall_cognitive_memories, prune_decayed_memories
 from .extractor import extract_synthetic_amygdala_fact
-from .tool_router import resolve_autonomous_tool_intent, DEFAULT_NODE2_URL
+from .tool_router import resolve_autonomous_tool_intent
 from .summarizer import consolidate_recent_chats
 
 # To access users.py and messages.py from the parent directory
@@ -72,6 +73,55 @@ def get_weather(lat=None, lon=None):
         print(f"Weather error: {e}")
         return {"type": "text", "text": "Bhai net nahi chal raha ya weather server down hai! 🌧️"}
 
+def _hippocampus_background_encode(
+    original_text: str,
+    sender: str,
+    config: dict,
+    should_consolidate: bool = False,
+):
+    """
+    Hippocampus Asynchronous Memory & Consolidation Worker:
+    Runs Amygdala fact extraction and periodic 15-turn Neocortex consolidation
+    in a detached background thread so the user gets an instant reply with zero wait.
+    """
+    try:
+        cognitive_data = extract_synthetic_amygdala_fact(
+            text=original_text,
+            ask_ai_fn=ask_ai,
+            config=config,
+            sender=sender,
+        )
+        if cognitive_data:
+            save_cognitive_memory(
+                sender=sender,
+                fact=cognitive_data["fact"],
+                importance=cognitive_data["importance"],
+                valence=cognitive_data["valence"],
+                arousal=cognitive_data["arousal"],
+                category=cognitive_data["category"],
+                tags=cognitive_data["tags"],
+            )
+            save_fact_to_chroma(sender, cognitive_data["fact"])
+            print(f"🧠 [HIPPOCAMPUS ASYNC]: Encoded fact for {sender} in background.")
+    except Exception as e:
+        print(f"⚠️ [HIPPOCAMPUS AMYGDALA ERROR]: {e}")
+
+    if should_consolidate:
+        try:
+            print(f"🌙 [NEOCORTEX]: Turn threshold reached for {sender}. Consolidating in background...")
+            recent_msgs = get_lumir_history(sender, limit=16)
+            node2_url = config.get("node2_llama_url")
+            consolidate_recent_chats(
+                username=sender,
+                recent_messages=recent_msgs,
+                node2_url=node2_url,
+                main_ai_fn=ask_ai,
+                config=config,
+            )
+        except Exception as cons_err:
+            print(f"⚠️ [NEOCORTEX CONSOLIDATION ERROR]: {cons_err}")
+
+
 class LumirEngine:
     def __init__(self):
         # 🧠 Bot ki Memory: Sender -> Last Image URL
@@ -80,6 +130,7 @@ class LumirEngine:
         self.turn_counters = {}
 
     def process(self, text: str, file_url: str = None, sender: str = "Unknown", lat: float = None, lon: float = None, is_voice_mode: bool = False):
+        config = get_ai_config()
         original_text = text.strip()
         text = text.lower().strip()
         # ==========================================
@@ -265,7 +316,7 @@ class LumirEngine:
 
         # ⚡ AUTONOMOUS AGENTIC TOOL ROUTING (Natural Language Intent)
         has_img = bool(file_url or (sender in self.user_context and self.user_context[sender]))
-        auto_tool = resolve_autonomous_tool_intent(original_text, has_image_in_context=has_img)
+        auto_tool = resolve_autonomous_tool_intent(original_text, has_image_in_context=has_img, config=config, ask_ai_fn=ask_ai)
         if auto_tool:
             action = auto_tool["tool"]
             if action == "server_status":
@@ -597,26 +648,6 @@ class LumirEngine:
                 smart_models_list = [m.strip().lower() for m in smart_models_str.split(",")]
                 is_smart = current_model.lower() in smart_models_list
 
-                # ==========================================
-                # 🧬 SYNTHETIC AMYGDALA & COGNITIVE MEMORY EXTRACTOR
-                # ==========================================
-                if is_smart:
-                    try:
-                        cognitive_data = extract_synthetic_amygdala_fact(text=original_text, ask_ai_fn=ask_ai, config=config, sender=sender)
-                        if cognitive_data:
-                            save_cognitive_memory(
-                                sender=sender,
-                                fact=cognitive_data["fact"],
-                                importance=cognitive_data["importance"],
-                                valence=cognitive_data["valence"],
-                                arousal=cognitive_data["arousal"],
-                                category=cognitive_data["category"],
-                                tags=cognitive_data["tags"]
-                            )
-                            save_fact_to_chroma(sender, cognitive_data["fact"])
-                    except Exception as e:
-                        print(f"⚠️ [AMYGDALA EXTRACTOR ERROR]: {e}")
-
                 # 🚪 INTENT GATEWAY: Fetch active neuro-memories with Ebbinghaus retention
                 generic_chitchat = ["hi", "hello", "hey", "kya chal raha hai", "ok", "acha", "hmm", "bye", "good morning", "good night", "kaisi ho", "kaise ho"]
                 is_generic = text.strip().lower() in generic_chitchat or len(text.split()) < 2
@@ -667,24 +698,18 @@ class LumirEngine:
                 if target_image_path and sender in self.user_context:
                     del self.user_context[sender]
 
-                # 🧠 NEOCORTEX PERIODIC CONSOLIDATION TRIGGER (Every 15 messages)
-                self.turn_counters[sender] = self.turn_counters.get(sender, 0) + 1
-                if self.turn_counters[sender] >= 15:
-                    self.turn_counters[sender] = 0
-                    try:
-                        print(f"🌙 [NEOCORTEX]: Turn threshold reached for {sender}. Triggering memory consolidation...")
-                        recent_msgs = get_lumir_history(sender, limit=16)
-                        # Consolidate via Node 2 (Qwen 0.5B) or fallback to Node 1 Main Model
-                        node2_url = config.get("node2_llama_url", DEFAULT_NODE2_URL)
-                        consolidate_recent_chats(
-                            username=sender,
-                            recent_messages=recent_msgs,
-                            node2_url=node2_url,
-                            main_ai_fn=ask_ai,
-                            config=config
-                        )
-                    except Exception as cons_err:
-                        print(f"⚠️ [NEOCORTEX CONSOLIDATION TRIGGER ERROR]: {cons_err}")
+                # 🧠 HIPPOCAMPUS ASYNC ENCODING & NEOCORTEX PERIODIC CONSOLIDATION (Background Thread)
+                if is_smart:
+                    self.turn_counters[sender] = self.turn_counters.get(sender, 0) + 1
+                    should_consolidate = self.turn_counters[sender] >= 15
+                    if should_consolidate:
+                        self.turn_counters[sender] = 0
+
+                    threading.Thread(
+                        target=_hippocampus_background_encode,
+                        args=(original_text, sender, dict(config), should_consolidate),
+                        daemon=True,
+                    ).start()
 
                 safe_reply = ai_reply.replace("\n", "  ").strip()
                 safe_reply = re.sub(' +', ' ', safe_reply)
