@@ -4,12 +4,15 @@ import socket
 import subprocess
 import sys
 
+# Force unbuffered output so Windows Launcher sees live logs in real time (0ms delay)
+os.environ["PYTHONUNBUFFERED"] = "1"
+
 # 🪟 Windows UTF-8 Console Support (Fixes cp1252 crash when printing emojis like 🚀 and 📱)
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
     if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 
 def get_ip() -> str:

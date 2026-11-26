@@ -21,12 +21,22 @@ from messages import get_recent_messages
 from users import delete_user_data, get_server_discovery # 👈 Import functions
 from fastapi.staticfiles import StaticFiles
 
+# Load .env (workspace, Program Files, or %LOCALAPPDATA%/IntraServer)
+try:
+    from lumir.cloud_providers import load_dotenv_fallback
+    load_dotenv_fallback()
+except Exception:
+    pass
+
 # ================= JWT CONFIG =================
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_TO_SOMETHING_RANDOM_AND_LONG")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(32)
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-# ================= ADMIN CONFIG (Persistent) =================
+# ================= ADMIN CONFIG (Persistent / Ephemeral) =================
 # We must ensure DB is initialized before fetching the key
 init_db()
 init_msg_db()
@@ -40,17 +50,15 @@ except Exception as e:
 
 ADMIN_SECRET = os.getenv("INTRA_ADMIN_KEY")
 if not ADMIN_SECRET:
-    # Try to get from Database
-    ADMIN_SECRET = get_admin_key_db()
-
-    if not ADMIN_SECRET:
-        # Generate new and save
-        ADMIN_SECRET = secrets.token_urlsafe(32)
-        set_admin_key_db(ADMIN_SECRET)
-        print("✨ Generated new persistent Admin Secret.")
-
-print(f"🔐 Admin Secret: {ADMIN_SECRET}")
-print("👉 Use this key for Desktop Admin Panel or set INTRA_ADMIN_KEY to override.")
+    # Generate fresh ephemeral random key on each restart!
+    ADMIN_SECRET = secrets.token_urlsafe(32)
+    print("\n" + "=" * 65)
+    print("🔐 [INTRA SECURITY] EPHEMERAL ADMIN KEY GENERATED FOR THIS SESSION:")
+    print(f"👉 ADMIN KEY: {ADMIN_SECRET}")
+    print("📋 (Copy & paste into Admin Panel, or set INTRA_ADMIN_KEY in .env)")
+    print("=" * 65 + "\n")
+else:
+    print(f"🔐 Admin Secret: {ADMIN_SECRET} (Loaded from Environment/.env)")
 
 def verify_admin(x_admin_key: str = Header(None)):
     # secrets.compare_digest raises TypeError for non-ASCII strings.
@@ -254,15 +262,16 @@ app.include_router(lumir_voice_router)
 
 from fastapi.responses import RedirectResponse
 
+@app.get("/admin.html")
+async def admin_html_redirect():
+    return RedirectResponse(url="/admin")
+
 @app.get("/admin")
 async def admin_dashboard_page():
     admin_modular = os.path.join(BASE_DIR, "static", "admin", "admin.html")
     if os.path.exists(admin_modular):
         return FileResponse(admin_modular)
-    admin_html = os.path.join(BASE_DIR, "static", "admin.html")
-    if os.path.exists(admin_html):
-        return FileResponse(admin_html)
-    return RedirectResponse(url="/admin.html")
+    return RedirectResponse(url="/")
 
 # ================= STATIC FILES (WEB CLIENT) =================
 # ⚠️ Yeh line SABSE NEECHE honi chahiye!

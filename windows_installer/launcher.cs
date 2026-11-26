@@ -341,7 +341,7 @@ namespace IntraServerControlCenter {
 
             ProcessStartInfo psi = new ProcessStartInfo {
                 FileName = pythonExe,
-                Arguments = "\"" + runScript + "\" --no-reload --host 0.0.0.0 --port " + serverPort,
+                Arguments = "-u \"" + runScript + "\" --no-reload --host 0.0.0.0 --port " + serverPort,
                 WorkingDirectory = backendDir,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -350,6 +350,7 @@ namespace IntraServerControlCenter {
             };
             psi.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
             psi.EnvironmentVariables["PYTHONUTF8"] = "1";
+            psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
 
             try {
                 logWriter = new StreamWriter(logFilePath, true) { AutoFlush = true };
