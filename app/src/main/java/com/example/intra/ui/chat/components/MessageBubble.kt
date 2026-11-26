@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.LocationOn
@@ -63,7 +64,8 @@ fun MessageBubble(
     onImageClick: (String) -> Unit = {},
     onAudioClick: (String, String) -> Unit = { _, _ -> },
     onPdfClick: (String, String) -> Unit = { _, _ -> },
-    onOptionSelected: (String) -> Unit = {}
+    onOptionSelected: (String) -> Unit = {},
+    onForwardClick: (ChatMessage) -> Unit = {}
 ) {
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -210,12 +212,35 @@ fun MessageBubble(
         )
     }
 
+    val canForward = !message.isLoading && (
+        (message.type == "file" && !message.fileUrl.isNullOrBlank()) ||
+        (message.type == "text" && message.text.isNotBlank())
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        horizontalArrangement = if (message.isSelf) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (message.isSelf) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
     ) {
+        if (message.isSelf && canForward) {
+            IconButton(
+                onClick = { onForwardClick(message) },
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .size(28.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Forward,
+                    contentDescription = "Forward",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
         Card(
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
@@ -224,7 +249,7 @@ fun MessageBubble(
                 else
                     MaterialTheme.colorScheme.surfaceVariant
             ),
-            modifier = Modifier.widthIn(max = 280.dp)
+            modifier = Modifier.widthIn(max = 260.dp)
         ) {
             Column(modifier = Modifier.padding(10.dp)) {
 
@@ -653,6 +678,23 @@ fun MessageBubble(
                         modifier = Modifier.align(Alignment.End)
                     )
                 }
+            }
+        }
+
+        if (!message.isSelf && canForward) {
+            IconButton(
+                onClick = { onForwardClick(message) },
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .size(28.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Forward,
+                    contentDescription = "Forward",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }

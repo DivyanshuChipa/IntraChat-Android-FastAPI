@@ -201,6 +201,51 @@ class ChatViewModel(
         }
     }
 
+    // ===============================
+    // ↪️ ZERO-COPY FORWARD MESSAGE
+    // ===============================
+
+    fun forwardMessage(message: ChatMessage, targetReceiver: String) {
+        val ts = System.currentTimeMillis()
+        val isFile = message.type == "file" && !message.fileUrl.isNullOrBlank()
+
+        val json = JSONObject().apply {
+            put("type", if (isFile) "file" else "text")
+            put("sender", currentUsername)
+            put("receiver", targetReceiver)
+            put("timestamp", ts)
+            if (isFile) {
+                put("url", message.fileUrl)
+                put("filename", message.fileName ?: "Shared File")
+            } else {
+                put("text", message.text)
+            }
+        }
+
+        val forwardedMsg = ChatMessage(
+            text = if (isFile) "Shared File: ${message.fileName ?: "File"}" else message.text,
+            isSelf = true,
+            type = if (isFile) "file" else "text",
+            fileUrl = if (isFile) message.fileUrl else null,
+            fileName = if (isFile) message.fileName else null,
+            timestamp = ts,
+            isLoading = false,
+            senderName = currentUsername,
+            receiver = targetReceiver
+        )
+
+        if (activeChatUser == targetReceiver) {
+            messages.add(forwardedMsg)
+        }
+        saveToDb(forwardedMsg, currentUsername, targetReceiver, isRead = true)
+        WsManager.send(json.toString())
+
+        viewModelScope.launch {
+            _contactUpdateEvent.emit(targetReceiver)
+        }
+        Log.d(TAG, "↪️ Zero-copy forwarded ${forwardedMsg.type} to $targetReceiver")
+    }
+
     fun sendOptionCommand(receiver: String, command: String, lat: Double? = null, lon: Double? = null) {
         val ts = System.currentTimeMillis()
         val json = JSONObject().apply {

@@ -1,12 +1,15 @@
 package com.example.intra
 
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,15 +17,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -67,6 +74,7 @@ fun ChatScreen(
     viewModel: ChatViewModel,
     receiverName: String,
     receiverPhotoUrl: String? = null,
+    forwardContacts: List<String> = emptyList(),
     onAttachClick: () -> Unit,
     onBackClick: () -> Unit,
     onStartCall: () -> Unit,
@@ -76,6 +84,7 @@ fun ChatScreen(
     var videoUrlToPlay by remember { mutableStateOf<String?>(null) }
     var imageUrlToView by remember { mutableStateOf<String?>(null) }
     var pdfToView by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var messageToForward by remember { mutableStateOf<ChatMessage?>(null) }
 
     // 🔙 System Back Button / Edge Swipe Gesture Handler
     BackHandler {
@@ -83,6 +92,7 @@ fun ChatScreen(
             videoUrlToPlay != null -> videoUrlToPlay = null
             imageUrlToView != null -> imageUrlToView = null
             pdfToView != null -> pdfToView = null
+            messageToForward != null -> messageToForward = null
             else -> onBackClick()
         }
     }
@@ -161,6 +171,61 @@ fun ChatScreen(
             pdfUrl = pdf.first,
             fileName = pdf.second,
             onDismiss = { pdfToView = null }
+        )
+    }
+
+    messageToForward?.let { msg ->
+        val candidates = forwardContacts.filter {
+            it != viewModel.currentUsername && it != receiverName
+        }
+        AlertDialog(
+            onDismissRequest = { messageToForward = null },
+            icon = { Icon(Icons.Default.Forward, contentDescription = null) },
+            title = { Text("Forward to...") },
+            text = {
+                if (candidates.isEmpty()) {
+                    Text("No other contacts available.")
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
+                        items(candidates) { targetUser ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.forwardMessage(msg, targetUser)
+                                        Toast.makeText(context, "Forwarded to $targetUser", Toast.LENGTH_SHORT).show()
+                                        messageToForward = null
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = when {
+                                        targetUser.equals("Lumir", ignoreCase = true) -> Icons.Default.SmartToy
+                                        targetUser == "Family Group" -> Icons.Default.Group
+                                        else -> Icons.Default.Person
+                                    },
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = targetUser,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { messageToForward = null }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 
@@ -288,7 +353,8 @@ fun ChatScreen(
                         onImageClick = { url -> imageUrlToView = url },
                         onAudioClick = { url, name -> IntraAudioPlayerManager.play(context, url, name) },
                         onPdfClick = { url, name -> pdfToView = Pair(url, name) },
-                        onOptionSelected = { cmd -> viewModel.sendOptionCommand(receiverName, cmd) }
+                        onOptionSelected = { cmd -> viewModel.sendOptionCommand(receiverName, cmd) },
+                        onForwardClick = { messageToForward = it }
                     )
                 }
 

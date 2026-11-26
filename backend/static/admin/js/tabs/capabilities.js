@@ -26,8 +26,7 @@ export async function loadCapabilities() {
         if (isRunning) {
             statusBadge = `<span class="badge badge-warning"><i class="fas fa-spinner fa-spin"></i> Installing (${task.percent || 10}%)</span>`;
         } else if (cap.installed) {
-            const srcLabel = cap.source === "local" ? "Intra Local" : "System PATH";
-            statusBadge = `<span class="badge badge-success"><svg class="admin-icon" style="width:13px;height:13px;color:var(--success);" aria-hidden="true"><use href="#admin-check"></use></svg> Installed (${srcLabel})</span>`;
+            statusBadge = `<span class="badge badge-success"><svg class="admin-icon" style="width:13px;height:13px;color:var(--success);" aria-hidden="true"><use href="#admin-check"></use></svg> Installed</span>`;
         } else {
             statusBadge = `<span class="badge badge-danger"><svg class="admin-icon" style="width:13px;height:13px;color:var(--danger);" aria-hidden="true"><use href="#admin-ban"></use></svg> Missing</span>`;
         }

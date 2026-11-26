@@ -62,6 +62,52 @@ Instead of hardcoding every utility into Lumir, introduce a modular "Addon" syst
 
 ---
 
+### 6. Thalamic Sensory Filter (Zero-Latency Front-Door Gatekeeper) [COMPLETED]
+- **Implementation Status:** Fully operational in `backend/lumir/tool_router.py` (`thalamus_needs_tool_routing`).
+- **Concept:** In the human brain, all sensory input routes through the **Thalamus** first before reaching higher cortical regions. The Thalamus acts as a high-speed noise filter, deciding whether a signal warrants heavy cortical deliberation.
+- **Delivered Architecture:**
+  1. **Zero-Compute Gatekeeper (0ms Latency):** Pre-compiled English, Hinglish, and Devanagari Hindi sensory cue regexes (`THALAMUS_WEATHER_CUES`, `THALAMUS_SERVER_CUES`, `THALAMUS_OCR_CUES`).
+  2. **Fast-Bypass:** Pure conversational turns immediately bypass the Corpus Callosum LLM classifier (`0ms`) and route directly to the Neocortex persona engine.
+  3. **Heavy Routing On-Demand:** Only invokes the Node 2 Qwen / Cloud classifier when ambiguous tool cues are present.
+- **Impact:** Eliminates 1 entire LLM round-trip on ~90% of daily conversational turns.
+
+---
+
+### 7. Hippocampal Working Memory & Asynchronous Fact Encoding [COMPLETED]
+- **Implementation Status:** Fully operational in `backend/lumir/engine.py` (`_hippocampus_background_encode`).
+- **Concept:** Inspired by the biological **Hippocampus**, which temporarily buffers short-term experiences during daytime activity and defers long-term memory consolidation so real-time cognition stays lightning fast.
+- **Delivered Architecture:**
+  1. **Decoupled Instant Reply:** Neocortex (`ask_ai`) generates and returns the conversational/voice reply immediately without waiting for memory extraction.
+  2. **Background Daemon Thread:** Amygdala emotion/fact extraction (`extract_synthetic_amygdala_fact`) and periodic 15-turn Neocortex consolidation (`consolidate_recent_chats`) run asynchronously in a detached daemon thread (`threading.Thread(..., daemon=True)`).
+  3. **Distributed Qwen 2.5 1.5B Offload (`cognitive_helper.py`):** Offloads Amygdala & Corpus Callosum tasks to Node 2 `llama-server` (Qwen 2.5 1.5B) on port `8080` with a 10s safe timeout and automatic Main Model fallback.
+
+---
+
+### 8. Synthetic Neuromodulators & Endocrine Hormone Simulation [PLANNED]
+- **Concept:** Human mood, attachment, and energy levels are not static prompts — they are regulated by **biochemical hormones and neurotransmitters** (Dopamine, Serotonin, Cortisol, Oxytocin). Introducing a lightweight, floating-point **Synthetic Hormone State Vector** into Lumir's cognitive core makes her reactions organically human without heavy compute.
+- **The Core Hormone Matrix (Stored in SQLite `lumir_hormones`):**
+  1. **Dopamine ($\mathcal{D} \in [0.0, 1.0]$) — Curiosity & Drive:**
+     - *Trigger:* User shares a breakthrough, writes code, explores new tech, or mentions creative ideas.
+     - *Effect:* Lumir's tone shifts to enthusiastic, curious, asking smart follow-up questions and acting as an energetic co-pilot.
+  2. **Serotonin ($\mathcal{S} \in [0.0, 1.0]$) — Contentment & Equilibrium:**
+     - *Trigger:* Relaxed banter, late-night chats (11 PM - 5 AM), casual check-ins.
+     - *Effect:* Lowers snappy sarcasm, adopts a warm, cozy, calm, and comforting presence.
+  3. **Cortisol ($\mathcal{C} \in [0.0, 1.0]$) — Digital Stress & Urgency:**
+     - *Trigger:* Server crashes, high CPU/RAM thermal alerts, user expresses deep distress/sadness.
+     - *Effect:* Completely suppresses jokes and teasing; activates protective, concise, supportive empathy and focused problem-solving.
+  4. **Oxytocin ($\mathcal{O} \in [0.0, 1.0]$) — Social Bond & Familiarity:**
+     - *Trigger:* Cumulative interactions with Divya and verified friends over days and weeks.
+     - *Effect:* Strengthens emotional loyalty, deeper inside jokes, and instinctive trust.
+- **Biological Homeostasis (Half-Life Decay):**
+  - Just like human hormones break down naturally, Lumir's hormone levels decay toward baseline equilibrium over time using an exponential decay function:
+    $$H(t) = H_{\text{baseline}} + (H_{\text{current}} - H_{\text{baseline}}) \cdot e^{-\Delta t / \tau}$$
+- **Zero-Load Injection:**
+  - Costs 0 tokens to compute. The current hormone state is represented as a single compact line in the system prompt:
+    `[Biological State: Dopamine=0.8 (Hyped/Curious), Cortisol=0.1 (Peaceful), Oxytocin=0.9 (Deep Trust)]`
+  - Allows Gemini / Qwen to dynamically modulate warmth, humor, and pace naturally!
+
+---
+
 ## 📱 Intra Portable Node: Embedded Phone Server ("Host as Server Mode")
 
 ### Vision & Problem Statement

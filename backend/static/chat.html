@@ -72,6 +72,17 @@
         </div>
     </div>
 
+    <!-- Forward Message Modal -->
+    <div id="forward-overlay" class="modal-backdrop" style="display:none;" onclick="if(event.target===this) closeForwardModal()">
+        <div class="settings-modal" style="max-width: 380px;">
+            <div class="settings-header">
+                <h3>Forward to...</h3>
+                <button class="modal-close-btn" onclick="closeForwardModal()">&times;</button>
+            </div>
+            <div id="forward-contacts-list" class="forward-contacts-list"></div>
+        </div>
+    </div>
+
     <div id="chat-area">
         <div id="chat-header">
             <button id="back-btn" onclick="showSidebar()" class="icon-btn" style="display: none;" title="Back">
@@ -125,6 +136,6 @@
 
     <audio id="ringtone" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" loop></audio>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>

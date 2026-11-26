@@ -338,6 +338,143 @@ tbody tr:last-child td {
     margin-bottom: 14px;
 }
 
+/* Lumir configuration helpers */
+.provider-status {
+    min-height: 18px;
+    margin-top: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: right;
+}
+
+.provider-status:empty {
+    display: none;
+}
+
+.provider-status[data-state="ready"] { color: var(--success); }
+.provider-status[data-state="missing"] { color: var(--warning); }
+.provider-status[data-state="error"] { color: var(--danger); }
+
+.ai-model-status-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 22px;
+}
+
+.ai-model-status-row #ai-model-status,
+.ai-model-status-row .provider-status {
+    flex: 1 1 0;
+}
+
+.ai-model-status-row #ai-model-status:empty { display: block; }
+
+.btn-fetch-models {
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.btn-fetch-models .admin-icon {
+    width: 16px;
+    height: 16px;
+    flex-basis: 16px;
+}
+
+.ai-enable-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.ai-enable-actions .btn-fetch-models { transform: translateY(2px); }
+.ai-enable-actions .btn-fetch-models:hover { transform: translateY(1px); }
+
+.btn-fetch-models.btn-icon-only {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 11px;
+}
+
+.advanced-routing {
+    border-top: 1px solid var(--surface-border);
+    margin-top: 4px;
+    padding-top: 14px;
+}
+
+.advanced-routing summary {
+    color: var(--brand);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    list-style: none;
+}
+
+.advanced-routing summary::-webkit-details-marker { display: none; }
+.advanced-routing summary::before {
+    content: "+";
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    border-radius: 7px;
+    background: rgba(var(--glow), .14);
+}
+.advanced-routing[open] summary::before { content: "−"; }
+
+.advanced-routing summary span {
+    margin-left: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.advanced-routing-grid {
+    margin: 16px 0 0;
+}
+
+.advanced-smart-models { grid-column: 1 / -1; }
+.is-hidden { display: none !important; }
+
+.ai-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 0 -8px;
+    padding: 14px 8px;
+    border-top: 1px solid var(--surface-border);
+    background: var(--sidebar-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.ai-save-bar #ai-status-msg { color: var(--text-muted); }
+.ai-save-bar .btn-primary:disabled {
+    opacity: .72;
+    cursor: wait;
+    transform: none;
+}
+
+@media (max-width: 720px) {
+    .ai-model-status-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .ai-model-status-row .provider-status { text-align: left; }
+}
+
 .form-group label {
     font-size: 13px;
     font-weight: 600;

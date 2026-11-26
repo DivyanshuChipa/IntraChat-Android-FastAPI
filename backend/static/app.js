@@ -824,6 +824,14 @@ async function sendFile() {
           link.href = data.url;
           link.innerText = "📎 Shared File: " + data.filename;
         }
+
+        // Update zero-copy forward metadata & show button
+        msgElement.dataset.forwardType = "file";
+        msgElement.dataset.forwardUrl = data.url;
+        msgElement.dataset.forwardFilename = data.filename || file.name;
+        msgElement.dataset.forwardText = "Shared File: " + (data.filename || file.name);
+        const fwdBtn = msgElement.querySelector('.msg-forward-btn');
+        if (fwdBtn) fwdBtn.style.display = "inline-flex";
       }
 
       // Send WS message
@@ -1002,11 +1010,121 @@ function displayMessage(sender, text, type, fileUrl = null, msgId = null, isLoad
     bubble.appendChild(optionsContainer);
   }
 
-  row.appendChild(bubble);
+  row.dataset.forwardType = fileUrl ? "file" : "text";
+  row.dataset.forwardText = text || "";
+  if (fileUrl) {
+    row.dataset.forwardUrl = fileUrl;
+    const cleanName = (text && text.startsWith("Shared File: "))
+      ? text.replace("Shared File: ", "").trim()
+      : fileUrl.split("/").pop().split("?")[0];
+    row.dataset.forwardFilename = cleanName || "Shared File";
+  }
+
+  const forwardBtn = document.createElement("button");
+  forwardBtn.type = "button";
+  forwardBtn.className = "msg-forward-btn";
+  forwardBtn.title = "Forward to...";
+  forwardBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 14l5-5-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20v-7a4 4 0 0 1 4-4h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  if (isLoading) forwardBtn.style.display = "none";
+  forwardBtn.onclick = () => openForwardModal(row);
+
+  if (type === "sent") {
+    row.appendChild(forwardBtn);
+    row.appendChild(bubble);
+  } else {
+    row.appendChild(bubble);
+    row.appendChild(forwardBtn);
+  }
   document.getElementById("messages").appendChild(row);
 
   document.getElementById("messages").scrollTop =
     document.getElementById("messages").scrollHeight;
+}
+
+let pendingForwardRow = null;
+
+function openForwardModal(rowEl) {
+  pendingForwardRow = rowEl;
+  const overlay = document.getElementById("forward-overlay");
+  const listEl = document.getElementById("forward-contacts-list");
+  if (!overlay || !listEl) return;
+
+  const candidates = (allUsersList || []).filter(
+    (u) => u.username && u.username !== myUsername && u.username !== currentReceiver
+  );
+
+  if (candidates.length === 0) {
+    listEl.innerHTML = `<div style="color:var(--text-muted); padding: 12px; text-align:center;">No other contacts available.</div>`;
+  } else {
+    listEl.innerHTML = "";
+    candidates.forEach((user) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "forward-contact-item";
+      const avatarSrc = user.profile_photo || (user.username === "Family Group" ? "/assets/family_group.svg" : user.username === "Lumir" ? "/assets/lumir_ai.svg" : "/assets/user_avatar.svg");
+      btn.innerHTML = `<img src="${avatarSrc}" class="forward-contact-avatar" alt=""><span>${user.username}</span>`;
+      btn.onclick = () => executeForward(user.username);
+      listEl.appendChild(btn);
+    });
+  }
+
+  overlay.style.display = "flex";
+}
+
+function closeForwardModal() {
+  const overlay = document.getElementById("forward-overlay");
+  if (overlay) overlay.style.display = "none";
+  pendingForwardRow = null;
+}
+
+function executeForward(targetUsername) {
+  if (!pendingForwardRow || !ws) {
+    closeForwardModal();
+    return;
+  }
+
+  const fwdType = pendingForwardRow.dataset.forwardType || "text";
+  const fwdUrl = pendingForwardRow.dataset.forwardUrl || "";
+  const fwdFilename = pendingForwardRow.dataset.forwardFilename || "Shared File";
+  const fwdText = pendingForwardRow.dataset.forwardText || "";
+  const ts = Date.now();
+
+  const payload = {
+    type: fwdType === "file" && fwdUrl ? "file" : "text",
+    receiver: targetUsername,
+    timestamp: ts
+  };
+
+  if (payload.type === "file") {
+    payload.url = fwdUrl;
+    payload.filename = fwdFilename;
+  } else {
+    payload.text = fwdText;
+  }
+
+  ws.send(JSON.stringify(payload));
+
+  if (targetUsername === currentReceiver) {
+    displayMessage(
+      myUsername,
+      payload.type === "file" ? `Shared File: ${fwdFilename}` : fwdText,
+      "sent",
+      payload.type === "file" ? fwdUrl : null,
+      null,
+      false,
+      null,
+      "",
+      null,
+      ts
+    );
+  }
+
+  latestMsgTimes[targetUsername] = ts;
+  if (typeof renderUsersList === "function") {
+    renderUsersList();
+  }
+
+  closeForwardModal();
 }
 
 function handleOptionClick(option) {

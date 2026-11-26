@@ -486,6 +486,7 @@ class MainActivity : ComponentActivity() {
                                             viewModel = chatViewModel,
                                             receiverName = currentChatReceiver ?: "",
                                             receiverPhotoUrl = receiverPhotoUrl,
+                                            forwardContacts = contactViewModel.contacts.map { it.username },
 
                                             onAttachClick = {
                                                 currentUploadViewModel = chatViewModel

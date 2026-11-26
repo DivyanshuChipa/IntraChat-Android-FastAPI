@@ -3,6 +3,7 @@ package com.example.intra.ui.chat.components
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -116,9 +117,18 @@ fun MessageInputBar(
         }
     }
 
+    // Android 15+ enforces edge-to-edge for apps targeting API 35, so keep the
+    // composer above the system navigation area. Older Android layout stays as-is.
+    val navigationBarInset = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+        Modifier.navigationBarsPadding()
+    } else {
+        Modifier
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(navigationBarInset)
             .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
