@@ -4,11 +4,22 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.intraplay.ui.TvHomeScreen
+import com.example.intraplay.ui.TvLanCinemaScreen
 import com.example.intraplay.ui.TvTheme
+
+enum class TvScreenMode {
+    CINEMA_HUB,
+    LIVE_IPTV
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,8 +37,27 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TvTheme {
-                TvHomeScreen()
+                TvAppRoot()
             }
+        }
+    }
+}
+
+@Composable
+fun TvAppRoot() {
+    var screenMode by remember { mutableStateOf(TvScreenMode.CINEMA_HUB) }
+
+    when (screenMode) {
+        TvScreenMode.CINEMA_HUB -> {
+            TvLanCinemaScreen(
+                onNavigateLiveTv = { screenMode = TvScreenMode.LIVE_IPTV },
+                onPlayMovie = { /* Future ExoPlayer video launcher */ }
+            )
+        }
+        TvScreenMode.LIVE_IPTV -> {
+            TvHomeScreen(
+                onNavigateCinema = { screenMode = TvScreenMode.CINEMA_HUB }
+            )
         }
     }
 }

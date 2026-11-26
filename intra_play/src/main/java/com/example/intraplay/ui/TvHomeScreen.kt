@@ -61,7 +61,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(UnstableApi::class)
 @Composable
-fun TvHomeScreen() {
+fun TvHomeScreen(
+    onNavigateCinema: () -> Unit = {}
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember { TvSettingsManager(context) }
@@ -157,8 +159,12 @@ fun TvHomeScreen() {
     }
 
     // TV Remote Back Press Handling
-    BackHandler(enabled = isFullscreen) {
-        isFullscreen = false
+    BackHandler(enabled = true) {
+        if (isFullscreen) {
+            isFullscreen = false
+        } else {
+            onNavigateCinema()
+        }
     }
 
     // Filter Channels by Selected Category
@@ -197,7 +203,13 @@ fun TvHomeScreen() {
                 // Left Panel: Category Sidebar
                 TvCategorySidebar(
                     selectedCategoryId = selectedCategory,
-                    onCategorySelected = { selectedCategory = it },
+                    onCategorySelected = { category ->
+                        if (category == "intradrive") {
+                            onNavigateCinema()
+                        } else {
+                            selectedCategory = category
+                        }
+                    },
                     onSettingsClick = { showSettingsDialog = true }
                 )
 

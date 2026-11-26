@@ -323,92 +323,197 @@
                     <p class="panel-subtitle">Configure LLM inference providers, smart models routing, and Node 2 distributed voice engine.</p>
                 </div>
 
-                <!-- LLM Neural Gateway & Routing -->
+                <!-- 1. LLM Neural Gateway & Routing -->
                 <div class="card">
                     <div class="card-title">
                         <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
-                        LLM Neural Gateway & Routing
+                        LLM Neural Gateway & Model Routing
                     </div>
 
                     <div class="toggle-row" style="margin-bottom: 16px;">
                         <div class="toggle-info">
                             <h4>Enable Lumir AI Assistant</h4>
-                            <p>Activate local LLM intelligence for chat companionship, tool routing, and automation.</p>
+                            <p>Activate intelligence for chat companionship, tool routing, and automation.</p>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="ai-enabled">
-                            <span class="slider"></span>
-                        </label>
+                        <div class="ai-enable-actions">
+                            <button type="button" id="btn-fetch-models" class="btn-outline btn-fetch-models btn-icon-only" title="Fetch available models" aria-label="Fetch available models">
+                                <svg class="admin-icon" aria-hidden="true"><use href="#admin-refresh"></use></svg>
+                            </button>
+                            <label class="switch" title="Enable or disable Lumir AI">
+                                <input type="checkbox" id="ai-enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
 
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Inference Provider</label>
                             <select id="ai-provider">
-                                <option value="auto">Auto-Detect</option>
-                                <option value="ollama">Ollama (/api/chat)</option>
-                                <option value="llamacpp">llama.cpp (OpenAI API)</option>
+                                <option value="auto">Auto-Detect (Cloud First ➔ Local Fallback)</option>
+                                <option value="gemini">Google Gemini Flash (Cloud 1M Context)</option>
+                                <option value="sarvam">Sarvam AI 105B (Indian Cloud ⚡ 0.38s)</option>
+                                <option value="ollama">Ollama (/api/chat - Local)</option>
+                                <option value="llamacpp">llama.cpp (OpenAI API - Local)</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>AI Server URL</label>
+
+                        <div class="form-group ai-local-url-group">
+                            <label>AI Server URL (For Local Ollama/llama.cpp)</label>
                             <input type="text" id="ai-url" placeholder="http://localhost:11434">
                         </div>
-                        <div class="form-group">
-                            <label>Main Model Identifier</label>
-                            <input type="text" id="ai-model" placeholder="e.g. gpt-oss:20b-cloud, qwen2.5:14b">
+
+                        <!-- Dynamic Model Selector with Clickable Dropdown & Custom Input -->
+                        <div class="form-group" style="grid-column: span 2;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="margin:0; font-weight:600;">Main Model Identifier</label>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <select id="ai-model-select" style="flex:1; min-width:240px;">
+                                    <option value="">-- Click to choose discovered model --</option>
+                                </select>
+                                <input type="text" id="ai-model" placeholder="Model ID (e.g. gemini-2.0-flash)" style="flex:1; min-width:200px;">
+                            </div>
+                            <div class="ai-model-status-row">
+                                <div id="ai-model-status" style="font-size:11px; margin-top:6px; color:var(--text-muted);"></div>
+                                <div id="ai-cloud-status" class="provider-status" role="status" aria-live="polite"></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Vision Model (Multi-Modal)</label>
-                            <input type="text" id="ai-vision" placeholder="e.g. gemma:27b-cloud">
+
+                    </div>
+
+                    <details class="advanced-routing">
+                        <summary>Advanced model routing <span>Vision, fallback and smart model preferences</span></summary>
+                        <div class="form-grid advanced-routing-grid">
+                            <div class="form-group">
+                                <label>Vision Model (Multi-Modal)</label>
+                                <input type="text" id="ai-vision" placeholder="e.g. gemma:27b-cloud">
+                            </div>
+                            <div class="form-group">
+                                <label>Fallback Model (Lightweight)</label>
+                                <input type="text" id="ai-fallback" placeholder="e.g. gemma3:270m">
+                            </div>
+                            <div class="form-group advanced-smart-models">
+                                <label>Smart Models (Comma Separated)</label>
+                                <input type="text" id="ai-smart-models" placeholder="gpt-oss:20b-cloud, qwen2.5:14b">
+                            </div>
                         </div>
+                    </details>
+                </div>
+
+                <!-- 2. Cloud AI Credentials Vault -->
+                <div class="card">
+                    <div class="card-title">
+                        <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-security"></use></svg>
+                        Cloud AI Credentials Vault
+                    </div>
+                    <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+                        Manage API keys for cloud intelligence. Keys entered here are securely saved into the server SQLite database. If keys exist in <code>.env</code>, they are automatically recognized.
+                    </p>
+
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label>Fallback Model (Lightweight)</label>
-                            <input type="text" id="ai-fallback" placeholder="e.g. gemma3:270m">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="margin:0; font-weight:600;">Google Gemini API Key</label>
+                                <span id="badge-gemini" class="badge badge-muted">Checking...</span>
+                            </div>
+                            <input type="password" id="ai-gemini-key" placeholder="Paste AIzaSy... key to save/override">
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">High-speed cloud inference, vision & 1M context.</div>
                         </div>
+
                         <div class="form-group">
-                            <label>Smart Models (Comma Separated)</label>
-                            <input type="text" id="ai-smart-models" placeholder="gpt-oss:20b-cloud, qwen2.5:14b">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="margin:0; font-weight:600;">Sarvam AI API Key</label>
+                                <span id="badge-sarvam" class="badge badge-muted">Checking...</span>
+                            </div>
+                            <input type="password" id="ai-sarvam-key" placeholder="Paste sk_... key to save/override">
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Indian vernacular Hindi conversational models (105B).</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Distributed Voice Node -->
+                <!-- 3. Voice & Speech Engine (STT & TTS) -->
                 <div class="card">
                     <div class="card-title">
                         <svg class="admin-icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#admin-lumir"></use></svg>
-                        Distributed Voice Engine (Node 2 STT & TTS)
+                        Lumir Voice & Speech Engine (STT & TTS)
+                    </div>
+                    <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+                        Configure voice synthesis (TTS) and speech recognition (STT) for live phone calls with Lumir.
+                    </p>
+
+                    <div class="form-grid">
+                        <!-- Voice Provider Selector -->
+                        <div class="form-group">
+                            <label style="font-weight:600;">Voice Engine Provider</label>
+                            <select id="voice-provider">
+                                <option value="auto">Auto-Detect (Sarvam Cloud ➔ Node 2 ➔ Local)</option>
+                                <option value="sarvam">Sarvam AI Bulbul & Saaras (Indian Cloud ⚡)</option>
+                                <option value="node2">Node 2 Dedicated (Faster-Whisper + Piper Local)</option>
+                                <option value="local">Node 1 Offline (Tiny Whisper + eSpeak)</option>
+                            </select>
+                            <div id="voice-engine-status" style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                                Indian vernacular Hinglish speech capabilities.
+                            </div>
+                        </div>
+
+                        <!-- Voice Speaker (Voice Persona) -->
+                        <div class="form-group">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <label style="margin:0; font-weight:600;">Sarvam Bulbul Speaker</label>
+                                <button type="button" id="btn-test-sarvam-voice" class="btn-outline" style="padding:2px 8px; font-size:11px; cursor:pointer;">
+                                    🔊 Test Voice
+                                </button>
+                            </div>
+                            <select id="voice-speaker">
+                                <option value="simran_enhi_companion">Simran (Hinglish Companion - Recommended for Lumir)</option>
+                                <option value="ishita_enhi_companion">Ishita (Hinglish Companion - Expressive)</option>
+                                <option value="sanchita_enhi_companion">Sanchita (Hinglish Companion - Warm)</option>
+                                <option value="shalini_enhi_companion">Shalini (Hinglish Companion - Friendly)</option>
+                                <option value="shubh_enhi_companion">Shubh (Hinglish Male Companion)</option>
+                                <option value="kavya_hi_conversational">Kavya (Pure Hindi Conversational)</option>
+                                <option value="simran_hi_conversation">Simran (Pure Hindi Conversational)</option>
+                            </select>
+                            <div id="sarvam-voice-status" style="font-size:11px; color:var(--text-muted); margin-top:4px;"></div>
+                        </div>
                     </div>
 
-                    <div class="toggle-row" style="margin-bottom: 16px;">
-                        <div class="toggle-info">
-                            <h4>Enable Node 2 Voice Engine</h4>
-                            <p>Offload faster-whisper STT and Piper TTS synthesis to dedicated compute node.</p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="voice-node-enabled">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
+                    <div style="margin-top:16px; border-top:1px solid var(--border-color); padding-top:16px;">
+                        <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">Distributed Node 2 Endpoints (Optional LAN Compute)</h4>
+                        <div class="form-grid">
+                            <!-- Voice Node URL -->
+                            <div class="form-group">
+                                <label>Node 2 Voice Server URL (Port 8005)</label>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <input type="text" id="voice-node-url" placeholder="http://192.168.31.94:8005" style="flex:1;">
+                                    <button type="button" id="btn-test-voice" class="btn-outline" style="white-space:nowrap; padding:6px 12px; font-size:12px;">
+                                        ⚡ Test Port 8005
+                                    </button>
+                                </div>
+                                <div id="voice-node-status" style="font-size:12px; font-weight:600; min-height:18px; margin-top:4px;"></div>
+                            </div>
 
-                    <div class="form-group">
-                        <label>Voice Server URL</label>
-                        <div style="display:flex; gap:12px; align-items:center;">
-                            <input type="text" id="voice-node-url" placeholder="http://192.168.31.94:8005" style="flex:1;">
-                            <button id="btn-test-voice" class="btn-outline" style="white-space:nowrap;">
-                                <i class="fas fa-plug"></i> Test Voice Node
-                            </button>
+                            <!-- Cognitive llama.cpp Node URL -->
+                            <div class="form-group">
+                                <label>Cognitive llama.cpp URL (Qwen 0.5B Port 8080)</label>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <input type="text" id="ai-node2-llama-url" placeholder="http://192.168.31.94:8080 (Blank for Cloud)" style="flex:1;">
+                                    <button type="button" id="btn-test-cognitive" class="btn-outline" style="white-space:nowrap; padding:6px 12px; font-size:12px;">
+                                        ⚡ Test Port 8080
+                                    </button>
+                                </div>
+                                <div id="cognitive-node-status" style="font-size:12px; font-weight:600; min-height:18px; margin-top:4px;"></div>
+                            </div>
                         </div>
                     </div>
-                    <div id="voice-node-status" style="font-size:13px; font-weight:600; min-height:20px; margin-top:8px;"></div>
                 </div>
 
-                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <div class="ai-save-bar">
                     <button id="btn-save-ai" class="btn-primary">
                         <svg class="admin-icon" style="width:16px;height:16px;color:#fff;" aria-hidden="true"><use href="#admin-check"></use></svg>
                         Save AI Configuration
                     </button>
-                    <span id="ai-status-msg" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
+                    <span id="ai-status-msg" role="status" aria-live="polite" style="font-size:13px; font-weight:600; color:var(--text-muted);"></span>
                 </div>
             </div>
 

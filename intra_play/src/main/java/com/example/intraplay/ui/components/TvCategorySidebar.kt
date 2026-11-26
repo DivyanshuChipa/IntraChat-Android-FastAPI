@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
@@ -48,6 +49,7 @@ data class TvCategoryItem(
 )
 
 val DefaultTvCategories = listOf(
+    TvCategoryItem("intradrive", "🎬 IntraDrive Cinema", Icons.Default.Folder),
     TvCategoryItem("All", "All Channels", Icons.Default.LiveTv),
     TvCategoryItem("Favorites", "Favorites", Icons.Default.Favorite),
     TvCategoryItem("News", "News", Icons.Default.Newspaper),
